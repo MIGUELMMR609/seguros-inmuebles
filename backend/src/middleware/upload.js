@@ -60,4 +60,11 @@ const uploadFotos = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB por foto
 });
 
-module.exports = { upload, uploadFotos };
+// --- Almacenamiento en memoria (para análisis de PDF con IA, sin escribir en disco) ---
+const uploadMemoria = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: filtroPDF,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+});
+
+module.exports = { upload, uploadFotos, uploadMemoria };

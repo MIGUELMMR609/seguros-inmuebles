@@ -1,28 +1,22 @@
 const express = require('express');
-const fs = require('fs');
-const { upload } = require('../middleware/upload');
+const { uploadMemoria } = require('../middleware/upload');
 const { verificarToken } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(verificarToken);
 
 // POST /api/analizar-pdf - Analizar PDF de póliza/contrato con IA
-router.post('/', upload.single('documento'), async (req, res) => {
+router.post('/', uploadMemoria.single('documento'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se recibió ningún archivo PDF' });
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
-    // Limpiar archivo y devolver error
-    try { fs.unlinkSync(req.file.path); } catch {}
     return res.status(503).json({ error: 'La clave de API de IA no está configurada (ANTHROPIC_API_KEY)' });
   }
 
-  const archivoPath = req.file.path;
-
   try {
-    const contenido = fs.readFileSync(archivoPath);
-    const base64 = contenido.toString('base64');
+    const base64 = req.file.buffer.toString('base64');
 
     const prompt = `Analiza este documento de seguro o contrato y extrae los datos relevantes.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
@@ -53,7 +47,7 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
         'anthropic-beta': 'pdfs-2024-09-25',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 1024,
         messages: [
           {
@@ -77,12 +71,9 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
       }),
     });
 
-    // Limpiar archivo temporal
-    try { fs.unlinkSync(archivoPath); } catch {}
-
     if (!respuesta.ok) {
       const errorBody = await respuesta.text();
-      console.error('Error de la API de IA:', errorBody);
+      console.error('Error de la API de IA al analizar PDF:', errorBody);
       return res.status(502).json({ error: 'Error al comunicarse con la IA. Inténtalo de nuevo.' });
     }
 
@@ -94,13 +85,10 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
 
     const texto = resultado.content[0].text;
 
-    // Extraer JSON de la respuesta
     let datos;
     try {
-      // Intentar parsear directamente
       datos = JSON.parse(texto);
     } catch {
-      // Buscar JSON en el texto
       const coincidencia = texto.match(/\{[\s\S]*\}/);
       if (!coincidencia) {
         return res.status(422).json({ error: 'No se pudo extraer información estructurada del PDF' });
@@ -114,8 +102,7 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
 
     res.json({ datos });
   } catch (error) {
-    console.error('Error al analizar PDF con IA:', error);
-    try { fs.unlinkSync(archivoPath); } catch {}
+    console.error('Error al analizar PDF con IA:', error.message || error);
     res.status(500).json({ error: 'Error interno al analizar el PDF' });
   }
 });
