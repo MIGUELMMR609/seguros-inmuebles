@@ -64,7 +64,7 @@ const uploadFotos = multer({
 const uploadMemoria = multer({
   storage: multer.memoryStorage(),
   fileFilter: filtroPDF,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB máximo en memoria
 });
 
 module.exports = { upload, uploadFotos, uploadMemoria };

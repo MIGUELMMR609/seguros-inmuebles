@@ -5,6 +5,9 @@ const { verificarToken } = require('../middleware/auth');
 const router = express.Router();
 router.use(verificarToken);
 
+const LIMITE_BASE64_MB = 4;
+const TIMEOUT_API_MS = 55000;
+
 // POST /api/analizar-pdf - Analizar PDF de póliza/contrato con IA
 router.post('/', uploadMemoria.single('documento'), async (req, res) => {
   if (!req.file) {
@@ -14,6 +17,16 @@ router.post('/', uploadMemoria.single('documento'), async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
     return res.status(503).json({ error: 'La clave de API de IA no está configurada (ANTHROPIC_API_KEY)' });
   }
+
+  const tamanoMB = req.file.buffer.length / (1024 * 1024);
+  if (tamanoMB > LIMITE_BASE64_MB) {
+    return res.status(413).json({
+      error: `El PDF es demasiado grande (${tamanoMB.toFixed(1)} MB). El límite es ${LIMITE_BASE64_MB} MB.`,
+    });
+  }
+
+  const controlador = new AbortController();
+  const tiempoLimite = setTimeout(() => controlador.abort(), TIMEOUT_API_MS);
 
   try {
     const base64 = req.file.buffer.toString('base64');
@@ -40,6 +53,7 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
 
     const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: controlador.signal,
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY,
@@ -47,7 +61,7 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
         'anthropic-beta': 'pdfs-2024-09-25',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-haiku-4-5-20251001',
         max_tokens: 1024,
         messages: [
           {
@@ -55,25 +69,20 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
             content: [
               {
                 type: 'document',
-                source: {
-                  type: 'base64',
-                  media_type: 'application/pdf',
-                  data: base64,
-                },
+                source: { type: 'base64', media_type: 'application/pdf', data: base64 },
               },
-              {
-                type: 'text',
-                text: prompt,
-              },
+              { type: 'text', text: prompt },
             ],
           },
         ],
       }),
     });
 
+    clearTimeout(tiempoLimite);
+
     if (!respuesta.ok) {
       const errorBody = await respuesta.text();
-      console.error('Error de la API de IA al analizar PDF:', errorBody);
+      console.error('Error de la API de IA al analizar PDF (status', respuesta.status, '):', errorBody);
       return res.status(502).json({ error: 'Error al comunicarse con la IA. Inténtalo de nuevo.' });
     }
 
@@ -84,7 +93,6 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
     }
 
     const texto = resultado.content[0].text;
-
     let datos;
     try {
       datos = JSON.parse(texto);
@@ -102,6 +110,11 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
 
     res.json({ datos });
   } catch (error) {
+    clearTimeout(tiempoLimite);
+    if (error.name === 'AbortError') {
+      console.error('Timeout al analizar PDF con IA (>55s)');
+      return res.status(504).json({ error: 'La IA tardó demasiado. Prueba con un PDF más pequeño.' });
+    }
     console.error('Error al analizar PDF con IA:', error.message || error);
     res.status(500).json({ error: 'Error interno al analizar el PDF' });
   }
