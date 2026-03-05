@@ -38,6 +38,53 @@
   }
 }
 
+/* Touch targets mínimos para iOS (44px) */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Botones con touch target adecuado en móvil */
+@media (max-width: 768px) {
+  .btn-primario,
+  .btn-secundario,
+  .btn-peligro {
+    min-height: 44px;
+    @apply px-4 py-2.5;
+  }
+
+  .campo-formulario {
+    min-height: 44px;
+    @apply py-2.5;
+  }
+}
+
+/* Evitar zoom en inputs en iOS */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  input[type='text'],
+  input[type='email'],
+  input[type='password'],
+  input[type='number'],
+  input[type='date'],
+  input[type='tel'],
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Safe area para iOS (notch / Dynamic Island / home indicator) */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0);
+}
+
 /* Scroll personalizado */
 ::-webkit-scrollbar {
   width: 6px;

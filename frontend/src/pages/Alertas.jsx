@@ -68,9 +68,9 @@ export default function Alertas() {
   const totalGeneral = datos.polizas_inmuebles.length + datos.polizas_inquilinos.length + datos.contratos_alquiler.length;
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       {/* Cabecera */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
             <Bell size={24} className="text-orange-500" />
