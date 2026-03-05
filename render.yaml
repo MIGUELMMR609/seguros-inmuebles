@@ -1,10 +1,11 @@
 services:
+  # Backend Node.js (solo API)
   - type: web
     name: seguros-inmuebles-backend
     runtime: node
     region: frankfurt
     plan: free
-    buildCommand: cd frontend && npm install && npm run build && cd ../backend && npm install
+    buildCommand: cd backend && npm install
     startCommand: node backend/server.js
     envVars:
       - key: NODE_ENV
@@ -17,6 +18,8 @@ services:
           property: connectionString
       - key: JWT_SECRET
         generateValue: true
+      - key: FRONTEND_URL
+        value: https://seguros-inmuebles-web.onrender.com
       - key: ANTHROPIC_API_KEY
         sync: false
       - key: GMAIL_USER
@@ -25,8 +28,22 @@ services:
         sync: false
       - key: ADMIN_EMAIL
         sync: false
-      - key: FRONTEND_URL
-        sync: false
+
+  # Frontend React (Static Site)
+  - type: web
+    name: seguros-inmuebles-web
+    runtime: static
+    region: frankfurt
+    plan: free
+    buildCommand: cd frontend && npm install && npm run build
+    staticPublishPath: frontend/dist
+    envVars:
+      - key: VITE_API_URL
+        value: https://seguros-inmuebles-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
 
 databases:
   - name: seguros-inmuebles-db
