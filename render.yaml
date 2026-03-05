@@ -28,6 +28,8 @@ services:
         sync: false
       - key: ADMIN_EMAIL
         sync: false
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=512
 
   # Frontend React (Static Site)
   - type: web
@@ -40,8 +42,6 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://seguros-inmuebles-backend.onrender.com
-      - key: VITE_ANTHROPIC_API_KEY
-        sync: false
     routes:
       - type: rewrite
         source: /*

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { FileText, Sparkles, SkipForward, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
-import { analizarPolizaPdf } from '../utils/anthropicPdf.js';
+import { analizarPdfApi } from '../api/index.js';
 
 export default function AnalizadorPDF({ onDatosExtraidos, onOmitir }) {
   const [paso, setPaso] = useState('pregunta'); // 'pregunta' | 'subiendo' | 'analizando' | 'error'
@@ -24,10 +24,10 @@ export default function AnalizadorPDF({ onDatosExtraidos, onOmitir }) {
     setPaso('analizando');
 
     try {
-      const datos = await analizarPolizaPdf(archivo);
-      onDatosExtraidos(datos);
+      const res = await analizarPdfApi(archivo);
+      onDatosExtraidos(res.data.datos);
     } catch (err) {
-      const mensajeError = err.message || 'Error al analizar el PDF';
+      const mensajeError = err.response?.data?.error || err.message || 'Error al analizar el PDF';
       setError(mensajeError);
       setPaso('error');
     }

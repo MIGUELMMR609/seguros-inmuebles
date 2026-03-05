@@ -11,7 +11,7 @@ import {
   eliminarInquilinoApi, obtenerInmueblesApi,
   finalizarInquilinoApi, renovarContratoApi, generarContratoWordApi,
 } from '../api/index.js';
-import { analizarContratoPdf } from '../utils/anthropicPdf.js';
+import { analizarContratoApi } from '../api/index.js';
 
 const formularioVacio = {
   inmueble_id: '',
@@ -134,7 +134,8 @@ export default function Inquilinos() {
     setPasoModal('analizando');
 
     try {
-      const datos = await analizarContratoPdf(archivo);
+      const res = await analizarContratoApi(archivo);
+      const datos = res.data.datos;
       setFormulario((prev) => ({
         ...prev,
         nombre: datos.nombre_inquilino || prev.nombre,
@@ -147,7 +148,7 @@ export default function Inquilinos() {
       }));
       setPasoModal('form');
     } catch (err) {
-      setErrorPdf(err.message || 'Error al analizar el contrato');
+      setErrorPdf(err.response?.data?.error || err.message || 'Error al analizar el contrato');
       setPasoModal('error_pdf');
     }
   }
