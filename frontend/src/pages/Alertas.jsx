@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Bell, AlertTriangle, Clock, CheckCircle, Building2, Shield, CalendarClock } from 'lucide-react';
+import { Bell, AlertTriangle, Clock, CheckCircle, Building2, Shield, CalendarClock, ShieldOff } from 'lucide-react';
 import { obtenerAlertasApi } from '../api/index.js';
 
 function colorUrgencia(dias) {
@@ -43,7 +43,7 @@ function CabeceraSección({ icono: Icono, titulo, count, color }) {
 }
 
 export default function Alertas() {
-  const [datos, setDatos] = useState({ polizas_inmuebles: [], polizas_inquilinos: [], contratos_alquiler: [] });
+  const [datos, setDatos] = useState({ polizas_inmuebles: [], polizas_inquilinos: [], contratos_alquiler: [], inmuebles_sin_poliza: [] });
   const [cargando, setCargando] = useState(true);
   const [dias, setDias] = useState(30);
 
@@ -55,9 +55,10 @@ export default function Alertas() {
         polizas_inmuebles: res.data.polizas_inmuebles || [],
         polizas_inquilinos: res.data.polizas_inquilinos || [],
         contratos_alquiler: res.data.contratos_alquiler || [],
+        inmuebles_sin_poliza: res.data.inmuebles_sin_poliza || [],
       });
     } catch {
-      setDatos({ polizas_inmuebles: [], polizas_inquilinos: [], contratos_alquiler: [] });
+      setDatos({ polizas_inmuebles: [], polizas_inquilinos: [], contratos_alquiler: [], inmuebles_sin_poliza: [] });
     } finally {
       setCargando(false);
     }
@@ -65,7 +66,7 @@ export default function Alertas() {
 
   useEffect(() => { cargar(); }, [dias]);
 
-  const totalGeneral = datos.polizas_inmuebles.length + datos.polizas_inquilinos.length + datos.contratos_alquiler.length;
+  const totalGeneral = datos.polizas_inmuebles.length + datos.polizas_inquilinos.length + datos.contratos_alquiler.length + datos.inmuebles_sin_poliza.length;
 
   return (
     <div className="p-4 md:p-8">
@@ -220,6 +221,43 @@ export default function Alertas() {
                         </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          {/* ── SECCIÓN 4: Inmuebles sin póliza ── */}
+          <div className="tarjeta">
+            <CabeceraSección
+              icono={ShieldOff}
+              titulo="Inmuebles sin póliza asignada"
+              count={datos.inmuebles_sin_poliza.length}
+              color="text-orange-700"
+            />
+            {datos.inmuebles_sin_poliza.length === 0 ? <FilaVacia /> : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                      <th className="pb-2 pr-4">Inmueble</th>
+                      <th className="pb-2 pr-4">Tipo</th>
+                      <th className="pb-2">Dirección</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {datos.inmuebles_sin_poliza.map((inm) => (
+                      <tr key={inm.id} className="bg-orange-50 border-l-4 border-orange-400">
+                        <td className="py-3 pr-4 font-semibold text-gray-900">
+                          <span className="flex items-center gap-2">
+                            <AlertTriangle size={14} className="text-orange-500 flex-shrink-0" />
+                            {inm.nombre}
+                          </span>
+                        </td>
+                        <td className="py-3 pr-4 text-gray-600 capitalize">{inm.tipo || '—'}</td>
+                        <td className="py-3 text-gray-600">{inm.direccion || '—'}</td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>

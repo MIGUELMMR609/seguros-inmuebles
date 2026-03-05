@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
   try {
     const diasLimite = parseInt(req.query.dias) || 30;
 
-    const [polizasInmuebles, polizasInquilinos, contratosAlquiler] = await Promise.all([
+    const [polizasInmuebles, polizasInquilinos, contratosAlquiler, inmueblesSinPoliza] = await Promise.all([
       // Pólizas de inmuebles próximas a vencer
       pool.query(
         `SELECT
@@ -107,12 +107,23 @@ router.get('/', async (req, res) => {
          ORDER BY inq.fecha_fin_contrato ASC`,
         [diasLimite]
       ),
+
+      // Inmuebles sin ninguna póliza asignada
+      pool.query(
+        `SELECT i.id, i.nombre, i.tipo, i.direccion
+         FROM inmuebles i
+         WHERE NOT EXISTS (
+           SELECT 1 FROM polizas p WHERE p.inmueble_id = i.id
+         )
+         ORDER BY i.nombre ASC`
+      ),
     ]);
 
     const total =
       polizasInmuebles.rows.length +
       polizasInquilinos.rows.length +
-      contratosAlquiler.rows.length;
+      contratosAlquiler.rows.length +
+      inmueblesSinPoliza.rows.length;
 
     // 'alertas' mantiene compatibilidad con Dashboard (pólizas combinadas)
     const alertas = [
@@ -126,6 +137,7 @@ router.get('/', async (req, res) => {
       polizas_inmuebles: polizasInmuebles.rows,
       polizas_inquilinos: polizasInquilinos.rows,
       contratos_alquiler: contratosAlquiler.rows,
+      inmuebles_sin_poliza: inmueblesSinPoliza.rows,
       alertas, // backward compat
     });
   } catch (error) {

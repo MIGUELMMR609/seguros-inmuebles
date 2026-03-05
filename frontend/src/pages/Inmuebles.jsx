@@ -119,7 +119,7 @@ export default function Inmuebles() {
       render: (f) => (
         <div className="flex items-center gap-2">
           <span className="font-medium">{f.nombre}</span>
-          {f.total_polizas === 0 && (
+          {!Number(f.total_polizas) && (
             <span
               title="Este inmueble no tiene ninguna póliza asignada"
               className="inline-flex items-center gap-1 text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium"
@@ -144,7 +144,7 @@ export default function Inmuebles() {
       clave: 'total_polizas',
       titulo: 'Pólizas',
       render: (f) => (
-        <span className={`text-sm font-semibold ${f.total_polizas === 0 ? 'text-orange-500' : 'text-gray-700'}`}>
+        <span className={`text-sm font-semibold ${!Number(f.total_polizas) ? 'text-orange-500' : 'text-gray-700'}`}>
           {f.total_polizas}
         </span>
       ),
@@ -191,13 +191,13 @@ export default function Inmuebles() {
       </div>
 
       {/* Aviso de inmuebles sin póliza */}
-      {inmuebles.some((i) => i.total_polizas === 0) && (
+      {inmuebles.some((i) => !Number(i.total_polizas)) && (
         <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-800 text-sm px-4 py-3 rounded-xl mb-5">
           <AlertTriangle size={16} className="flex-shrink-0" />
           <span>
             Hay{' '}
-            <strong>{inmuebles.filter((i) => i.total_polizas === 0).length}</strong>{' '}
-            inmueble{inmuebles.filter((i) => i.total_polizas === 0).length !== 1 ? 's' : ''} sin
+            <strong>{inmuebles.filter((i) => !Number(i.total_polizas)).length}</strong>{' '}
+            inmueble{inmuebles.filter((i) => !Number(i.total_polizas)).length !== 1 ? 's' : ''} sin
             póliza asignada.
           </span>
         </div>
