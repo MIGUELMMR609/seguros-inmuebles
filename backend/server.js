@@ -36,6 +36,29 @@ app.use(express.urlencoded({ extended: true }));
 // Servir archivos subidos (PDFs, fotos)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Health check (sin autenticación, para diagnóstico)
+const { pool } = require('./src/config/database');
+app.get('/api/health', async (req, res) => {
+  const estado = {
+    servidor: 'ok',
+    node_env: process.env.NODE_ENV,
+    jwt_secret: !!process.env.JWT_SECRET,
+    database_url: !!process.env.DATABASE_URL,
+    db: 'pendiente',
+    usuarios: null,
+    error: null,
+  };
+  try {
+    const r = await pool.query('SELECT COUNT(*) FROM usuarios');
+    estado.db = 'ok';
+    estado.usuarios = parseInt(r.rows[0].count);
+  } catch (err) {
+    estado.db = 'error';
+    estado.error = err.message;
+  }
+  res.json(estado);
+});
+
 // Rutas API
 app.use('/api/auth', authRoutes);
 app.use('/api/inmuebles', inmueblesRoutes);
