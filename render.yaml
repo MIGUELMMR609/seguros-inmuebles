@@ -40,6 +40,8 @@ services:
     envVars:
       - key: VITE_API_URL
         value: https://seguros-inmuebles-backend.onrender.com
+      - key: VITE_ANTHROPIC_API_KEY
+        sync: false
     routes:
       - type: rewrite
         source: /*

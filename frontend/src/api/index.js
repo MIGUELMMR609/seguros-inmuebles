@@ -112,21 +112,4 @@ export const obtenerContabilidadApi = (year) => api.get('/contabilidad', { param
 // --- Registro de emails ---
 export const obtenerRegistroEmailsApi = (filtros = {}) => api.get('/registro-emails', { params: filtros });
 
-// --- Analizar PDF con IA ---
-export const analizarPdfApi = (archivo) => {
-  const formData = new FormData();
-  formData.append('documento', archivo);
-  return api.post('/analizar-pdf', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-};
-
-export const analizarContratoApi = (archivo) => {
-  const formData = new FormData();
-  formData.append('documento', archivo);
-  return api.post('/analizar-contrato', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  });
-};
-
 export default api;

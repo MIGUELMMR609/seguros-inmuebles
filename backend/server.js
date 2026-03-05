@@ -18,8 +18,6 @@ const renovacionesRoutes = require('./src/routes/renovaciones');
 const siniestrosRoutes = require('./src/routes/siniestros');
 const contabilidadRoutes = require('./src/routes/contabilidad');
 const registroEmailsRoutes = require('./src/routes/registro_emails');
-const analizarPdfRoutes = require('./src/routes/analizar_pdf');
-const analizarContratoRoutes = require('./src/routes/analizar_contrato');
 const generarContratoRoutes = require('./src/routes/generar_contrato');
 
 const app = express();
@@ -72,8 +70,6 @@ app.use('/api/renovaciones', renovacionesRoutes);
 app.use('/api/siniestros', siniestrosRoutes);
 app.use('/api/contabilidad', contabilidadRoutes);
 app.use('/api/registro-emails', registroEmailsRoutes);
-app.use('/api/analizar-pdf', analizarPdfRoutes);
-app.use('/api/analizar-contrato', analizarContratoRoutes);
 app.use('/api', generarContratoRoutes);
 
 // Servir frontend en producción
