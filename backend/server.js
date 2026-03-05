@@ -67,20 +67,37 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 
-async function iniciar() {
-  try {
-    await inicializarBaseDatos();
-    console.log('Base de datos inicializada correctamente');
+async function iniciarConReintentos(intentos = 5, espera = 3000) {
+  for (let i = 1; i <= intentos; i++) {
+    try {
+      await inicializarBaseDatos();
+      console.log('Base de datos inicializada correctamente');
+      return;
+    } catch (error) {
+      console.error(`Error al conectar con la BD (intento ${i}/${intentos}):`, error.message);
+      if (i < intentos) {
+        console.log(`Reintentando en ${espera / 1000}s...`);
+        await new Promise((r) => setTimeout(r, espera));
+      } else {
+        throw error;
+      }
+    }
+  }
+}
 
+async function iniciar() {
+  // El servidor escucha primero para que Render detecte el puerto
+  app.listen(PUERTO, () => {
+    console.log(`Servidor ejecutándose en el puerto ${PUERTO}`);
+  });
+
+  try {
+    await iniciarConReintentos();
     iniciarCronAlertas();
     console.log('Tarea programada de alertas iniciada');
-
-    app.listen(PUERTO, () => {
-      console.log(`Servidor ejecutándose en el puerto ${PUERTO}`);
-    });
   } catch (error) {
-    console.error('Error al iniciar el servidor:', error);
-    process.exit(1);
+    console.error('Error crítico al iniciar la BD tras varios intentos:', error);
+    // No hacemos process.exit para que el proceso siga en pie
   }
 }
 

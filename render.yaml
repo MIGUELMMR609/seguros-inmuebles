@@ -1,13 +1,11 @@
 services:
-  # Backend Node.js (sirve también el frontend compilado en producción)
   - type: web
     name: seguros-inmuebles-backend
     runtime: node
     region: frankfurt
     plan: free
-    rootDir: backend
-    buildCommand: cd ../frontend && npm install && npm run build && cd ../backend && npm install
-    startCommand: node server.js
+    buildCommand: cd frontend && npm install && npm run build && cd ../backend && npm install
+    startCommand: node backend/server.js
     envVars:
       - key: NODE_ENV
         value: production
