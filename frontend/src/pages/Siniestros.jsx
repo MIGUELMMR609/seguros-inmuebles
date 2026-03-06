@@ -321,24 +321,24 @@ export default function Siniestros() {
       render: (f) => <span className="text-sm font-medium">{(f.llamadas || []).length}</span>,
     },
     {
-      clave: 'acciones', titulo: 'Acciones', ancho: '140px',
+      clave: 'acciones', titulo: 'Acciones', ancho: '160px',
       render: (f) => (
         <div className="flex items-center gap-1">
           <button onClick={() => abrirDetalle(f)} title="Ver detalle" className="p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
-            <Phone size={14} />
+            <Phone size={20} />
           </button>
           <button onClick={() => abrirEditar(f)} title="Editar" className="p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
-            <Pencil size={14} />
+            <Pencil size={20} />
           </button>
           <button
             onClick={() => handleCambiarEstado(f)}
             title={f.estado === 'abierto' ? 'Cerrar siniestro' : 'Reabrir siniestro'}
             className={`p-1.5 rounded-lg transition-colors ${f.estado === 'abierto' ? 'text-gray-400 hover:text-green-600 hover:bg-green-50' : 'text-gray-400 hover:text-orange-600 hover:bg-orange-50'}`}
           >
-            {f.estado === 'abierto' ? <CheckCircle size={14} /> : <RefreshCw size={14} />}
+            {f.estado === 'abierto' ? <CheckCircle size={20} /> : <RefreshCw size={20} />}
           </button>
           <button onClick={() => setConfirmandoEliminar(f)} title="Eliminar" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-            <Trash2 size={14} />
+            <Trash2 size={20} />
           </button>
         </div>
       ),
