@@ -1,4 +1,5 @@
 const express = require('express');
+const { PDFDocument } = require('pdf-lib');
 const { uploadMemoria } = require('../middleware/upload');
 const { verificarToken } = require('../middleware/auth');
 const cloudinary = require('../config/cloudinary');
@@ -7,11 +8,32 @@ const router = express.Router();
 router.use(verificarToken);
 
 const TIMEOUT_MS = 115_000;
+const MAX_BYTES_ANTHROPIC = 5 * 1024 * 1024;
+const MAX_PAGINAS = 10;
+
+async function reducirPdf(buffer) {
+  if (buffer.length <= MAX_BYTES_ANTHROPIC) return buffer;
+  try {
+    const pdfOrig = await PDFDocument.load(buffer, { ignoreEncryption: true });
+    const total = pdfOrig.getPageCount();
+    if (total <= MAX_PAGINAS) return buffer;
+    const pdfNuevo = await PDFDocument.create();
+    const indices = Array.from({ length: MAX_PAGINAS }, (_, i) => i);
+    const paginas = await pdfNuevo.copyPages(pdfOrig, indices);
+    paginas.forEach((p) => pdfNuevo.addPage(p));
+    const bytes = await pdfNuevo.save();
+    console.log(`Contrato reducido: ${total} → ${MAX_PAGINAS} páginas (${buffer.length} → ${bytes.length} bytes)`);
+    return Buffer.from(bytes);
+  } catch (err) {
+    console.warn('No se pudo reducir el contrato PDF, se envía completo:', err.message);
+    return buffer;
+  }
+}
 
 function subirPdfACloudinary(buffer) {
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload_stream(
-      { folder: 'polizas-seguros', resource_type: 'raw', format: 'pdf' },
+      { folder: 'polizas-seguros', resource_type: 'raw', type: 'upload', access_mode: 'public', format: 'pdf' },
       (error, result) => {
         if (error) reject(error);
         else resolve(result.secure_url);
@@ -20,7 +42,7 @@ function subirPdfACloudinary(buffer) {
   });
 }
 
-// POST /api/analizar-contrato - Analizar PDF de contrato de arrendamiento con IA
+// POST /api/analizar-contrato
 router.post('/', uploadMemoria.single('documento'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se recibió ningún archivo PDF' });
@@ -34,7 +56,8 @@ router.post('/', uploadMemoria.single('documento'), async (req, res) => {
   const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
 
   try {
-    const base64 = req.file.buffer.toString('base64');
+    const bufferParaIA = await reducirPdf(req.file.buffer);
+    const base64 = bufferParaIA.toString('base64');
 
     const promesaUrl = subirPdfACloudinary(req.file.buffer).catch((err) => {
       console.warn('No se pudo subir contrato a Cloudinary:', err?.message);

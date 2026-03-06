@@ -8,6 +8,8 @@ const storagePDF = new CloudinaryStorage({
   params: async (req, file) => ({
     folder: 'polizas-seguros',
     resource_type: 'raw',
+    type: 'upload',
+    access_mode: 'public',
     format: 'pdf',
     public_id: `doc_${Date.now()}`,
   }),
