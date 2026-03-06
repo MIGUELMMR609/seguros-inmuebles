@@ -4,8 +4,7 @@
   "description": "Backend para gestión de pólizas de seguros de inmuebles e inquilinos",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
