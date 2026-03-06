@@ -89,7 +89,8 @@ if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendIndex)) {
 
 // Manejador de errores global
 app.use((err, req, res, next) => {
-  console.error('Error no controlado:', err.stack);
+  console.error('Error no controlado:', err?.message ?? err, err?.stack ?? '');
+  console.error('Error no controlado (JSON):', JSON.stringify(err, Object.getOwnPropertyNames(err ?? {})));
   res.status(500).json({ error: 'Error interno del servidor' });
 });
 

@@ -5,11 +5,12 @@ const cloudinary = require('../config/cloudinary');
 // --- Almacenamiento Cloudinary para PDFs ---
 const storagePDF = new CloudinaryStorage({
   cloudinary,
-  params: {
+  params: async (req, file) => ({
     folder: 'polizas-seguros',
     resource_type: 'raw',
-    allowed_formats: ['pdf'],
-  },
+    format: 'pdf',
+    public_id: `doc_${Date.now()}`,
+  }),
 });
 
 const filtroPDF = (req, file, cb) => {
@@ -29,11 +30,10 @@ const upload = multer({
 // --- Almacenamiento Cloudinary para fotos de siniestros ---
 const storageFotos = new CloudinaryStorage({
   cloudinary,
-  params: {
+  params: async (req, file) => ({
     folder: 'siniestros',
     resource_type: 'image',
-    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
-  },
+  }),
 });
 
 const filtroImagenes = (req, file, cb) => {
@@ -50,7 +50,7 @@ const uploadFotos = multer({
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB por foto
 });
 
-// --- Almacenamiento en memoria (legacy, por si se necesita) ---
+// --- Almacenamiento en memoria (legacy) ---
 const uploadMemoria = multer({
   storage: multer.memoryStorage(),
   fileFilter: filtroPDF,

@@ -24,15 +24,18 @@ router.post('/', upload.single('documento'), (req, res) => {
   }
 });
 
-// Manejador de errores de multer
+// Manejador de errores de multer/Cloudinary
 router.use((err, req, res, next) => {
+  console.error('Error upload [message]:', err?.message);
+  console.error('Error upload [http_code]:', err?.http_code);
+  console.error('Error upload [JSON]:', JSON.stringify(err, Object.getOwnPropertyNames(err ?? {})));
   if (err.message === 'Solo se permiten archivos PDF') {
     return res.status(400).json({ error: err.message });
   }
   if (err.code === 'LIMIT_FILE_SIZE') {
     return res.status(400).json({ error: 'El archivo supera el tamaño máximo de 10 MB' });
   }
-  next(err);
+  res.status(500).json({ error: err?.message || 'Error al subir el archivo' });
 });
 
 module.exports = router;
