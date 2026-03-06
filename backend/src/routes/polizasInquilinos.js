@@ -73,6 +73,7 @@ router.post('/', async (req, res) => {
       importe_anual,
       notas,
       documento_url,
+      tomador_poliza,
       contacto_nombre,
       contacto_telefono,
       contacto_email,
@@ -90,8 +91,8 @@ router.post('/', async (req, res) => {
     // INSERT base (columnas que siempre existen)
     const resultado = await pool.query(
       `INSERT INTO polizas_inquilinos
-        (inquilino_id, compania_aseguradora, numero_poliza, fecha_inicio, fecha_vencimiento, importe_anual, notas, documento_url)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        (inquilino_id, compania_aseguradora, numero_poliza, fecha_inicio, fecha_vencimiento, importe_anual, notas, documento_url, tomador_poliza)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING *`,
       [
         inquilino_id,
@@ -102,6 +103,7 @@ router.post('/', async (req, res) => {
         importe_anual || null,
         notas || null,
         documento_url || null,
+        tomador_poliza || null,
       ]
     );
 
@@ -159,6 +161,7 @@ router.put('/:id', async (req, res) => {
       importe_anual,
       notas,
       documento_url,
+      tomador_poliza,
       contacto_nombre,
       contacto_telefono,
       contacto_email,
@@ -174,8 +177,8 @@ router.put('/:id', async (req, res) => {
       `UPDATE polizas_inquilinos
        SET inquilino_id = $1, compania_aseguradora = $2, numero_poliza = $3,
            fecha_inicio = $4, fecha_vencimiento = $5, importe_anual = $6,
-           notas = $7, documento_url = $8, updated_at = NOW()
-       WHERE id = $9
+           notas = $7, documento_url = $8, tomador_poliza = $9, updated_at = NOW()
+       WHERE id = $10
        RETURNING *`,
       [
         inquilino_id,
@@ -186,6 +189,7 @@ router.put('/:id', async (req, res) => {
         importe_anual || null,
         notas || null,
         documento_url || null,
+        tomador_poliza || null,
         req.params.id,
       ]
     );

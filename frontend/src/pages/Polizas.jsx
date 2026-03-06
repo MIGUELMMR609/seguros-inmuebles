@@ -36,6 +36,7 @@ const PERIODICIDADES = [
 const formularioVacio = {
   inmueble_id: '', tipo: 'vivienda', compania_aseguradora: '', numero_poliza: '',
   fecha_inicio: '', fecha_vencimiento: '', importe_anual: '', notas: '', documento_url: '',
+  tomador_poliza: '',
   contacto_nombre: '', contacto_telefono: '', contacto_email: '',
   periodicidad_pago: 'anual', importe_pago: '', fecha_proximo_pago: '',
   observaciones_ia: '',
@@ -146,6 +147,7 @@ export default function Polizas() {
       periodicidad_pago: poliza.periodicidad_pago || 'anual',
       importe_pago: poliza.importe_pago || '',
       fecha_proximo_pago: poliza.fecha_proximo_pago?.split('T')[0] || '',
+      tomador_poliza: poliza.tomador_poliza || '',
       observaciones_ia: '',
       riesgos_cubiertos: poliza.riesgos_cubiertos || '',
       riesgos_no_cubiertos: poliza.riesgos_no_cubiertos || '',
@@ -364,6 +366,10 @@ export default function Polizas() {
       valorOrden: (f) => f.compania_aseguradora || '',
     },
     {
+      clave: 'tomador_poliza', titulo: 'Tomador',
+      render: (f) => f.tomador_poliza || '—',
+    },
+    {
       clave: 'numero_poliza', titulo: 'Nº Póliza',
       render: (f) => <span className="font-mono text-sm">{f.numero_poliza || '—'}</span>,
     },
@@ -513,6 +519,10 @@ export default function Polizas() {
                 <div>
                   <label className="etiqueta-formulario">Fecha de vencimiento</label>
                   <input type="date" name="fecha_vencimiento" value={formulario.fecha_vencimiento} onChange={handleCambio} className="campo-formulario" />
+                </div>
+                <div className="col-span-2">
+                  <label className="etiqueta-formulario">Tomador de la póliza</label>
+                  <input name="tomador_poliza" value={formulario.tomador_poliza} onChange={handleCambio} className="campo-formulario" placeholder="Nombre del tomador..." />
                 </div>
               </div>
             </div>

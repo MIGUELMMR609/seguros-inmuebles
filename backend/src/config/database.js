@@ -86,6 +86,12 @@ async function inicializarBaseDatos() {
       ALTER TABLE polizas ADD COLUMN IF NOT EXISTS fecha_proximo_pago DATE;
     `);
 
+    // Tomador de la póliza
+    await cliente.query(`
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS tomador_poliza VARCHAR(255);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS tomador_poliza VARCHAR(255);
+    `);
+
     // Columnas de análisis IA experto en pólizas
     await cliente.query(`
       ALTER TABLE polizas ADD COLUMN IF NOT EXISTS riesgos_cubiertos TEXT;

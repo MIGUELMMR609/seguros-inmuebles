@@ -38,6 +38,7 @@ const formularioVacio = {
   importe_anual: '',
   notas: '',
   documento_url: '',
+  tomador_poliza: '',
   contacto_nombre: '',
   contacto_telefono: '',
   contacto_email: '',
@@ -127,6 +128,7 @@ export default function PolizasInquilinos() {
       importe_anual: poliza.importe_anual || '',
       notas: poliza.notas || '',
       documento_url: poliza.documento_url || '',
+      tomador_poliza: poliza.tomador_poliza || '',
       contacto_nombre: poliza.contacto_nombre || '',
       contacto_telefono: poliza.contacto_telefono || '',
       contacto_email: poliza.contacto_email || '',
@@ -282,6 +284,10 @@ export default function PolizasInquilinos() {
       clave: 'compania_aseguradora', titulo: 'Compañía', sortable: true,
       valorOrden: (f) => f.compania_aseguradora || '',
     },
+    {
+      clave: 'tomador_poliza', titulo: 'Tomador',
+      render: (f) => f.tomador_poliza || '—',
+    },
     { clave: 'numero_poliza', titulo: 'Nº Póliza', render: (f) => <span className="font-mono text-sm">{f.numero_poliza || '—'}</span> },
     {
       clave: 'fecha_vencimiento', titulo: 'Vencimiento', sortable: true,
@@ -420,6 +426,10 @@ export default function PolizasInquilinos() {
                 <div>
                   <label className="etiqueta-formulario">Fecha de vencimiento</label>
                   <input type="date" name="fecha_vencimiento" value={formulario.fecha_vencimiento} onChange={handleCambio} className="campo-formulario" />
+                </div>
+                <div className="col-span-2">
+                  <label className="etiqueta-formulario">Tomador de la póliza</label>
+                  <input name="tomador_poliza" value={formulario.tomador_poliza} onChange={handleCambio} className="campo-formulario" placeholder="Nombre del tomador..." />
                 </div>
               </div>
             </div>
