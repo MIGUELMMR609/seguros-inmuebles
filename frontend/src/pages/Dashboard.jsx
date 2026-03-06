@@ -29,9 +29,13 @@ export default function Dashboard() {
     polizas: [],
     inquilinos: [],
     alertas: [],
+    polizasVencidas: [],
+    contratosVencidos: [],
     totalAlertas: 0,
+    hayUrgentes: false,
     siniestrosAbiertos: 0,
     contratosProximos: [],
+    contratosVencidosList: [],
     cargando: true,
   });
 
@@ -58,7 +62,10 @@ export default function Dashboard() {
           polizas: resPolizas.data,
           inquilinos: resInquilinos.data,
           alertas: resAlertas.data.alertas,
+          polizasVencidas: resAlertas.data.polizas_vencidas || [],
+          contratosVencidos: resAlertas.data.contratos_vencidos || [],
           totalAlertas: resAlertas.data.total,
+          hayUrgentes: resAlertas.data.hay_urgentes || false,
           siniestrosAbiertos: resSiniestros.data.length,
           contratosProximos,
           cargando: false,
@@ -70,7 +77,7 @@ export default function Dashboard() {
     cargar();
   }, []);
 
-  const { inmuebles, polizas, inquilinos, alertas, totalAlertas, siniestrosAbiertos, contratosProximos, cargando } = datos;
+  const { inmuebles, polizas, inquilinos, alertas, polizasVencidas, contratosVencidos, totalAlertas, hayUrgentes, siniestrosAbiertos, contratosProximos, cargando } = datos;
 
   const tarjetasResumen = [
     {
@@ -105,6 +112,7 @@ export default function Dashboard() {
       fondo: 'bg-orange-50',
       ruta: '/alertas',
       esAlerta: totalAlertas > 0,
+      urgente: hayUrgentes,
     },
     ...(siniestrosAbiertos > 0 ? [{
       titulo: 'Siniestros abiertos',
@@ -137,7 +145,7 @@ export default function Dashboard() {
 
       {/* Tarjetas de resumen */}
       <div className={`grid grid-cols-1 sm:grid-cols-2 ${siniestrosAbiertos > 0 ? 'lg:grid-cols-5' : 'lg:grid-cols-4'} gap-5 mb-6`}>
-        {tarjetasResumen.map(({ titulo, valor, icono: Icono, color, fondo, ruta, esAlerta, esSiniestro }) => (
+        {tarjetasResumen.map(({ titulo, valor, icono: Icono, color, fondo, ruta, esAlerta, esSiniestro, urgente }) => (
           <Link
             key={titulo}
             to={ruta}
@@ -158,8 +166,8 @@ export default function Dashboard() {
             </div>
             {esAlerta && (
               <div className="flex items-center gap-1 mt-3 text-orange-600 text-xs font-medium">
-                <AlertTriangle size={12} />
-                <span>Requieren atención</span>
+                <AlertTriangle size={12} className={urgente ? 'animate-pulse' : ''} />
+                <span>{urgente ? '¡Atención urgente!' : 'Requieren atención'}</span>
               </div>
             )}
             {esSiniestro && (
@@ -218,28 +226,47 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Alertas urgentes */}
-        {alertas.length > 0 && (
+        {/* Pólizas vencidas + próximas a vencer */}
+        {(polizasVencidas.length > 0 || alertas.length > 0) && (
           <div className="tarjeta">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
                 <Bell size={16} className="text-orange-500" />
-                Pólizas próximas a vencer
+                Pólizas — vencidas y próximas
               </h2>
               <Link to="/alertas" className="text-sm text-[#1e3a5f] font-medium hover:underline">
                 Ver todas →
               </Link>
             </div>
             <div className="space-y-3">
-              {alertas.slice(0, 5).map((alerta, i) => {
+              {polizasVencidas.slice(0, 3).map((p, i) => (
+                <div key={`venc-${p.origen}-${p.id}-${i}`} className="flex items-center justify-between p-3 rounded-lg bg-red-50 border border-red-200">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
+                      <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-red-100 text-red-700 uppercase tracking-wide">
+                        Vencida
+                      </span>
+                      {p.nombre_referencia}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {p.nombre_inmueble && p.nombre_inmueble !== p.nombre_referencia && `${p.nombre_inmueble} · `}
+                      {p.compania_aseguradora || 'Sin compañía'} · Venció {new Date(p.fecha_vencimiento).toLocaleDateString('es-ES')}
+                    </p>
+                  </div>
+                  <span className="ml-3 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full bg-red-600 text-white">
+                    VENCIDA
+                  </span>
+                </div>
+              ))}
+              {alertas.slice(0, 5 - Math.min(polizasVencidas.length, 3)).map((alerta, i) => {
                 const dias = parseInt(alerta.dias_restantes);
-                const urgente = dias <= 7;
+                const esUrgente = dias <= 7;
                 const esInquilino = alerta.origen === 'inquilino';
                 return (
                   <div
                     key={`${alerta.origen}-${alerta.id}-${i}`}
                     className={`flex items-center justify-between p-3 rounded-lg ${
-                      urgente ? 'bg-red-50 border border-red-100' : 'bg-orange-50 border border-orange-100'
+                      esUrgente ? 'bg-red-50 border border-red-100' : 'bg-orange-50 border border-orange-100'
                     }`}
                   >
                     <div className="min-w-0">
@@ -260,11 +287,9 @@ export default function Dashboard() {
                         {alerta.compania_aseguradora || 'Sin compañía'} · {alerta.numero_poliza || 'Sin nº'}
                       </p>
                     </div>
-                    <span
-                      className={`ml-3 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full ${
-                        urgente ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'
-                      }`}
-                    >
+                    <span className={`ml-3 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full ${
+                      esUrgente ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'
+                    }`}>
                       {dias}d
                     </span>
                   </div>
