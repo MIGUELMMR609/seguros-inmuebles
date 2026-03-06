@@ -300,7 +300,7 @@ export default function Polizas() {
     {
       clave: 'documento_url', titulo: 'Doc.',
       render: (f) => f.documento_url ? (
-        <a href={f.documento_url} target="_blank" rel="noopener noreferrer" className="text-[#1e3a5f]">
+        <a href={f.documento_url} target="_blank" rel="noopener noreferrer" title="Ver documento PDF" className="text-[#1e3a5f]">
           <ExternalLink size={15} />
         </a>
       ) : '—',
@@ -312,13 +312,13 @@ export default function Polizas() {
           <button onClick={() => abrirEditar(f)} title="Editar" className="p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
             <Pencil size={14} />
           </button>
-          <button onClick={() => abrirRenovar(f)} title="Renovar" className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+          <button onClick={() => abrirRenovar(f)} title="Renovar póliza" className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
             <RefreshCw size={14} />
           </button>
           <button onClick={() => abrirHistorial(f)} title="Ver historial" className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
             <History size={14} />
           </button>
-          <button onClick={() => navigate(`/siniestros?poliza_id=${f.id}`)} title="Siniestros" className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors">
+          <button onClick={() => navigate(`/siniestros?poliza_id=${f.id}`)} title="Ver siniestros" className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors">
             <AlertOctagon size={14} />
           </button>
           <button onClick={() => setConfirmandoEliminar(f)} title="Eliminar" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
