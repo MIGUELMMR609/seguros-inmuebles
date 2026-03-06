@@ -68,6 +68,8 @@ export const crearPolizaInquilinoApi = (datos) => api.post('/polizas-inquilinos'
 export const actualizarPolizaInquilinoApi = (id, datos) =>
   api.put(`/polizas-inquilinos/${id}`, datos);
 export const eliminarPolizaInquilinoApi = (id) => api.delete(`/polizas-inquilinos/${id}`);
+export const analizarExpertoPolizaInquilinoApi = (id) =>
+  api.post(`/polizas-inquilinos/${id}/analizar-experto`, {}, { timeout: 120_000 });
 
 // --- Alertas ---
 export const obtenerAlertasApi = (dias = 30) => api.get('/alertas', { params: { dias } });

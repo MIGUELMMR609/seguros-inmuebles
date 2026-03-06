@@ -151,6 +151,22 @@ async function inicializarBaseDatos() {
       );
     `);
 
+    // Nuevas columnas en polizas_inquilinos (migración)
+    await cliente.query(`
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS tipo VARCHAR(100) DEFAULT 'hogar';
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS contacto_nombre VARCHAR(255);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS contacto_telefono VARCHAR(50);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS contacto_email VARCHAR(255);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS riesgos_cubiertos TEXT;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS riesgos_no_cubiertos TEXT;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS analisis_fortalezas TEXT;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS analisis_carencias TEXT;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS como_complementar TEXT;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS valoracion NUMERIC(3,1);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS comparador_mercado JSONB;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS fecha_ultimo_analisis TIMESTAMP;
+    `);
+
     // Nuevas columnas en inquilinos (migración)
     await cliente.query(`
       ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS importe_renta NUMERIC(10,2);
