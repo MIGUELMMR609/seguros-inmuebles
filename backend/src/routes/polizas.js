@@ -162,6 +162,139 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// POST /api/polizas/:id/analizar-experto - Análisis experto IA de la póliza
+router.post('/:id/analizar-experto', async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT p.*, i.nombre AS nombre_inmueble, i.direccion AS direccion_inmueble
+       FROM polizas p
+       LEFT JOIN inmuebles i ON p.inmueble_id = i.id
+       WHERE p.id = $1`,
+      [req.params.id]
+    );
+
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Póliza no encontrada' });
+    }
+
+    const poliza = resultado.rows[0];
+
+    if (!poliza.documento_url) {
+      return res.status(400).json({ error: 'Sube el PDF primero' });
+    }
+
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return res.status(503).json({ error: 'API de IA no configurada (ANTHROPIC_API_KEY)' });
+    }
+
+    const rutaArchivo = path.join(__dirname, '../../uploads', path.basename(poliza.documento_url));
+
+    if (!fs.existsSync(rutaArchivo)) {
+      return res.status(404).json({ archivo_disponible: false, error: 'PDF no disponible en servidor' });
+    }
+
+    const base64 = fs.readFileSync(rutaArchivo).toString('base64');
+
+    const prompt = `Eres un experto en correduría de seguros en España con más de 20 años de experiencia.
+Analiza esta póliza de seguro de inmueble y proporciona un análisis experto completo.
+
+Datos conocidos de la póliza:
+- Compañía aseguradora: ${poliza.compania_aseguradora || 'Desconocida'}
+- Tipo de seguro: ${poliza.tipo || 'vivienda'}
+- Importe anual: ${poliza.importe_anual ? poliza.importe_anual + ' €/año' : 'No especificado'}
+- Inmueble: ${poliza.nombre_inmueble || 'No especificado'}${poliza.direccion_inmueble ? ' (' + poliza.direccion_inmueble + ')' : ''}
+
+Usa la búsqueda web para consultar precios actuales del mercado de seguros de hogar en España si lo necesitas para el comparador.
+
+Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown) con esta estructura exacta:
+{
+  "valoracion": 7.5,
+  "riesgos_cubiertos": "Descripción detallada de los principales riesgos cubiertos según el documento",
+  "riesgos_no_cubiertos": "Descripción de los riesgos excluidos o no cubiertos más relevantes",
+  "analisis_fortalezas": "Puntos fuertes de esta póliza respecto a la competencia y las necesidades del asegurado",
+  "analisis_carencias": "Puntos débiles, carencias o aspectos mejorables de esta póliza",
+  "como_complementar": "Recomendaciones específicas para complementar o mejorar la cobertura actual",
+  "comparador_mercado": {
+    "precio_estimado_mercado": "XXX-YYY €/año",
+    "evaluacion_precio": "Descripción de si el precio es competitivo, caro o económico respecto al mercado actual",
+    "recomendaciones": "Recomendaciones sobre si mantener, cambiar o renegociar la póliza"
+  }
+}
+
+La valoración es un número del 1 al 10 (puede tener un decimal). Todos los campos de texto en español.`;
+
+    const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'pdfs-2024-09-25,web-search-2025-03-05',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 2048,
+        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+      }),
+    });
+
+    if (!respuesta.ok) {
+      const cuerpo = await respuesta.text();
+      console.error(`Error Anthropic analizar-experto [${respuesta.status}]:`, cuerpo.slice(0, 300));
+      return res.status(502).json({ error: 'Error al comunicarse con la IA. Inténtalo de nuevo.' });
+    }
+
+    const iaResult = await respuesta.json();
+    const texto = iaResult.content.filter((b) => b.type === 'text').map((b) => b.text).join('');
+
+    if (!texto) return res.status(422).json({ error: 'La IA no devolvió ninguna respuesta de texto' });
+
+    let analisis;
+    try {
+      analisis = JSON.parse(texto);
+    } catch {
+      const m = texto.match(/\{[\s\S]*\}/);
+      if (!m) return res.status(422).json({ error: 'No se pudo extraer el análisis estructurado' });
+      analisis = JSON.parse(m[0]);
+    }
+
+    await pool.query(
+      `UPDATE polizas SET
+        riesgos_cubiertos = $1,
+        riesgos_no_cubiertos = $2,
+        analisis_fortalezas = $3,
+        analisis_carencias = $4,
+        valoracion = $5,
+        como_complementar = $6,
+        comparador_mercado = $7,
+        fecha_ultimo_analisis = NOW()
+       WHERE id = $8`,
+      [
+        analisis.riesgos_cubiertos || null,
+        analisis.riesgos_no_cubiertos || null,
+        analisis.analisis_fortalezas || null,
+        analisis.analisis_carencias || null,
+        analisis.valoracion || null,
+        analisis.como_complementar || null,
+        analisis.comparador_mercado ? JSON.stringify(analisis.comparador_mercado) : null,
+        req.params.id,
+      ]
+    );
+
+    res.json({ ...analisis, fecha_ultimo_analisis: new Date().toISOString() });
+  } catch (error) {
+    console.error('Error analizar-experto:', error.message);
+    res.status(500).json({ error: 'Error interno al analizar la póliza' });
+  }
+});
+
 // GET /api/polizas/:id/coberturas - Extraer coberturas del PDF de la póliza con IA
 router.get('/:id/coberturas', async (req, res) => {
   try {

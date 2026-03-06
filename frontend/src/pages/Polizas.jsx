@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles } from 'lucide-react';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
 import UploadPDF from '../components/UploadPDF.jsx';
@@ -8,7 +8,7 @@ import AnalizadorPDF from '../components/AnalizadorPDF.jsx';
 import Toast from '../components/Toast.jsx';
 import {
   obtenerPolizasApi, crearPolizaApi, actualizarPolizaApi, eliminarPolizaApi,
-  obtenerInmueblesApi, renovarPolizaApi, obtenerHistorialApi,
+  obtenerInmueblesApi, renovarPolizaApi, obtenerHistorialApi, analizarExpertoPolizaApi,
 } from '../api/index.js';
 
 const TIPOS_POLIZA = [
@@ -79,6 +79,12 @@ export default function Polizas() {
   const [renovarForm, setRenovarForm] = useState(renovarVacio);
   const [guardandoRenovacion, setGuardandoRenovacion] = useState(false);
 
+  // Análisis experto IA
+  const [modalAnalisis, setModalAnalisis] = useState(false);
+  const [polizaAnalisis, setPolizaAnalisis] = useState(null);
+  const [analisisActual, setAnalisisActual] = useState(null);
+  const [analizando, setAnalizando] = useState(false);
+
   // Historial
   const [modalHistorial, setModalHistorial] = useState(false);
   const [historial, setHistorial] = useState([]);
@@ -141,7 +147,7 @@ export default function Polizas() {
     setError('');
   }
 
-  function handleDatosIA(datos) {
+  function handleDatosIA(datos, documentoUrl) {
     setFormulario((prev) => ({
       ...prev,
       compania_aseguradora: datos.compania_aseguradora || prev.compania_aseguradora,
@@ -156,6 +162,7 @@ export default function Polizas() {
       contacto_telefono: datos.contacto_telefono || prev.contacto_telefono,
       contacto_email: datos.contacto_email || prev.contacto_email,
       observaciones_ia: datos.observaciones_ia || '',
+      documento_url: documentoUrl || prev.documento_url,
     }));
     setPasoModal('form');
   }
@@ -265,6 +272,39 @@ export default function Polizas() {
     }
   }
 
+  // --- Análisis experto IA ---
+  function abrirAnalisis(poliza) {
+    setPolizaAnalisis(poliza);
+    if (poliza.fecha_ultimo_analisis) {
+      setAnalisisActual({
+        valoracion: poliza.valoracion,
+        riesgos_cubiertos: poliza.riesgos_cubiertos,
+        riesgos_no_cubiertos: poliza.riesgos_no_cubiertos,
+        analisis_fortalezas: poliza.analisis_fortalezas,
+        analisis_carencias: poliza.analisis_carencias,
+        como_complementar: poliza.como_complementar,
+        comparador_mercado: poliza.comparador_mercado,
+        fecha_ultimo_analisis: poliza.fecha_ultimo_analisis,
+      });
+    } else {
+      setAnalisisActual(null);
+    }
+    setModalAnalisis(true);
+  }
+
+  async function handleAnalizarExperto() {
+    setAnalizando(true);
+    try {
+      const res = await analizarExpertoPolizaApi(polizaAnalisis.id);
+      setAnalisisActual(res.data);
+      await cargar();
+    } catch (err) {
+      setToast({ mensaje: err.response?.data?.error || 'Error al analizar la póliza', tipo: 'error' });
+    } finally {
+      setAnalizando(false);
+    }
+  }
+
   const columnas = [
     {
       clave: 'nombre_inmueble', titulo: 'Inmueble', sortable: true,
@@ -320,6 +360,9 @@ export default function Polizas() {
           </button>
           <button onClick={() => navigate(`/siniestros?poliza_id=${f.id}`)} title="Ver siniestros" className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors">
             <ShieldAlert size={20} />
+          </button>
+          <button onClick={() => abrirAnalisis(f)} title="Análisis experto IA" className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
+            <Sparkles size={20} />
           </button>
           <button onClick={() => setConfirmandoEliminar(f)} title="Eliminar" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
             <Trash2 size={20} />
@@ -496,6 +539,120 @@ export default function Polizas() {
               </button>
             </div>
           </form>
+        )}
+      </Modal>
+
+      {/* Modal análisis experto IA */}
+      <Modal
+        abierto={modalAnalisis}
+        onCerrar={() => { setModalAnalisis(false); setPolizaAnalisis(null); setAnalisisActual(null); }}
+        titulo={`Análisis experto IA — ${polizaAnalisis?.numero_poliza || polizaAnalisis?.compania_aseguradora || ''}`}
+        ancho="max-w-2xl"
+      >
+        {polizaAnalisis && (
+          <div className="space-y-4">
+            {!polizaAnalisis.documento_url ? (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mb-3">
+                  <FileText size={24} className="text-gray-400" />
+                </div>
+                <p className="text-gray-600 font-medium mb-1">Sin documento PDF</p>
+                <p className="text-sm text-gray-400">Sube el PDF de la póliza primero para poder realizar el análisis experto.</p>
+              </div>
+            ) : analizando ? (
+              <div className="flex flex-col items-center justify-center py-14 text-center">
+                <div className="w-16 h-16 bg-purple-50 rounded-2xl flex items-center justify-center mb-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" />
+                </div>
+                <p className="text-gray-700 font-medium">Analizando con IA experta...</p>
+                <p className="text-sm text-gray-400 mt-1">Esto puede tardar hasta 2 minutos. Por favor espera.</p>
+              </div>
+            ) : analisisActual ? (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium text-gray-500">Valoración:</span>
+                    <span className={`text-lg font-bold px-3 py-1 rounded-full ${
+                      analisisActual.valoracion >= 7 ? 'bg-green-100 text-green-700' :
+                      analisisActual.valoracion >= 5 ? 'bg-orange-100 text-orange-700' :
+                      'bg-red-100 text-red-700'
+                    }`}>
+                      {analisisActual.valoracion}/10
+                    </span>
+                  </div>
+                  {analisisActual.fecha_ultimo_analisis && (
+                    <span className="text-xs text-gray-400">
+                      {new Date(analisisActual.fecha_ultimo_analisis).toLocaleDateString('es-ES')}
+                    </span>
+                  )}
+                </div>
+                {analisisActual.riesgos_cubiertos && (
+                  <div className="bg-green-50 border border-green-100 rounded-lg p-4">
+                    <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-2">Riesgos cubiertos</h4>
+                    <p className="text-sm text-gray-700">{analisisActual.riesgos_cubiertos}</p>
+                  </div>
+                )}
+                {analisisActual.riesgos_no_cubiertos && (
+                  <div className="bg-red-50 border border-red-100 rounded-lg p-4">
+                    <h4 className="text-xs font-semibold text-red-700 uppercase tracking-wider mb-2">Riesgos no cubiertos</h4>
+                    <p className="text-sm text-gray-700">{analisisActual.riesgos_no_cubiertos}</p>
+                  </div>
+                )}
+                {analisisActual.analisis_fortalezas && (
+                  <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                    <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Fortalezas</h4>
+                    <p className="text-sm text-gray-700">{analisisActual.analisis_fortalezas}</p>
+                  </div>
+                )}
+                {analisisActual.analisis_carencias && (
+                  <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
+                    <h4 className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2">Carencias</h4>
+                    <p className="text-sm text-gray-700">{analisisActual.analisis_carencias}</p>
+                  </div>
+                )}
+                {analisisActual.como_complementar && (
+                  <div className="bg-purple-50 border border-purple-100 rounded-lg p-4">
+                    <h4 className="text-xs font-semibold text-purple-700 uppercase tracking-wider mb-2">Cómo complementar</h4>
+                    <p className="text-sm text-gray-700">{analisisActual.como_complementar}</p>
+                  </div>
+                )}
+                {analisisActual.comparador_mercado && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-3">Comparador de mercado</h4>
+                    <div className="space-y-2 text-sm">
+                      {analisisActual.comparador_mercado.precio_estimado_mercado && (
+                        <div><span className="text-gray-500 font-medium">Precio mercado:</span> <span className="text-gray-700">{analisisActual.comparador_mercado.precio_estimado_mercado}</span></div>
+                      )}
+                      {analisisActual.comparador_mercado.evaluacion_precio && (
+                        <div><span className="text-gray-500 font-medium">Evaluación:</span> <span className="text-gray-700">{analisisActual.comparador_mercado.evaluacion_precio}</span></div>
+                      )}
+                      {analisisActual.comparador_mercado.recomendaciones && (
+                        <div><span className="text-gray-500 font-medium">Recomendaciones:</span> <span className="text-gray-700">{analisisActual.comparador_mercado.recomendaciones}</span></div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                <div className="flex justify-end pt-2 border-t border-gray-100">
+                  <button onClick={handleAnalizarExperto} disabled={analizando} className="btn-secundario flex items-center gap-2">
+                    <RefreshCw size={14} />
+                    Regenerar análisis
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-10 text-center">
+                <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center mb-3">
+                  <Sparkles size={24} className="text-purple-400" />
+                </div>
+                <p className="text-gray-600 font-medium mb-1">Sin análisis previo</p>
+                <p className="text-sm text-gray-400 mb-6">Genera un análisis experto IA de esta póliza para obtener valoración, cobertura y comparativa de mercado.</p>
+                <button onClick={handleAnalizarExperto} disabled={analizando} className="btn-primario">
+                  <Sparkles size={16} />
+                  Analizar con IA
+                </button>
+              </div>
+            )}
+          </div>
         )}
       </Modal>
 

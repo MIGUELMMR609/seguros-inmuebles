@@ -25,7 +25,7 @@ export default function AnalizadorPDF({ onDatosExtraidos, onOmitir }) {
 
     try {
       const res = await analizarPdfApi(archivo);
-      onDatosExtraidos(res.data.datos);
+      onDatosExtraidos(res.data.datos, res.data.documento_url);
     } catch (err) {
       const mensajeError = err.response?.data?.error || err.message || 'Error al analizar el PDF';
       setError(mensajeError);

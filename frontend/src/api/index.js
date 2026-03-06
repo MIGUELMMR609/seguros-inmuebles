@@ -42,6 +42,8 @@ export const crearPolizaApi = (datos) => api.post('/polizas', datos);
 export const actualizarPolizaApi = (id, datos) => api.put(`/polizas/${id}`, datos);
 export const eliminarPolizaApi = (id) => api.delete(`/polizas/${id}`);
 export const obtenerCoberturasPolizaApi = (id) => api.get(`/polizas/${id}/coberturas`);
+export const analizarExpertoPolizaApi = (id) =>
+  api.post(`/polizas/${id}/analizar-experto`, {}, { timeout: 120_000 });
 
 // --- Renovaciones ---
 export const obtenerHistorialApi = (polizaId) => api.get(`/renovaciones/${polizaId}`);

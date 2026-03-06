@@ -86,6 +86,18 @@ async function inicializarBaseDatos() {
       ALTER TABLE polizas ADD COLUMN IF NOT EXISTS fecha_proximo_pago DATE;
     `);
 
+    // Columnas de análisis IA experto en pólizas
+    await cliente.query(`
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS riesgos_cubiertos TEXT;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS riesgos_no_cubiertos TEXT;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS analisis_fortalezas TEXT;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS analisis_carencias TEXT;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS valoracion NUMERIC(3,1);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS como_complementar TEXT;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS comparador_mercado JSONB;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS fecha_ultimo_analisis TIMESTAMP;
+    `);
+
     // Tabla historial de renovaciones
     await cliente.query(`
       CREATE TABLE IF NOT EXISTS historial_polizas (
