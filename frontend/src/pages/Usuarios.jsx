@@ -151,15 +151,15 @@ export default function Usuarios() {
     {
       clave: 'acciones',
       titulo: 'Acciones',
-      ancho: '100px',
+      ancho: '120px',
       render: (f) => (
         <div className="flex items-center gap-2">
           <button onClick={() => abrirEditar(f)} title="Editar" className="p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
-            <Pencil size={15} />
+            <Pencil size={20} />
           </button>
           {f.id !== usuarioActual?.id && (
             <button onClick={() => setConfirmandoEliminar(f)} title="Eliminar" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-              <Trash2 size={15} />
+              <Trash2 size={20} />
             </button>
           )}
         </div>

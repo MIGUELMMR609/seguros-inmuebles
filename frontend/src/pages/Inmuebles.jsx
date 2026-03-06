@@ -153,7 +153,7 @@ export default function Inmuebles() {
     {
       clave: 'acciones',
       titulo: 'Acciones',
-      ancho: '100px',
+      ancho: '120px',
       render: (f) => (
         <div className="flex items-center gap-2">
           <button
@@ -161,14 +161,14 @@ export default function Inmuebles() {
             className="p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors"
             title="Editar"
           >
-            <Pencil size={15} />
+            <Pencil size={20} />
           </button>
           <button
             onClick={() => setConfirmandoEliminar(f)}
             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             title="Eliminar"
           >
-            <Trash2 size={15} />
+            <Trash2 size={20} />
           </button>
         </div>
       ),
