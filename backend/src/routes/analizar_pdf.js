@@ -1,5 +1,4 @@
 const express = require('express');
-const fs = require('fs');
 const { upload } = require('../middleware/upload');
 const { verificarToken } = require('../middleware/auth');
 
@@ -22,7 +21,9 @@ router.post('/', upload.single('documento'), async (req, res) => {
   const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
 
   try {
-    const base64 = fs.readFileSync(req.file.path).toString('base64');
+    const resPdf = await fetch(req.file.path);
+    const buf = await resPdf.arrayBuffer();
+    const base64 = Buffer.from(buf).toString('base64');
 
     const prompt = `Analiza este documento de póliza de seguro de inmueble y extrae toda la información relevante.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
@@ -91,7 +92,7 @@ Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los im
       datos = JSON.parse(m[0]);
     }
 
-    res.json({ datos, documento_url: '/uploads/' + req.file.filename });
+    res.json({ datos, documento_url: req.file.path });
   } catch (error) {
     clearTimeout(temporizador);
     if (error.name === 'AbortError') {

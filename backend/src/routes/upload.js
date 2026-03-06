@@ -12,11 +12,9 @@ router.post('/', upload.single('documento'), (req, res) => {
       return res.status(400).json({ error: 'No se recibió ningún archivo' });
     }
 
-    const urlDocumento = `/uploads/${req.file.filename}`;
-
     res.status(201).json({
       mensaje: 'Documento subido correctamente',
-      url: urlDocumento,
+      url: req.file.path,
       nombreOriginal: req.file.originalname,
       tamano: req.file.size,
     });

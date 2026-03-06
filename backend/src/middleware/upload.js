@@ -1,22 +1,14 @@
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinary = require('../config/cloudinary');
 
-function asegurarDirectorio(dir) {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-}
-
-// --- Almacenamiento para PDFs ---
-const dirPDFs = path.join(__dirname, '../../uploads');
-asegurarDirectorio(dirPDFs);
-
-const almacenamientoPDF = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, dirPDFs),
-  filename: (req, file, cb) => {
-    const marcaTiempo = Date.now();
-    const ext = path.extname(file.originalname);
-    const nombre = path.basename(file.originalname, ext).replace(/[^a-z0-9]/gi, '_').toLowerCase();
-    cb(null, `${nombre}_${marcaTiempo}${ext}`);
+// --- Almacenamiento Cloudinary para PDFs ---
+const storagePDF = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'polizas-seguros',
+    resource_type: 'raw',
+    allowed_formats: ['pdf'],
   },
 });
 
@@ -29,20 +21,18 @@ const filtroPDF = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage: almacenamientoPDF,
+  storage: storagePDF,
   fileFilter: filtroPDF,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
 });
 
-// --- Almacenamiento para fotos de siniestros ---
-const dirFotos = path.join(__dirname, '../../uploads/siniestros');
-asegurarDirectorio(dirFotos);
-
-const almacenamientoFotos = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, dirFotos),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `foto_${Date.now()}_${Math.random().toString(36).slice(2)}${ext}`);
+// --- Almacenamiento Cloudinary para fotos de siniestros ---
+const storageFotos = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'siniestros',
+    resource_type: 'image',
+    allowed_formats: ['jpg', 'jpeg', 'png', 'gif', 'webp'],
   },
 });
 
@@ -55,16 +45,16 @@ const filtroImagenes = (req, file, cb) => {
 };
 
 const uploadFotos = multer({
-  storage: almacenamientoFotos,
+  storage: storageFotos,
   fileFilter: filtroImagenes,
   limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB por foto
 });
 
-// --- Almacenamiento en memoria (para análisis de PDF con IA, sin escribir en disco) ---
+// --- Almacenamiento en memoria (legacy, por si se necesita) ---
 const uploadMemoria = multer({
   storage: multer.memoryStorage(),
   fileFilter: filtroPDF,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB máximo en memoria
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
 module.exports = { upload, uploadFotos, uploadMemoria };

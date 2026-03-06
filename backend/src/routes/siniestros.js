@@ -281,7 +281,7 @@ router.post('/:id/fotos', uploadFotos.array('fotos', 10), async (req, res) => {
     }
 
     const fotosActuales = siniestro.rows[0].fotos || [];
-    const nuevasFotos = req.files.map((f) => `/uploads/siniestros/${f.filename}`);
+    const nuevasFotos = req.files.map((f) => f.path);
 
     const resultado = await pool.query(
       'UPDATE siniestros SET fotos=$1, updated_at=NOW() WHERE id=$2 RETURNING *',
