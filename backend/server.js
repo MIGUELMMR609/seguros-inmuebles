@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const { inicializarBaseDatos } = require('./src/config/database');
 const { iniciarCronAlertas } = require('./src/cron/alertasCron');
 
@@ -76,11 +77,12 @@ app.use('/api/analizar-pdf', analizarPdfRoutes);
 app.use('/api/analizar-contrato', analizarContratoRoutes);
 app.use('/api', generarContratoRoutes);
 
-// Servir frontend en producción
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+// Servir frontend en producción (solo si el build existe localmente)
+const frontendDist = path.join(__dirname, '../frontend/dist');
+if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+    res.sendFile(path.join(frontendDist, 'index.html'));
   });
 }
 
