@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { Plus, Pencil, Trash2, Building2, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2 } from 'lucide-react';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
 import Toast from '../components/Toast.jsx';
@@ -121,11 +121,10 @@ export default function Inmuebles() {
           <span className="font-medium">{f.nombre}</span>
           {!Number(f.total_polizas) && (
             <span
-              title="Este inmueble no tiene ninguna póliza asignada"
-              className="inline-flex items-center gap-1 text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium"
+              title="Sin póliza asignada"
+              className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold leading-none"
             >
-              <AlertTriangle size={11} />
-              Sin póliza
+              0
             </span>
           )}
         </div>
@@ -192,13 +191,14 @@ export default function Inmuebles() {
 
       {/* Aviso de inmuebles sin póliza */}
       {inmuebles.some((i) => !Number(i.total_polizas)) && (
-        <div className="flex items-center gap-2 bg-orange-50 border border-orange-200 text-orange-800 text-sm px-4 py-3 rounded-xl mb-5">
-          <AlertTriangle size={16} className="flex-shrink-0" />
+        <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 rounded-xl mb-5">
+          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-red-500 text-white text-xs font-bold flex-shrink-0">
+            {inmuebles.filter((i) => !Number(i.total_polizas)).length}
+          </span>
           <span>
-            Hay{' '}
-            <strong>{inmuebles.filter((i) => !Number(i.total_polizas)).length}</strong>{' '}
-            inmueble{inmuebles.filter((i) => !Number(i.total_polizas)).length !== 1 ? 's' : ''} sin
-            póliza asignada.
+            {inmuebles.filter((i) => !Number(i.total_polizas)).length === 1
+              ? 'inmueble sin póliza asignada.'
+              : 'inmuebles sin póliza asignada.'}
           </span>
         </div>
       )}

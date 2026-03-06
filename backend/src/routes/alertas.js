@@ -8,7 +8,7 @@ router.use(verificarToken);
 // GET /api/alertas/resumen - Resumen para badges del menú (Inquilinos + Pólizas Inquilinos)
 router.get('/resumen', async (req, res) => {
   try {
-    const [contratosPronto, inquilinosSinSeguro] = await Promise.all([
+    const [contratosPronto, inquilinosSinSeguro, inmueblesSinPoliza] = await Promise.all([
       pool.query(
         `SELECT COUNT(*)::int FROM inquilinos
          WHERE fecha_fin_contrato IS NOT NULL
@@ -24,11 +24,18 @@ router.get('/resumen', async (req, res) => {
                AND (pi.fecha_vencimiento IS NULL OR pi.fecha_vencimiento >= CURRENT_DATE)
            )`
       ),
+      pool.query(
+        `SELECT COUNT(*)::int FROM inmuebles i
+         WHERE NOT EXISTS (
+           SELECT 1 FROM polizas p WHERE p.inmueble_id = i.id
+         )`
+      ),
     ]);
 
     res.json({
       contratos_proximos: contratosPronto.rows[0].count,
       inquilinos_sin_seguro: inquilinosSinSeguro.rows[0].count,
+      inmuebles_sin_poliza: inmueblesSinPoliza.rows[0].count,
     });
   } catch (error) {
     console.error('Error al obtener resumen de alertas:', error);

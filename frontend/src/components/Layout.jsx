@@ -10,7 +10,7 @@ import { obtenerAlertasApi, obtenerResumenAlertasApi } from '../api/index.js';
 
 const elementosNav = [
   { ruta: '/dashboard', etiqueta: 'Inicio', icono: LayoutDashboard },
-  { ruta: '/inmuebles', etiqueta: 'Inmuebles', icono: Building2 },
+  { ruta: '/inmuebles', etiqueta: 'Inmuebles', icono: Building2, badgeClave: 'inmuebles_sin_poliza' },
   { ruta: '/polizas', etiqueta: 'Pólizas Inmuebles', icono: FileText },
   { ruta: '/inquilinos', etiqueta: 'Inquilinos', icono: Users, badgeClave: 'contratos_proximos' },
   { ruta: '/historico-inquilinos', etiqueta: 'Histórico inquilinos', icono: Archive },
