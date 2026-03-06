@@ -82,14 +82,14 @@ export default function HistoricoInquilinos() {
         : '—',
     },
     {
-      clave: 'acciones', titulo: 'Acciones', ancho: '90px',
+      clave: 'acciones', titulo: 'Acciones', ancho: '110px',
       render: (f) => (
         <button
           onClick={() => setConfirmandoReactivar(f)}
           title="Reactivar inquilino"
           className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-green-700 bg-green-50 hover:bg-green-100 border border-green-200 rounded-lg transition-colors"
         >
-          <RotateCcw size={13} />
+          <RotateCcw size={16} />
           Reactivar
         </button>
       ),
