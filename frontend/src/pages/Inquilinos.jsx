@@ -1,8 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   Plus, Pencil, Trash2, Users, AlertTriangle,
-  RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro,
+  RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro, Printer,
 } from 'lucide-react';
+import { imprimirInformeContrato } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
 import UploadPDF from '../components/UploadPDF.jsx';
@@ -775,7 +776,15 @@ export default function Inquilinos() {
               <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{errorAnalisis}</div>
             )}
 
-            <div className="flex justify-end pt-2">
+            <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+              <button
+                type="button"
+                onClick={() => imprimirInformeContrato(analisisActual, inquilinoAnalisis)}
+                className="btn-secundario flex items-center gap-2"
+              >
+                <Printer size={14} />
+                Imprimir informe
+              </button>
               <button
                 type="button"
                 onClick={handleAnalizarExperto}

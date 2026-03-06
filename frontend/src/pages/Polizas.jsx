@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Printer } from 'lucide-react';
+import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
 import UploadPDF from '../components/UploadPDF.jsx';
@@ -740,7 +741,14 @@ export default function Polizas() {
                     </div>
                   </div>
                 )}
-                <div className="flex justify-end pt-2 border-t border-gray-100">
+                <div className="flex justify-between items-center pt-2 border-t border-gray-100">
+                  <button
+                    onClick={() => imprimirInformePoliza(analisisActual, polizaAnalisis)}
+                    className="btn-secundario flex items-center gap-2"
+                  >
+                    <Printer size={14} />
+                    Imprimir informe
+                  </button>
                   <button onClick={handleAnalizarExperto} disabled={analizando} className="btn-secundario flex items-center gap-2">
                     <RefreshCw size={14} />
                     Regenerar análisis
