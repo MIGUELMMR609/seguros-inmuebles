@@ -120,12 +120,14 @@ router.get('/', async (req, res) => {
         [diasLimite]
       ),
 
-      // Inmuebles sin ninguna póliza asignada
+      // Inmuebles sin ninguna póliza vigente asignada
       pool.query(
         `SELECT i.id, i.nombre, i.tipo, i.direccion
          FROM inmuebles i
          WHERE NOT EXISTS (
-           SELECT 1 FROM polizas p WHERE p.inmueble_id = i.id
+           SELECT 1 FROM polizas p
+           WHERE p.inmueble_id = i.id
+             AND (p.fecha_vencimiento IS NULL OR p.fecha_vencimiento >= CURRENT_DATE)
          )
          ORDER BY i.nombre ASC`
       ),
@@ -169,14 +171,16 @@ router.get('/', async (req, res) => {
          ORDER BY pi.fecha_vencimiento DESC`
       ),
 
-      // Inquilinos activos sin ninguna póliza asignada
+      // Inquilinos activos sin ninguna póliza vigente asignada
       pool.query(
         `SELECT i.id, i.nombre, i.email, i.telefono, inm.nombre AS nombre_inmueble
          FROM inquilinos i
          LEFT JOIN inmuebles inm ON i.inmueble_id = inm.id
          WHERE (i.estado = 'activo' OR i.estado IS NULL)
            AND NOT EXISTS (
-             SELECT 1 FROM polizas_inquilinos pi WHERE pi.inquilino_id = i.id
+             SELECT 1 FROM polizas_inquilinos pi
+             WHERE pi.inquilino_id = i.id
+               AND (pi.fecha_vencimiento IS NULL OR pi.fecha_vencimiento >= CURRENT_DATE)
            )
          ORDER BY i.nombre ASC`
       ),
