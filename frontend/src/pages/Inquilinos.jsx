@@ -135,7 +135,7 @@ export default function Inquilinos() {
 
     try {
       const res = await analizarContratoApi(archivo);
-      const datos = res.data.datos;
+      const { datos, documento_url } = res.data;
       setFormulario((prev) => ({
         ...prev,
         nombre: datos.nombre_inquilino || prev.nombre,
@@ -145,6 +145,7 @@ export default function Inquilinos() {
         fecha_fin_contrato: datos.fecha_fin || prev.fecha_fin_contrato,
         importe_renta: datos.importe_renta != null ? String(datos.importe_renta) : prev.importe_renta,
         observaciones_ia: datos.observaciones_ia || prev.observaciones_ia,
+        documento_url: documento_url || prev.documento_url,
       }));
       setPasoModal('form');
     } catch (err) {

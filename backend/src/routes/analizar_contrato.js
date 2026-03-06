@@ -1,15 +1,15 @@
 const express = require('express');
-const { uploadMemoria } = require('../middleware/upload');
+const fs = require('fs');
+const { upload } = require('../middleware/upload');
 const { verificarToken } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(verificarToken);
 
-const LIMITE_MB = 4;
 const TIMEOUT_MS = 115_000;
 
 // POST /api/analizar-contrato - Analizar PDF de contrato de arrendamiento con IA
-router.post('/', uploadMemoria.single('documento'), async (req, res) => {
+router.post('/', upload.single('documento'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se recibió ningún archivo PDF' });
   }
@@ -18,19 +18,11 @@ router.post('/', uploadMemoria.single('documento'), async (req, res) => {
     return res.status(503).json({ error: 'La clave de API de IA no está configurada (ANTHROPIC_API_KEY)' });
   }
 
-  const tamanoMB = req.file.buffer.length / (1024 * 1024);
-  if (tamanoMB > LIMITE_MB) {
-    return res.status(413).json({
-      error: `El PDF es demasiado grande (${tamanoMB.toFixed(1)} MB). El límite es ${LIMITE_MB} MB. Comprime el PDF antes de subirlo.`,
-    });
-  }
-
   const controlador = new AbortController();
   const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
 
   try {
-    const base64 = req.file.buffer.toString('base64');
-    req.file.buffer = null;
+    const base64 = fs.readFileSync(req.file.path).toString('base64');
 
     const prompt = `Analiza este contrato de arrendamiento/alquiler y extrae los datos relevantes.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
@@ -91,7 +83,7 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
       datos = JSON.parse(m[0]);
     }
 
-    res.json({ datos });
+    res.json({ datos, documento_url: '/uploads/' + req.file.filename });
   } catch (error) {
     clearTimeout(temporizador);
     if (error.name === 'AbortError') {
