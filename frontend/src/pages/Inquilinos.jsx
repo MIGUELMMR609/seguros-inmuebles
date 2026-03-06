@@ -168,6 +168,7 @@ export default function Inquilinos() {
         await crearInquilinoApi(formulario);
       }
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
       cerrarModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al guardar el inquilino');
@@ -181,6 +182,7 @@ export default function Inquilinos() {
       await eliminarInquilinoApi(id);
       setConfirmandoEliminar(null);
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
       setError(err.response?.data?.error || 'Error al eliminar el inquilino');
     }
@@ -198,6 +200,7 @@ export default function Inquilinos() {
       await finalizarInquilinoApi(modalFinalizar.id, { motivo: motivoFinalizacion });
       setModalFinalizar(null);
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
       setError(err.response?.data?.error || 'Error al finalizar el contrato');
     } finally {
@@ -232,6 +235,7 @@ export default function Inquilinos() {
       setRenovacionGuardada(true);
       setIdRenovado(modalRenovar.id);
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
       setError(err.response?.data?.error || 'Error al renovar el contrato');
     } finally {

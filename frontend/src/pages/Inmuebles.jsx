@@ -93,6 +93,7 @@ export default function Inmuebles() {
         mostrarToast('Inmueble creado. Recuerda añadir una póliza de seguro.', 'warning');
       }
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
       cerrarModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al guardar el inmueble');
@@ -107,6 +108,7 @@ export default function Inmuebles() {
       setConfirmandoEliminar(null);
       mostrarToast('Inmueble eliminado correctamente', 'success');
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
       mostrarToast(err.response?.data?.error || 'Error al eliminar el inmueble', 'error');
     }

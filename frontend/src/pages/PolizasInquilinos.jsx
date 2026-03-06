@@ -121,6 +121,7 @@ export default function PolizasInquilinos() {
         await crearPolizaInquilinoApi(datos);
       }
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
       cerrarModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al guardar la póliza');
@@ -134,6 +135,7 @@ export default function PolizasInquilinos() {
       await eliminarPolizaInquilinoApi(id);
       setConfirmandoEliminar(null);
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
       setError(err.response?.data?.error || 'Error al eliminar la póliza');
     }

@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import {
   LayoutDashboard, Building2, FileText, Users, Shield,
   Bell, UserCog, LogOut, ShieldCheck, AlertOctagon, Calculator, Mail, Archive,
@@ -10,11 +10,23 @@ import { obtenerAlertasApi, obtenerResumenAlertasApi } from '../api/index.js';
 
 const elementosNav = [
   { ruta: '/dashboard', etiqueta: 'Inicio', icono: LayoutDashboard },
-  { ruta: '/inmuebles', etiqueta: 'Inmuebles', icono: Building2, badgeClave: 'inmuebles_sin_poliza' },
+  {
+    ruta: '/inmuebles', etiqueta: 'Inmuebles', icono: Building2,
+    badgeClave: 'inmuebles_sin_poliza',
+    badgeTooltip: (n) => `${n} inmueble${n !== 1 ? 's' : ''} sin póliza asignada`,
+  },
   { ruta: '/polizas', etiqueta: 'Pólizas Inmuebles', icono: FileText },
-  { ruta: '/inquilinos', etiqueta: 'Inquilinos', icono: Users, badgeClave: 'contratos_proximos' },
+  {
+    ruta: '/inquilinos', etiqueta: 'Inquilinos', icono: Users,
+    badgeClave: 'contratos_proximos',
+    badgeTooltip: (n) => `${n} contrato${n !== 1 ? 's' : ''} próximo${n !== 1 ? 's' : ''} a vencer`,
+  },
   { ruta: '/historico-inquilinos', etiqueta: 'Histórico inquilinos', icono: Archive },
-  { ruta: '/polizas-inquilinos', etiqueta: 'Pólizas Inquilinos', icono: Shield, badgeClave: 'inquilinos_sin_seguro' },
+  {
+    ruta: '/polizas-inquilinos', etiqueta: 'Pólizas Inquilinos', icono: Shield,
+    badgeClave: 'inquilinos_sin_seguro',
+    badgeTooltip: (n) => `${n} inquilino${n !== 1 ? 's' : ''} sin póliza activa`,
+  },
   { ruta: '/siniestros', etiqueta: 'Siniestros', icono: AlertOctagon },
   { ruta: '/contabilidad', etiqueta: 'Contabilidad', icono: Calculator },
   { ruta: '/alertas', etiqueta: 'Alertas', icono: Bell, esAlerta: true },
@@ -29,24 +41,29 @@ export default function Layout() {
   const [resumen, setResumen] = useState({ contratos_proximos: 0, inquilinos_sin_seguro: 0 });
   const [menuAbierto, setMenuAbierto] = useState(false);
 
-  useEffect(() => {
-    async function cargarAlertas() {
-      try {
-        const [respAlertas, respResumen] = await Promise.all([
-          obtenerAlertasApi(30),
-          obtenerResumenAlertasApi(),
-        ]);
-        setTotalAlertas(respAlertas.data.total);
-        setHayUrgentes(respAlertas.data.hay_urgentes || false);
-        setResumen(respResumen.data);
-      } catch {
-        // Silenciar error de red
-      }
+  const cargarAlertas = useCallback(async () => {
+    try {
+      const [respAlertas, respResumen] = await Promise.all([
+        obtenerAlertasApi(30),
+        obtenerResumenAlertasApi(),
+      ]);
+      setTotalAlertas(respAlertas.data.total);
+      setHayUrgentes(respAlertas.data.hay_urgentes || false);
+      setResumen(respResumen.data);
+    } catch {
+      // Silenciar error de red
     }
-    cargarAlertas();
-    const intervalo = setInterval(cargarAlertas, 5 * 60 * 1000);
-    return () => clearInterval(intervalo);
   }, []);
+
+  useEffect(() => {
+    cargarAlertas();
+    const intervalo = setInterval(cargarAlertas, 30_000);
+    window.addEventListener('refreshBadges', cargarAlertas);
+    return () => {
+      clearInterval(intervalo);
+      window.removeEventListener('refreshBadges', cargarAlertas);
+    };
+  }, [cargarAlertas]);
 
   // Cerrar menú al cambiar ruta en móvil
   function handleNavClick() {
@@ -80,8 +97,8 @@ export default function Layout() {
 
       {/* Navegación */}
       <nav className="flex-1 p-4 space-y-0.5 overflow-y-auto">
-        {elementosNav.map(({ ruta, etiqueta, icono: Icono, esAlerta, badgeClave }) => {
-          const badgeValor = badgeClave ? resumen[badgeClave] : 0;
+        {elementosNav.map(({ ruta, etiqueta, icono: Icono, esAlerta, badgeClave, badgeTooltip }) => {
+          const badgeValor = badgeClave ? (resumen[badgeClave] || 0) : 0;
           return (
             <NavLink
               key={ruta}
@@ -98,12 +115,18 @@ export default function Layout() {
               <Icono size={17} />
               <span className="flex-1">{etiqueta}</span>
               {esAlerta && totalAlertas > 0 && (
-                <span className={`bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center${hayUrgentes ? ' animate-pulse' : ''}`}>
+                <span
+                  title={`${totalAlertas} alerta${totalAlertas !== 1 ? 's' : ''} pendiente${totalAlertas !== 1 ? 's' : ''}`}
+                  className={`bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center${hayUrgentes ? ' animate-pulse' : ''}`}
+                >
                   {totalAlertas > 99 ? '99+' : totalAlertas}
                 </span>
               )}
               {badgeClave && badgeValor > 0 && (
-                <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                <span
+                  title={badgeTooltip ? badgeTooltip(badgeValor) : ''}
+                  className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center"
+                >
                   {badgeValor > 99 ? '99+' : badgeValor}
                 </span>
               )}

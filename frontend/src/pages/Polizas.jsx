@@ -208,6 +208,7 @@ export default function Polizas() {
         setToast({ mensaje: 'Póliza creada correctamente', tipo: 'success' });
       }
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
       cerrarModal();
     } catch (err) {
       setError(err.response?.data?.error || 'Error al guardar la póliza');
@@ -222,6 +223,7 @@ export default function Polizas() {
       setConfirmandoEliminar(null);
       setToast({ mensaje: 'Póliza eliminada correctamente', tipo: 'success' });
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
       setToast({ mensaje: err.response?.data?.error || 'Error al eliminar la póliza', tipo: 'error' });
     }
@@ -268,6 +270,7 @@ export default function Polizas() {
       setModalRenovar(false);
       setToast({ mensaje: 'Póliza renovada correctamente', tipo: 'success' });
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
       setError(err.response?.data?.error || 'Error al renovar la póliza');
     } finally {
@@ -316,6 +319,7 @@ export default function Polizas() {
       const res = await analizarExpertoPolizaApi(polizaAnalisis.id);
       setAnalisisActual(res.data);
       await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
       setToast({ mensaje: err.response?.data?.error || 'Error al analizar la póliza', tipo: 'error' });
     } finally {
