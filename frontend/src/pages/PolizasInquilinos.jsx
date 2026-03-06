@@ -79,6 +79,9 @@ export default function PolizasInquilinos() {
   const [analisisActual, setAnalisisActual] = useState(null);
   const [analizando, setAnalizando] = useState(false);
 
+  // Análisis experto desde el formulario
+  const [analizandoForm, setAnalizandoForm] = useState(false);
+
   async function cargar() {
     try {
       const [resPolizas, resInquilinos, resTodas] = await Promise.all([
@@ -243,6 +246,28 @@ export default function PolizasInquilinos() {
       setToast({ mensaje: err.response?.data?.error || 'Error al analizar la póliza', tipo: 'error' });
     } finally {
       setAnalizando(false);
+    }
+  }
+
+  async function handleAnalizarEnFormulario() {
+    if (!editando?.id) return;
+    setAnalizandoForm(true);
+    try {
+      const res = await analizarExpertoPolizaInquilinoApi(editando.id);
+      const d = res.data;
+      setFormulario((prev) => ({
+        ...prev,
+        riesgos_cubiertos: d.riesgos_cubiertos || prev.riesgos_cubiertos,
+        riesgos_no_cubiertos: d.riesgos_no_cubiertos || prev.riesgos_no_cubiertos,
+        analisis_fortalezas: d.analisis_fortalezas || prev.analisis_fortalezas,
+        analisis_carencias: d.analisis_carencias || prev.analisis_carencias,
+        como_complementar: d.como_complementar || prev.como_complementar,
+      }));
+      setToast({ mensaje: 'Análisis completado. Revisa los campos y guarda.', tipo: 'success' });
+    } catch (err) {
+      setToast({ mensaje: err.response?.data?.error || 'Error al analizar la póliza', tipo: 'error' });
+    } finally {
+      setAnalizandoForm(false);
     }
   }
 
@@ -420,8 +445,22 @@ export default function PolizasInquilinos() {
 
             {/* Análisis IA */}
             <div>
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                 <Sparkles size={13} /> Análisis IA
+                {editando && formulario.documento_url && (
+                  <button
+                    type="button"
+                    onClick={handleAnalizarEnFormulario}
+                    disabled={analizandoForm}
+                    className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 px-2.5 py-1 rounded-lg transition-colors disabled:opacity-50"
+                  >
+                    {analizandoForm ? (
+                      <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-600" /> Analizando...</>
+                    ) : (
+                      <><Sparkles size={12} /> Analizar con IA</>
+                    )}
+                  </button>
+                )}
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div>
