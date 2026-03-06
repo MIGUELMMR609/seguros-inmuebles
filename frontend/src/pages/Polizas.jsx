@@ -21,6 +21,12 @@ const TIPOS_POLIZA = [
   { valor: 'otros', etiqueta: 'Otros' },
 ];
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+function urlDoc(url) {
+  if (!url) return url;
+  return url.startsWith('/') ? API_BASE + url : url;
+}
+
 const PERIODICIDADES = [
   { valor: 'anual', etiqueta: 'Anual' },
   { valor: 'semestral', etiqueta: 'Semestral' },
@@ -33,6 +39,9 @@ const formularioVacio = {
   contacto_nombre: '', contacto_telefono: '', contacto_email: '',
   periodicidad_pago: 'anual', importe_pago: '', fecha_proximo_pago: '',
   observaciones_ia: '',
+  riesgos_cubiertos: '', riesgos_no_cubiertos: '',
+  analisis_fortalezas: '', analisis_carencias: '',
+  como_complementar: '',
 };
 
 const renovarVacio = {
@@ -135,6 +144,11 @@ export default function Polizas() {
       importe_pago: poliza.importe_pago || '',
       fecha_proximo_pago: poliza.fecha_proximo_pago?.split('T')[0] || '',
       observaciones_ia: '',
+      riesgos_cubiertos: poliza.riesgos_cubiertos || '',
+      riesgos_no_cubiertos: poliza.riesgos_no_cubiertos || '',
+      analisis_fortalezas: poliza.analisis_fortalezas || '',
+      analisis_carencias: poliza.analisis_carencias || '',
+      como_complementar: poliza.como_complementar || '',
     });
     setError('');
     setPasoModal('form');
@@ -340,7 +354,7 @@ export default function Polizas() {
     {
       clave: 'documento_url', titulo: 'Doc.',
       render: (f) => f.documento_url ? (
-        <a href={f.documento_url} target="_blank" rel="noopener noreferrer" title="Ver documento PDF" className="inline-flex p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
+        <a href={urlDoc(f.documento_url)} target="_blank" rel="noopener noreferrer" title="Ver documento PDF" className="inline-flex p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
           <FileText size={20} />
         </a>
       ) : '—',
@@ -507,6 +521,51 @@ export default function Polizas() {
                   <label className="etiqueta-formulario">Próximo pago</label>
                   <input type="date" name="fecha_proximo_pago" value={formulario.fecha_proximo_pago} onChange={handleCambio} className="campo-formulario" />
                 </div>
+              </div>
+            </div>
+
+            {/* Análisis IA */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-1">
+                <Sparkles size={13} /> Análisis IA
+              </h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="etiqueta-formulario">Riesgos cubiertos</label>
+                  <textarea name="riesgos_cubiertos" value={formulario.riesgos_cubiertos} onChange={handleCambio} rows={3} className="campo-formulario resize-none" placeholder="Coberturas incluidas en la póliza..." />
+                </div>
+                <div>
+                  <label className="etiqueta-formulario">Riesgos no cubiertos</label>
+                  <textarea name="riesgos_no_cubiertos" value={formulario.riesgos_no_cubiertos} onChange={handleCambio} rows={3} className="campo-formulario resize-none" placeholder="Exclusiones y riesgos no cubiertos..." />
+                </div>
+                <div>
+                  <label className="etiqueta-formulario">Fortalezas</label>
+                  <textarea name="analisis_fortalezas" value={formulario.analisis_fortalezas} onChange={handleCambio} rows={3} className="campo-formulario resize-none" placeholder="Puntos fuertes de la póliza..." />
+                </div>
+                <div>
+                  <label className="etiqueta-formulario">Carencias</label>
+                  <textarea name="analisis_carencias" value={formulario.analisis_carencias} onChange={handleCambio} rows={3} className="campo-formulario resize-none" placeholder="Aspectos mejorables o carencias..." />
+                </div>
+                <div className="col-span-2">
+                  <label className="etiqueta-formulario">Cómo complementarla</label>
+                  <textarea name="como_complementar" value={formulario.como_complementar} onChange={handleCambio} rows={2} className="campo-formulario resize-none" placeholder="Recomendaciones para mejorar la cobertura..." />
+                </div>
+                {editando?.comparador_mercado && (
+                  <div className="col-span-2">
+                    <label className="etiqueta-formulario">Comparador de mercado</label>
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 text-sm space-y-1">
+                      {editando.comparador_mercado.precio_estimado_mercado && (
+                        <p><span className="font-medium text-gray-600">Precio mercado:</span> <span className="text-gray-700">{editando.comparador_mercado.precio_estimado_mercado}</span></p>
+                      )}
+                      {editando.comparador_mercado.evaluacion_precio && (
+                        <p><span className="font-medium text-gray-600">Evaluación:</span> <span className="text-gray-700">{editando.comparador_mercado.evaluacion_precio}</span></p>
+                      )}
+                      {editando.comparador_mercado.recomendaciones && (
+                        <p><span className="font-medium text-gray-600">Recomendaciones:</span> <span className="text-gray-700">{editando.comparador_mercado.recomendaciones}</span></p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

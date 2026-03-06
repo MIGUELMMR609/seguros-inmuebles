@@ -2,6 +2,12 @@ import { useState, useRef } from 'react';
 import { Upload, FileText, X, ExternalLink } from 'lucide-react';
 import { subirDocumentoApi } from '../api/index.js';
 
+const API_BASE = import.meta.env.VITE_API_URL || '';
+function urlDoc(url) {
+  if (!url) return url;
+  return url.startsWith('/') ? API_BASE + url : url;
+}
+
 export default function UploadPDF({ urlActual, onSubida }) {
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState('');
@@ -53,7 +59,7 @@ export default function UploadPDF({ urlActual, onSubida }) {
           <span className="text-sm text-blue-700 flex-1 truncate">{nombreMostrar}</span>
           {urlMostrar && (
             <a
-              href={urlMostrar}
+              href={urlDoc(urlMostrar)}
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:text-blue-800 flex-shrink-0"
