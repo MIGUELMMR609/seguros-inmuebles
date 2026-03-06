@@ -278,12 +278,24 @@ router.post('/:id/analizar-experto', async (req, res) => {
       return res.status(400).json({ error: 'Sube el PDF de la póliza primero' });
     }
 
-    const rutaArchivo = path.join(__dirname, '../../uploads', path.basename(poliza.documento_url));
-    if (!fs.existsSync(rutaArchivo)) {
-      return res.status(404).json({ archivo_disponible: false, error: 'PDF no disponible en el servidor' });
+    let base64;
+    try {
+      const rutaArchivo = path.join(__dirname, '../../uploads', path.basename(poliza.documento_url));
+      if (fs.existsSync(rutaArchivo)) {
+        base64 = fs.readFileSync(rutaArchivo).toString('base64');
+      } else {
+        // Fallback: leer el PDF via HTTP (necesario en Render donde el FS es efímero)
+        const urlPdf = poliza.documento_url.startsWith('http')
+          ? poliza.documento_url
+          : `${req.protocol}://${req.get('host')}${poliza.documento_url}`;
+        const resPdf = await fetch(urlPdf);
+        if (!resPdf.ok) throw new Error('No accesible');
+        const buf = await resPdf.arrayBuffer();
+        base64 = Buffer.from(buf).toString('base64');
+      }
+    } catch {
+      return res.status(404).json({ archivo_disponible: false, error: 'PDF no disponible en servidor' });
     }
-
-    const base64 = fs.readFileSync(rutaArchivo).toString('base64');
 
     const prompt = `Eres un experto en correduría de seguros en España con más de 20 años de experiencia.
 Analiza esta póliza de seguro de inquilino/hogar y proporciona un análisis experto completo.
