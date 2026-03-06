@@ -97,7 +97,7 @@ Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los im
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
+        max_tokens: 2048,
         messages: [{
           role: 'user',
           content: [
@@ -125,8 +125,16 @@ Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los im
       datos = JSON.parse(texto);
     } catch {
       const m = texto.match(/\{[\s\S]*\}/);
-      if (!m) return res.status(422).json({ error: 'No se pudo extraer información estructurada del PDF' });
-      datos = JSON.parse(m[0]);
+      if (!m) {
+        console.error('analizar-contrato: respuesta IA no contiene JSON. stop_reason:', resultado.stop_reason, '| texto:', texto.slice(0, 500));
+        return res.status(422).json({ error: 'No se pudo extraer información estructurada del PDF' });
+      }
+      try {
+        datos = JSON.parse(m[0]);
+      } catch (parseErr) {
+        console.error('analizar-contrato: JSON extraído inválido:', m[0].slice(0, 300));
+        return res.status(422).json({ error: 'No se pudo extraer información estructurada del PDF' });
+      }
     }
 
     const documentoUrl = await promesaUrl;
