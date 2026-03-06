@@ -25,6 +25,7 @@ export default function Layout() {
   const { usuario, cerrarSesion, esAdmin } = useAuth();
   const navigate = useNavigate();
   const [totalAlertas, setTotalAlertas] = useState(0);
+  const [hayUrgentes, setHayUrgentes] = useState(false);
   const [resumen, setResumen] = useState({ contratos_proximos: 0, inquilinos_sin_seguro: 0 });
   const [menuAbierto, setMenuAbierto] = useState(false);
 
@@ -36,6 +37,7 @@ export default function Layout() {
           obtenerResumenAlertasApi(),
         ]);
         setTotalAlertas(respAlertas.data.total);
+        setHayUrgentes(respAlertas.data.hay_urgentes || false);
         setResumen(respResumen.data);
       } catch {
         // Silenciar error de red
@@ -96,7 +98,7 @@ export default function Layout() {
               <Icono size={17} />
               <span className="flex-1">{etiqueta}</span>
               {esAlerta && totalAlertas > 0 && (
-                <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center">
+                <span className={`bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full min-w-[20px] text-center${hayUrgentes ? ' animate-pulse' : ''}`}>
                   {totalAlertas > 99 ? '99+' : totalAlertas}
                 </span>
               )}
@@ -188,7 +190,7 @@ export default function Layout() {
           <ShieldCheck className="text-orange-400" size={22} />
           <span className="text-white font-bold text-base">Gestión de Seguros</span>
           {totalAlertas > 0 && (
-            <span className="ml-auto bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+            <span className={`ml-auto bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full${hayUrgentes ? ' animate-pulse' : ''}`}>
               {totalAlertas > 99 ? '99+' : totalAlertas}
             </span>
           )}

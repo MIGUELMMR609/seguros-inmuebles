@@ -17,11 +17,12 @@ router.get('/resumen', async (req, res) => {
       ),
       pool.query(
         `SELECT COUNT(*)::int FROM inquilinos i
-         WHERE NOT EXISTS (
-           SELECT 1 FROM polizas_inquilinos pi
-           WHERE pi.inquilino_id = i.id
-             AND (pi.fecha_vencimiento IS NULL OR pi.fecha_vencimiento >= CURRENT_DATE)
-         )`
+         WHERE (i.estado = 'activo' OR i.estado IS NULL)
+           AND NOT EXISTS (
+             SELECT 1 FROM polizas_inquilinos pi
+             WHERE pi.inquilino_id = i.id
+               AND (pi.fecha_vencimiento IS NULL OR pi.fecha_vencimiento >= CURRENT_DATE)
+           )`
       ),
     ]);
 
@@ -35,12 +36,22 @@ router.get('/resumen', async (req, res) => {
   }
 });
 
-// GET /api/alertas - Las 3 secciones de alertas: pólizas inmuebles, pólizas inquilinos, contratos
+// GET /api/alertas - Todas las secciones de alertas
 router.get('/', async (req, res) => {
   try {
     const diasLimite = parseInt(req.query.dias) || 30;
 
-    const [polizasInmuebles, polizasInquilinos, contratosAlquiler, inmueblesSinPoliza] = await Promise.all([
+    const [
+      polizasInmuebles,
+      polizasInquilinos,
+      contratosAlquiler,
+      inmueblesSinPoliza,
+      polizasVencidasInm,
+      polizasVencidasInq,
+      inquilinosSinPoliza,
+      contratosVencidos,
+    ] = await Promise.all([
+
       // Pólizas de inmuebles próximas a vencer
       pool.query(
         `SELECT
@@ -101,7 +112,8 @@ router.get('/', async (req, res) => {
            (inq.fecha_fin_contrato - CURRENT_DATE)::int AS dias_restantes
          FROM inquilinos inq
          LEFT JOIN inmuebles inm ON inm.id = inq.inmueble_id
-         WHERE inq.fecha_fin_contrato IS NOT NULL
+         WHERE (inq.estado = 'activo' OR inq.estado IS NULL)
+           AND inq.fecha_fin_contrato IS NOT NULL
            AND inq.fecha_fin_contrato >= CURRENT_DATE
            AND (inq.fecha_fin_contrato - CURRENT_DATE) <= $1
          ORDER BY inq.fecha_fin_contrato ASC`,
@@ -117,13 +129,95 @@ router.get('/', async (req, res) => {
          )
          ORDER BY i.nombre ASC`
       ),
+
+      // Pólizas de inmuebles vencidas
+      pool.query(
+        `SELECT
+           p.id,
+           'inmueble' AS origen,
+           p.tipo,
+           p.compania_aseguradora,
+           p.numero_poliza,
+           p.fecha_vencimiento,
+           i.nombre AS nombre_referencia,
+           i.nombre AS nombre_inmueble,
+           (CURRENT_DATE - p.fecha_vencimiento)::int AS dias_vencida
+         FROM polizas p
+         LEFT JOIN inmuebles i ON p.inmueble_id = i.id
+         WHERE p.fecha_vencimiento IS NOT NULL
+           AND p.fecha_vencimiento < CURRENT_DATE
+         ORDER BY p.fecha_vencimiento DESC`
+      ),
+
+      // Pólizas de inquilinos vencidas
+      pool.query(
+        `SELECT
+           pi.id,
+           'inquilino' AS origen,
+           'seguro_inquilino' AS tipo,
+           pi.compania_aseguradora,
+           pi.numero_poliza,
+           pi.fecha_vencimiento,
+           inq.nombre AS nombre_referencia,
+           inm.nombre AS nombre_inmueble,
+           (CURRENT_DATE - pi.fecha_vencimiento)::int AS dias_vencida
+         FROM polizas_inquilinos pi
+         LEFT JOIN inquilinos inq ON pi.inquilino_id = inq.id
+         LEFT JOIN inmuebles inm ON inq.inmueble_id = inm.id
+         WHERE pi.fecha_vencimiento IS NOT NULL
+           AND pi.fecha_vencimiento < CURRENT_DATE
+         ORDER BY pi.fecha_vencimiento DESC`
+      ),
+
+      // Inquilinos activos sin ninguna póliza asignada
+      pool.query(
+        `SELECT i.id, i.nombre, i.email, i.telefono, inm.nombre AS nombre_inmueble
+         FROM inquilinos i
+         LEFT JOIN inmuebles inm ON i.inmueble_id = inm.id
+         WHERE (i.estado = 'activo' OR i.estado IS NULL)
+           AND NOT EXISTS (
+             SELECT 1 FROM polizas_inquilinos pi WHERE pi.inquilino_id = i.id
+           )
+         ORDER BY i.nombre ASC`
+      ),
+
+      // Contratos de alquiler ya vencidos (inquilino activo)
+      pool.query(
+        `SELECT
+           inq.id,
+           inq.nombre AS nombre_inquilino,
+           inm.nombre AS nombre_inmueble,
+           inq.fecha_fin_contrato,
+           (CURRENT_DATE - inq.fecha_fin_contrato)::int AS dias_vencido
+         FROM inquilinos inq
+         LEFT JOIN inmuebles inm ON inq.inmueble_id = inm.id
+         WHERE (inq.estado = 'activo' OR inq.estado IS NULL)
+           AND inq.fecha_fin_contrato IS NOT NULL
+           AND inq.fecha_fin_contrato < CURRENT_DATE
+         ORDER BY inq.fecha_fin_contrato DESC`
+      ),
     ]);
+
+    const polizasVencidas = [
+      ...polizasVencidasInm.rows,
+      ...polizasVencidasInq.rows,
+    ].sort((a, b) => b.dias_vencida - a.dias_vencida);
 
     const total =
       polizasInmuebles.rows.length +
       polizasInquilinos.rows.length +
       contratosAlquiler.rows.length +
-      inmueblesSinPoliza.rows.length;
+      inmueblesSinPoliza.rows.length +
+      polizasVencidas.length +
+      inquilinosSinPoliza.rows.length +
+      contratosVencidos.rows.length;
+
+    const hayUrgentes =
+      polizasVencidas.length > 0 ||
+      contratosVencidos.rows.length > 0 ||
+      polizasInmuebles.rows.some((p) => p.dias_restantes <= 7) ||
+      polizasInquilinos.rows.some((p) => p.dias_restantes <= 7) ||
+      contratosAlquiler.rows.some((c) => c.dias_restantes <= 7);
 
     // 'alertas' mantiene compatibilidad con Dashboard (pólizas combinadas)
     const alertas = [
@@ -134,10 +228,14 @@ router.get('/', async (req, res) => {
     res.json({
       total,
       diasLimite,
+      hay_urgentes: hayUrgentes,
       polizas_inmuebles: polizasInmuebles.rows,
       polizas_inquilinos: polizasInquilinos.rows,
       contratos_alquiler: contratosAlquiler.rows,
       inmuebles_sin_poliza: inmueblesSinPoliza.rows,
+      polizas_vencidas: polizasVencidas,
+      inquilinos_sin_poliza: inquilinosSinPoliza.rows,
+      contratos_vencidos: contratosVencidos.rows,
       alertas, // backward compat
     });
   } catch (error) {
