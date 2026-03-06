@@ -79,10 +79,11 @@ app.use('/api', generarContratoRoutes);
 
 // Servir frontend en producción (solo si el build existe localmente)
 const frontendDist = path.join(__dirname, '../frontend/dist');
-if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendDist)) {
+const frontendIndex = path.join(frontendDist, 'index.html');
+if (process.env.NODE_ENV === 'production' && fs.existsSync(frontendIndex)) {
   app.use(express.static(frontendDist));
   app.get('*', (req, res) => {
-    res.sendFile(path.join(frontendDist, 'index.html'));
+    res.sendFile(frontendIndex);
   });
 }
 
