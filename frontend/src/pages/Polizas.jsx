@@ -175,7 +175,11 @@ export default function Polizas() {
       contacto_nombre: datos.contacto_nombre || prev.contacto_nombre,
       contacto_telefono: datos.contacto_telefono || prev.contacto_telefono,
       contacto_email: datos.contacto_email || prev.contacto_email,
-      observaciones_ia: datos.observaciones_ia || '',
+      riesgos_cubiertos: datos.riesgos_cubiertos || prev.riesgos_cubiertos,
+      riesgos_no_cubiertos: datos.riesgos_no_cubiertos || prev.riesgos_no_cubiertos,
+      analisis_fortalezas: datos.analisis_fortalezas || prev.analisis_fortalezas,
+      analisis_carencias: datos.analisis_carencias || prev.analisis_carencias,
+      como_complementar: datos.como_complementar || prev.como_complementar,
       documento_url: documentoUrl || prev.documento_url,
     }));
     setPasoModal('form');
@@ -579,14 +583,6 @@ export default function Polizas() {
                 <label className="etiqueta-formulario">Notas</label>
                 <textarea name="notas" value={formulario.notas} onChange={handleCambio} rows={2} className="campo-formulario resize-none" placeholder="Observaciones..." />
               </div>
-              {formulario.observaciones_ia && (
-                <div>
-                  <label className="etiqueta-formulario">Observaciones IA</label>
-                  <div className="bg-blue-50 border border-blue-200 text-blue-800 text-sm px-3 py-2 rounded-lg">
-                    {formulario.observaciones_ia}
-                  </div>
-                </div>
-              )}
             </div>
 
             {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}

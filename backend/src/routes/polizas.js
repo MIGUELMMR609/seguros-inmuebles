@@ -80,13 +80,13 @@ router.post('/', async (req, res) => {
 
     const tipoFinal = TIPOS_VALIDOS.includes(tipo) ? tipo : 'vivienda';
 
+    // INSERT con los campos base (siempre existentes)
     const resultado = await pool.query(
       `INSERT INTO polizas
         (inmueble_id, tipo, compania_aseguradora, numero_poliza, fecha_inicio, fecha_vencimiento,
          importe_anual, notas, documento_url, contacto_nombre, contacto_telefono, contacto_email,
-         periodicidad_pago, importe_pago, fecha_proximo_pago,
-         riesgos_cubiertos, riesgos_no_cubiertos, analisis_fortalezas, analisis_carencias, como_complementar)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
+         periodicidad_pago, importe_pago, fecha_proximo_pago)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        RETURNING *`,
       [
         inmueble_id, tipoFinal, compania_aseguradora || null, numero_poliza || null,
@@ -94,12 +94,33 @@ router.post('/', async (req, res) => {
         notas || null, documento_url || null, contacto_nombre || null,
         contacto_telefono || null, contacto_email || null,
         periodicidad_pago || 'anual', importe_pago || null, fecha_proximo_pago || null,
-        riesgos_cubiertos || null, riesgos_no_cubiertos || null,
-        analisis_fortalezas || null, analisis_carencias || null, como_complementar || null,
       ]
     );
 
-    res.status(201).json(resultado.rows[0]);
+    const polizaId = resultado.rows[0].id;
+
+    // UPDATE con campos IA (pueden no existir aún en BD si la migración no ha corrido)
+    if (riesgos_cubiertos || riesgos_no_cubiertos || analisis_fortalezas || analisis_carencias || como_complementar) {
+      try {
+        await pool.query(
+          `UPDATE polizas SET
+            riesgos_cubiertos=$1, riesgos_no_cubiertos=$2,
+            analisis_fortalezas=$3, analisis_carencias=$4, como_complementar=$5
+           WHERE id=$6`,
+          [
+            riesgos_cubiertos || null, riesgos_no_cubiertos || null,
+            analisis_fortalezas || null, analisis_carencias || null, como_complementar || null,
+            polizaId,
+          ]
+        );
+      } catch (errIA) {
+        console.warn('No se pudieron guardar campos IA (migración pendiente):', errIA.message);
+      }
+    }
+
+    // Devolver la poliza con todos los campos
+    const final = await pool.query('SELECT * FROM polizas WHERE id=$1', [polizaId]);
+    res.status(201).json(final.rows[0]);
   } catch (error) {
     console.error('Error al crear póliza:', error);
     res.status(500).json({ error: 'Error al crear la póliza' });
@@ -119,16 +140,15 @@ router.put('/:id', async (req, res) => {
 
     const tipoFinal = TIPOS_VALIDOS.includes(tipo) ? tipo : 'vivienda';
 
+    // UPDATE con campos base
     const resultado = await pool.query(
       `UPDATE polizas
        SET inmueble_id=$1, tipo=$2, compania_aseguradora=$3, numero_poliza=$4,
            fecha_inicio=$5, fecha_vencimiento=$6, importe_anual=$7, notas=$8,
            documento_url=$9, contacto_nombre=$10, contacto_telefono=$11, contacto_email=$12,
            periodicidad_pago=$13, importe_pago=$14, fecha_proximo_pago=$15,
-           riesgos_cubiertos=$16, riesgos_no_cubiertos=$17,
-           analisis_fortalezas=$18, analisis_carencias=$19, como_complementar=$20,
            updated_at=NOW()
-       WHERE id=$21
+       WHERE id=$16
        RETURNING *`,
       [
         inmueble_id, tipoFinal, compania_aseguradora || null, numero_poliza || null,
@@ -136,8 +156,6 @@ router.put('/:id', async (req, res) => {
         notas || null, documento_url || null, contacto_nombre || null,
         contacto_telefono || null, contacto_email || null,
         periodicidad_pago || 'anual', importe_pago || null, fecha_proximo_pago || null,
-        riesgos_cubiertos || null, riesgos_no_cubiertos || null,
-        analisis_fortalezas || null, analisis_carencias || null, como_complementar || null,
         req.params.id,
       ]
     );
@@ -146,7 +164,25 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Póliza no encontrada' });
     }
 
-    res.json(resultado.rows[0]);
+    // UPDATE campos IA por separado (resistente a migración pendiente)
+    try {
+      await pool.query(
+        `UPDATE polizas SET
+          riesgos_cubiertos=$1, riesgos_no_cubiertos=$2,
+          analisis_fortalezas=$3, analisis_carencias=$4, como_complementar=$5
+         WHERE id=$6`,
+        [
+          riesgos_cubiertos || null, riesgos_no_cubiertos || null,
+          analisis_fortalezas || null, analisis_carencias || null, como_complementar || null,
+          req.params.id,
+        ]
+      );
+    } catch (errIA) {
+      console.warn('No se pudieron actualizar campos IA (migración pendiente):', errIA.message);
+    }
+
+    const final = await pool.query('SELECT * FROM polizas WHERE id=$1', [req.params.id]);
+    res.json(final.rows[0]);
   } catch (error) {
     console.error('Error al actualizar póliza:', error);
     res.status(500).json({ error: 'Error al actualizar la póliza' });

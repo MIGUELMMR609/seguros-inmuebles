@@ -24,7 +24,7 @@ router.post('/', upload.single('documento'), async (req, res) => {
   try {
     const base64 = fs.readFileSync(req.file.path).toString('base64');
 
-    const prompt = `Analiza este documento de seguro o contrato y extrae los datos relevantes.
+    const prompt = `Analiza este documento de póliza de seguro de inmueble y extrae toda la información relevante.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
 
 {
@@ -34,15 +34,19 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
   "fecha_inicio": "YYYY-MM-DD o null",
   "fecha_vencimiento": "YYYY-MM-DD o null",
   "importe_anual": número decimal o null,
-  "importe_pago": número decimal (importe por recibo) o null,
+  "importe_pago": número decimal (importe por recibo/fraccionado) o null,
   "periodicidad_pago": "anual/semestral/trimestral o null",
-  "contacto_nombre": "nombre del agente/contacto o null",
+  "contacto_nombre": "nombre del agente o mediador o null",
   "contacto_telefono": "teléfono del agente o null",
   "contacto_email": "email del agente o null",
-  "observaciones_ia": "notas relevantes extraídas del documento o null"
+  "riesgos_cubiertos": "descripción de las principales coberturas y garantías incluidas en la póliza o null",
+  "riesgos_no_cubiertos": "descripción de las exclusiones y riesgos no cubiertos mencionados o null",
+  "analisis_fortalezas": "puntos fuertes y aspectos destacables de esta póliza o null",
+  "analisis_carencias": "carencias, limitaciones o aspectos a mejorar detectados o null",
+  "como_complementar": "recomendaciones para completar o mejorar la cobertura actual o null"
 }
 
-Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda.`;
+Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda. Los campos de análisis deben ser texto descriptivo en español.`;
 
     const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -55,7 +59,7 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 1024,
+        max_tokens: 2048,
         messages: [{
           role: 'user',
           content: [
