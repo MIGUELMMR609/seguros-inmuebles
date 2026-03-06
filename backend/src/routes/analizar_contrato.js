@@ -1,14 +1,27 @@
 const express = require('express');
-const { upload } = require('../middleware/upload');
+const { uploadMemoria } = require('../middleware/upload');
 const { verificarToken } = require('../middleware/auth');
+const cloudinary = require('../config/cloudinary');
 
 const router = express.Router();
 router.use(verificarToken);
 
 const TIMEOUT_MS = 115_000;
 
+function subirPdfACloudinary(buffer) {
+  return new Promise((resolve, reject) => {
+    cloudinary.uploader.upload_stream(
+      { folder: 'polizas-seguros', resource_type: 'raw', format: 'pdf' },
+      (error, result) => {
+        if (error) reject(error);
+        else resolve(result.secure_url);
+      }
+    ).end(buffer);
+  });
+}
+
 // POST /api/analizar-contrato - Analizar PDF de contrato de arrendamiento con IA
-router.post('/', upload.single('documento'), async (req, res) => {
+router.post('/', uploadMemoria.single('documento'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se recibió ningún archivo PDF' });
   }
@@ -21,9 +34,12 @@ router.post('/', upload.single('documento'), async (req, res) => {
   const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
 
   try {
-    const resPdf = await fetch(req.file.path);
-    const buf = await resPdf.arrayBuffer();
-    const base64 = Buffer.from(buf).toString('base64');
+    const base64 = req.file.buffer.toString('base64');
+
+    const promesaUrl = subirPdfACloudinary(req.file.buffer).catch((err) => {
+      console.warn('No se pudo subir contrato a Cloudinary:', err?.message);
+      return null;
+    });
 
     const prompt = `Analiza este contrato de arrendamiento/alquiler y extrae los datos relevantes.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
@@ -84,7 +100,8 @@ Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-M
       datos = JSON.parse(m[0]);
     }
 
-    res.json({ datos, documento_url: req.file.path });
+    const documentoUrl = await promesaUrl;
+    res.json({ datos, documento_url: documentoUrl });
   } catch (error) {
     clearTimeout(temporizador);
     if (error.name === 'AbortError') {
