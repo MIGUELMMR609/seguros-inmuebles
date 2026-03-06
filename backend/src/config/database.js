@@ -183,6 +183,19 @@ async function inicializarBaseDatos() {
       ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS motivo_finalizacion TEXT;
     `);
 
+    // Análisis jurídico de contratos (migración)
+    await cliente.query(`
+      ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS tomador_contrato VARCHAR(255);
+      ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS clausulas_principales TEXT;
+      ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS clausulas_perjudiciales TEXT;
+      ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS obligaciones_inquilino TEXT;
+      ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS obligaciones_propietario TEXT;
+      ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS analisis_juridico TEXT;
+      ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS recomendaciones_contrato TEXT;
+      ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS valoracion_contrato NUMERIC(3,1);
+      ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS fecha_ultimo_analisis_contrato TIMESTAMP;
+    `);
+
     // Actualizar inquilinos existentes sin estado
     await cliente.query(`UPDATE inquilinos SET estado = 'activo' WHERE estado IS NULL`);
 

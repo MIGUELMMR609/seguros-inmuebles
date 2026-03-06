@@ -64,7 +64,7 @@ router.post('/', uploadMemoria.single('documento'), async (req, res) => {
       return null;
     });
 
-    const prompt = `Analiza este contrato de arrendamiento/alquiler y extrae los datos relevantes.
+    const prompt = `Eres un experto jurídico español en arrendamientos urbanos (LAU). Analiza este contrato y extrae todos los datos relevantes.
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
 
 {
@@ -75,10 +75,16 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
   "fecha_fin": "YYYY-MM-DD o null",
   "importe_renta": número decimal (renta mensual en euros) o null,
   "direccion_inmueble": "dirección completa del inmueble arrendado o null",
-  "observaciones_ia": "lista de cláusulas relevantes que perjudican al arrendador, condiciones especiales, penalizaciones, obligaciones del arrendatario o null"
+  "clausulas_principales": "resumen de las cláusulas más importantes: duración, renta, fianza, uso, etc. o null",
+  "clausulas_perjudiciales": "cláusulas que perjudican al arrendador o 'Ninguna detectada'",
+  "obligaciones_inquilino": "lista de obligaciones del arrendatario según el contrato o null",
+  "obligaciones_propietario": "lista de obligaciones del arrendador según el contrato o null",
+  "analisis_juridico": "fortalezas y debilidades jurídicas, conformidad con la LAU o null",
+  "recomendaciones_contrato": "recomendaciones para mejorar el contrato en futuras renovaciones o null",
+  "valoracion_contrato": número del 1 al 10 como experto jurídico o null
 }
 
-Si no encuentras algún dato, usa null. Las fechas deben estar en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda.`;
+Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda.`;
 
     const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

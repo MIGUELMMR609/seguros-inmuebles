@@ -1,4 +1,5 @@
 const express = require('express');
+const { PDFDocument } = require('pdf-lib');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
 
@@ -63,7 +64,9 @@ router.post('/', async (req, res) => {
     const {
       inmueble_id, nombre, email, telefono,
       fecha_inicio_contrato, fecha_fin_contrato,
-      importe_renta, documento_url, observaciones_ia, notas,
+      importe_renta, documento_url, observaciones_ia, notas, tomador_contrato,
+      clausulas_principales, clausulas_perjudiciales, obligaciones_inquilino,
+      obligaciones_propietario, analisis_juridico, recomendaciones_contrato,
     } = req.body;
 
     if (!nombre) {
@@ -73,20 +76,20 @@ router.post('/', async (req, res) => {
     const resultado = await pool.query(
       `INSERT INTO inquilinos
         (inmueble_id, nombre, email, telefono, fecha_inicio_contrato, fecha_fin_contrato,
-         importe_renta, documento_url, observaciones_ia, notas, estado)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'activo')
+         importe_renta, documento_url, observaciones_ia, notas, estado,
+         tomador_contrato, clausulas_principales, clausulas_perjudiciales,
+         obligaciones_inquilino, obligaciones_propietario, analisis_juridico, recomendaciones_contrato)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'activo',$11,$12,$13,$14,$15,$16,$17)
        RETURNING *`,
       [
-        inmueble_id || null,
-        nombre.trim(),
-        email || null,
-        telefono || null,
-        fecha_inicio_contrato || null,
-        fecha_fin_contrato || null,
-        importe_renta || null,
-        documento_url || null,
-        observaciones_ia || null,
-        notas || null,
+        inmueble_id || null, nombre.trim(), email || null, telefono || null,
+        fecha_inicio_contrato || null, fecha_fin_contrato || null,
+        importe_renta || null, documento_url || null,
+        observaciones_ia || null, notas || null,
+        tomador_contrato || null, clausulas_principales || null,
+        clausulas_perjudiciales || null, obligaciones_inquilino || null,
+        obligaciones_propietario || null, analisis_juridico || null,
+        recomendaciones_contrato || null,
       ]
     );
 
@@ -103,7 +106,9 @@ router.put('/:id', async (req, res) => {
     const {
       inmueble_id, nombre, email, telefono,
       fecha_inicio_contrato, fecha_fin_contrato,
-      importe_renta, documento_url, observaciones_ia, notas,
+      importe_renta, documento_url, observaciones_ia, notas, tomador_contrato,
+      clausulas_principales, clausulas_perjudiciales, obligaciones_inquilino,
+      obligaciones_propietario, analisis_juridico, recomendaciones_contrato,
     } = req.body;
 
     if (!nombre) {
@@ -112,22 +117,23 @@ router.put('/:id', async (req, res) => {
 
     const resultado = await pool.query(
       `UPDATE inquilinos
-       SET inmueble_id = $1, nombre = $2, email = $3, telefono = $4,
-           fecha_inicio_contrato = $5, fecha_fin_contrato = $6,
-           importe_renta = $7, documento_url = $8, observaciones_ia = $9, notas = $10
-       WHERE id = $11
+       SET inmueble_id=$1, nombre=$2, email=$3, telefono=$4,
+           fecha_inicio_contrato=$5, fecha_fin_contrato=$6,
+           importe_renta=$7, documento_url=$8, observaciones_ia=$9, notas=$10,
+           tomador_contrato=$11, clausulas_principales=$12, clausulas_perjudiciales=$13,
+           obligaciones_inquilino=$14, obligaciones_propietario=$15,
+           analisis_juridico=$16, recomendaciones_contrato=$17
+       WHERE id=$18
        RETURNING *`,
       [
-        inmueble_id || null,
-        nombre.trim(),
-        email || null,
-        telefono || null,
-        fecha_inicio_contrato || null,
-        fecha_fin_contrato || null,
-        importe_renta || null,
-        documento_url || null,
-        observaciones_ia || null,
-        notas || null,
+        inmueble_id || null, nombre.trim(), email || null, telefono || null,
+        fecha_inicio_contrato || null, fecha_fin_contrato || null,
+        importe_renta || null, documento_url || null,
+        observaciones_ia || null, notas || null,
+        tomador_contrato || null, clausulas_principales || null,
+        clausulas_perjudiciales || null, obligaciones_inquilino || null,
+        obligaciones_propietario || null, analisis_juridico || null,
+        recomendaciones_contrato || null,
         req.params.id,
       ]
     );
@@ -235,6 +241,167 @@ router.get('/:id/renovaciones', async (req, res) => {
   } catch (error) {
     console.error('Error al obtener renovaciones:', error);
     res.status(500).json({ error: 'Error al obtener el historial de renovaciones' });
+  }
+});
+
+// POST /api/inquilinos/:id/analizar-contrato — Análisis jurídico experto del contrato
+router.post('/:id/analizar-contrato', async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'La clave de API de IA no está configurada (ANTHROPIC_API_KEY)' });
+  }
+
+  try {
+    const resultado = await pool.query(
+      `SELECT inq.*, i.nombre AS nombre_inmueble FROM inquilinos inq
+       LEFT JOIN inmuebles i ON inq.inmueble_id = i.id WHERE inq.id = $1`,
+      [req.params.id]
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Inquilino no encontrado' });
+    }
+    const inq = resultado.rows[0];
+
+    if (!inq.documento_url) {
+      return res.status(400).json({ error: 'Sube el PDF del contrato primero' });
+    }
+
+    // Obtener el PDF (Cloudinary URL o disco)
+    let buffer;
+    try {
+      const urlPdf = inq.documento_url.startsWith('http')
+        ? inq.documento_url
+        : `${req.protocol}://${req.get('host')}${inq.documento_url}`;
+      const resPdf = await fetch(urlPdf);
+      if (!resPdf.ok) throw new Error(`HTTP ${resPdf.status}`);
+      const arr = await resPdf.arrayBuffer();
+      buffer = Buffer.from(arr);
+    } catch (err) {
+      return res.status(404).json({ error: 'PDF del contrato no disponible: ' + err.message });
+    }
+
+    // Reducir si supera 5 MB
+    const MAX_BYTES = 5 * 1024 * 1024;
+    if (buffer.length > MAX_BYTES) {
+      try {
+        const pdfOrig = await PDFDocument.load(buffer, { ignoreEncryption: true });
+        const total = pdfOrig.getPageCount();
+        if (total > 10) {
+          const pdfNuevo = await PDFDocument.create();
+          const paginas = await pdfNuevo.copyPages(pdfOrig, Array.from({ length: 10 }, (_, i) => i));
+          paginas.forEach((p) => pdfNuevo.addPage(p));
+          buffer = Buffer.from(await pdfNuevo.save());
+          console.log(`Contrato reducido: ${total} → 10 páginas para análisis`);
+        }
+      } catch (e) {
+        console.warn('No se pudo reducir el contrato, se envía completo:', e.message);
+      }
+    }
+
+    const base64 = buffer.toString('base64');
+
+    const prompt = `Eres un experto jurídico español especializado en derecho de arrendamientos urbanos (LAU) con más de 20 años de experiencia.
+Analiza este contrato de arrendamiento en detalle y proporciona un análisis jurídico completo.
+
+Datos conocidos:
+- Inquilino: ${inq.nombre}
+- Inmueble: ${inq.nombre_inmueble || 'No especificado'}
+- Renta: ${inq.importe_renta ? inq.importe_renta + ' €/mes' : 'No especificada'}
+
+Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown) con esta estructura exacta:
+{
+  "valoracion_contrato": 7.5,
+  "clausulas_principales": "Resumen de las cláusulas más importantes: duración, renta, fianza, uso del inmueble, etc.",
+  "clausulas_perjudiciales": "Cláusulas que perjudican al arrendador: limitaciones de acceso, responsabilidades excesivas, renuncias de derechos, etc. Si no hay ninguna, indicar 'Ninguna cláusula especialmente perjudicial detectada'.",
+  "obligaciones_inquilino": "Lista detallada de obligaciones del arrendatario según el contrato",
+  "obligaciones_propietario": "Lista detallada de obligaciones del arrendador según el contrato",
+  "analisis_juridico": "Fortalezas y debilidades jurídicas del contrato: conformidad con la LAU, cláusulas nulas, protecciones para ambas partes",
+  "recomendaciones_contrato": "Recomendaciones concretas para mejorar el contrato en futuras renovaciones, cláusulas a añadir o modificar"
+}
+
+La valoración es un número del 1 al 10 (puede tener un decimal). Todos los campos en español.`;
+
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), 115_000);
+
+    const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: controlador.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'pdfs-2024-09-25',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 3000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+            { type: 'text', text: prompt },
+          ],
+        }],
+      }),
+    });
+
+    clearTimeout(temporizador);
+
+    if (!respuesta.ok) {
+      const cuerpo = await respuesta.text();
+      console.error(`Error Anthropic analizar-contrato-experto [${respuesta.status}]:`, cuerpo.slice(0, 300));
+      return res.status(502).json({ error: 'Error al comunicarse con la IA. Inténtalo de nuevo.' });
+    }
+
+    const iaResult = await respuesta.json();
+    const texto = iaResult.content?.filter((b) => b.type === 'text').map((b) => b.text).join('') || '';
+
+    let analisis;
+    try {
+      analisis = JSON.parse(texto);
+    } catch {
+      const m = texto.match(/\{[\s\S]*\}/);
+      if (!m) return res.status(422).json({ error: 'No se pudo extraer el análisis estructurado' });
+      analisis = JSON.parse(m[0]);
+    }
+
+    await pool.query(
+      `UPDATE inquilinos SET
+        clausulas_principales=$1, clausulas_perjudiciales=$2,
+        obligaciones_inquilino=$3, obligaciones_propietario=$4,
+        analisis_juridico=$5, recomendaciones_contrato=$6,
+        valoracion_contrato=$7, fecha_ultimo_analisis_contrato=NOW()
+       WHERE id=$8`,
+      [
+        analisis.clausulas_principales || null,
+        analisis.clausulas_perjudiciales || null,
+        analisis.obligaciones_inquilino || null,
+        analisis.obligaciones_propietario || null,
+        analisis.analisis_juridico || null,
+        analisis.recomendaciones_contrato || null,
+        analisis.valoracion_contrato || null,
+        req.params.id,
+      ]
+    );
+
+    const final = await pool.query('SELECT * FROM inquilinos WHERE id=$1', [req.params.id]);
+    const r = final.rows[0];
+    res.json({
+      valoracion_contrato: r.valoracion_contrato,
+      clausulas_principales: r.clausulas_principales,
+      clausulas_perjudiciales: r.clausulas_perjudiciales,
+      obligaciones_inquilino: r.obligaciones_inquilino,
+      obligaciones_propietario: r.obligaciones_propietario,
+      analisis_juridico: r.analisis_juridico,
+      recomendaciones_contrato: r.recomendaciones_contrato,
+      fecha_ultimo_analisis_contrato: r.fecha_ultimo_analisis_contrato,
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      return res.status(504).json({ error: 'La IA tardó demasiado. Inténtalo de nuevo.' });
+    }
+    console.error('Error analizar-contrato-experto:', error.message);
+    res.status(500).json({ error: 'Error interno al analizar el contrato' });
   }
 });
 

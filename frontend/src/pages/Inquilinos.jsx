@@ -10,12 +10,14 @@ import {
   obtenerInquilinosApi, crearInquilinoApi, actualizarInquilinoApi,
   eliminarInquilinoApi, obtenerInmueblesApi,
   finalizarInquilinoApi, renovarContratoApi, generarContratoWordApi,
+  analizarContratoExpertoApi,
 } from '../api/index.js';
 import { analizarContratoApi } from '../api/index.js';
 
 const formularioVacio = {
   inmueble_id: '',
   nombre: '',
+  tomador_contrato: '',
   email: '',
   telefono: '',
   fecha_inicio_contrato: '',
@@ -24,6 +26,13 @@ const formularioVacio = {
   notas: '',
   documento_url: '',
   observaciones_ia: '',
+  clausulas_principales: '',
+  clausulas_perjudiciales: '',
+  obligaciones_inquilino: '',
+  obligaciones_propietario: '',
+  analisis_juridico: '',
+  recomendaciones_contrato: '',
+  valoracion_contrato: '',
 };
 
 const renovarVacio = { fecha_inicio: '', fecha_fin: '', importe: '', notas: '' };
@@ -59,6 +68,13 @@ export default function Inquilinos() {
   // Confirmar eliminar
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(null);
 
+  // Modal análisis jurídico IA
+  const [modalAnalisis, setModalAnalisis] = useState(false);
+  const [inquilinoAnalisis, setInquilinoAnalisis] = useState(null);
+  const [analisisActual, setAnalisisActual] = useState(null);
+  const [analizando, setAnalizando] = useState(false);
+  const [errorAnalisis, setErrorAnalisis] = useState('');
+
   async function cargar() {
     try {
       const [resInquilinos, resInmuebles] = await Promise.all([
@@ -91,6 +107,7 @@ export default function Inquilinos() {
     setFormulario({
       inmueble_id: inquilino.inmueble_id || '',
       nombre: inquilino.nombre || '',
+      tomador_contrato: inquilino.tomador_contrato || '',
       email: inquilino.email || '',
       telefono: inquilino.telefono || '',
       fecha_inicio_contrato: inquilino.fecha_inicio_contrato ? inquilino.fecha_inicio_contrato.split('T')[0] : '',
@@ -99,6 +116,13 @@ export default function Inquilinos() {
       notas: inquilino.notas || '',
       documento_url: inquilino.documento_url || '',
       observaciones_ia: inquilino.observaciones_ia || '',
+      clausulas_principales: inquilino.clausulas_principales || '',
+      clausulas_perjudiciales: inquilino.clausulas_perjudiciales || '',
+      obligaciones_inquilino: inquilino.obligaciones_inquilino || '',
+      obligaciones_propietario: inquilino.obligaciones_propietario || '',
+      analisis_juridico: inquilino.analisis_juridico || '',
+      recomendaciones_contrato: inquilino.recomendaciones_contrato || '',
+      valoracion_contrato: inquilino.valoracion_contrato || '',
     });
     setPasoModal('form');
     setError('');
@@ -144,7 +168,13 @@ export default function Inquilinos() {
         fecha_inicio_contrato: datos.fecha_inicio || prev.fecha_inicio_contrato,
         fecha_fin_contrato: datos.fecha_fin || prev.fecha_fin_contrato,
         importe_renta: datos.importe_renta != null ? String(datos.importe_renta) : prev.importe_renta,
-        observaciones_ia: datos.observaciones_ia || prev.observaciones_ia,
+        clausulas_principales: datos.clausulas_principales || prev.clausulas_principales,
+        clausulas_perjudiciales: datos.clausulas_perjudiciales || prev.clausulas_perjudiciales,
+        obligaciones_inquilino: datos.obligaciones_inquilino || prev.obligaciones_inquilino,
+        obligaciones_propietario: datos.obligaciones_propietario || prev.obligaciones_propietario,
+        analisis_juridico: datos.analisis_juridico || prev.analisis_juridico,
+        recomendaciones_contrato: datos.recomendaciones_contrato || prev.recomendaciones_contrato,
+        valoracion_contrato: datos.valoracion_contrato != null ? String(datos.valoracion_contrato) : prev.valoracion_contrato,
         documento_url: documento_url || prev.documento_url,
       }));
       setPasoModal('form');
@@ -262,6 +292,49 @@ export default function Inquilinos() {
     }
   }
 
+  // --- Modal análisis jurídico IA ---
+  function abrirAnalisis(inquilino) {
+    setInquilinoAnalisis(inquilino);
+    setErrorAnalisis('');
+    if (inquilino.fecha_ultimo_analisis_contrato) {
+      setAnalisisActual({
+        clausulas_principales: inquilino.clausulas_principales,
+        clausulas_perjudiciales: inquilino.clausulas_perjudiciales,
+        obligaciones_inquilino: inquilino.obligaciones_inquilino,
+        obligaciones_propietario: inquilino.obligaciones_propietario,
+        analisis_juridico: inquilino.analisis_juridico,
+        recomendaciones_contrato: inquilino.recomendaciones_contrato,
+        valoracion_contrato: inquilino.valoracion_contrato,
+        fecha_ultimo_analisis_contrato: inquilino.fecha_ultimo_analisis_contrato,
+      });
+    } else {
+      setAnalisisActual(null);
+    }
+    setModalAnalisis(true);
+  }
+
+  function cerrarModalAnalisis() {
+    setModalAnalisis(false);
+    setInquilinoAnalisis(null);
+    setAnalisisActual(null);
+    setAnalizando(false);
+    setErrorAnalisis('');
+  }
+
+  async function handleAnalizarExperto() {
+    setAnalizando(true);
+    setErrorAnalisis('');
+    try {
+      const res = await analizarContratoExpertoApi(inquilinoAnalisis.id);
+      setAnalisisActual(res.data);
+      await cargar();
+    } catch (err) {
+      setErrorAnalisis(err.response?.data?.error || 'Error al analizar el contrato');
+    } finally {
+      setAnalizando(false);
+    }
+  }
+
   // --- Tabla ---
   const columnas = [
     {
@@ -322,7 +395,7 @@ export default function Inquilinos() {
     {
       clave: 'acciones',
       titulo: 'Acciones',
-      ancho: '160px',
+      ancho: '185px',
       render: (f) => (
         <div className="flex items-center gap-1">
           <button
@@ -338,6 +411,13 @@ export default function Inquilinos() {
             className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
           >
             <UserX size={20} />
+          </button>
+          <button
+            onClick={() => abrirAnalisis(f)}
+            title="Análisis jurídico IA"
+            className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+          >
+            <Sparkles size={20} />
           </button>
           <button
             onClick={() => abrirEditar(f)}
@@ -357,6 +437,14 @@ export default function Inquilinos() {
       ),
     },
   ];
+
+  // --- Helpers análisis ---
+  function badgeValoracion(v) {
+    const num = parseFloat(v);
+    if (isNaN(num)) return null;
+    const color = num >= 7 ? 'bg-green-100 text-green-700' : num >= 5 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700';
+    return <span className={`inline-block px-2 py-0.5 rounded-full text-sm font-bold ${color}`}>{num.toFixed(1)}/10</span>;
+  }
 
   return (
     <div className="p-4 md:p-8">
@@ -474,6 +562,10 @@ export default function Inquilinos() {
                 <input name="nombre" value={formulario.nombre} onChange={handleCambio} className="campo-formulario" placeholder="Juan García López" />
               </div>
               <div className="col-span-2">
+                <label className="etiqueta-formulario">Tomador del contrato (arrendador/propietario)</label>
+                <input name="tomador_contrato" value={formulario.tomador_contrato} onChange={handleCambio} className="campo-formulario" placeholder="Nombre del arrendador" />
+              </div>
+              <div className="col-span-2">
                 <label className="etiqueta-formulario">Inmueble asociado</label>
                 <select name="inmueble_id" value={formulario.inmueble_id} onChange={handleCambio} className="campo-formulario">
                   <option value="">Sin inmueble asignado</option>
@@ -523,20 +615,55 @@ export default function Inquilinos() {
                 <label className="etiqueta-formulario">Notas</label>
                 <textarea name="notas" value={formulario.notas} onChange={handleCambio} rows={2} className="campo-formulario resize-none" placeholder="Observaciones..." />
               </div>
-              {formulario.observaciones_ia && (
-                <div className="col-span-2">
-                  <label className="etiqueta-formulario flex items-center gap-1">
-                    <Sparkles size={13} className="text-[#1e3a5f]" />
-                    Análisis IA del contrato
-                  </label>
-                  <textarea
-                    name="observaciones_ia"
-                    value={formulario.observaciones_ia}
-                    onChange={handleCambio}
-                    rows={3}
-                    className="campo-formulario resize-none bg-blue-50 border-blue-200 text-blue-900 text-sm"
-                    placeholder="Observaciones extraídas por IA..."
-                  />
+
+              {/* Análisis jurídico IA (solo si hay datos) */}
+              {(formulario.clausulas_principales || formulario.clausulas_perjudiciales || formulario.analisis_juridico || formulario.recomendaciones_contrato) && (
+                <div className="col-span-2 space-y-3">
+                  <div className="flex items-center gap-2 pb-1 border-b border-purple-200">
+                    <Sparkles size={14} className="text-purple-600" />
+                    <span className="text-sm font-semibold text-purple-700">Análisis jurídico IA</span>
+                    {formulario.valoracion_contrato && (
+                      <span className="ml-auto text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-bold">
+                        {parseFloat(formulario.valoracion_contrato).toFixed(1)}/10
+                      </span>
+                    )}
+                  </div>
+                  {formulario.clausulas_principales && (
+                    <div>
+                      <label className="etiqueta-formulario">Cláusulas principales</label>
+                      <textarea name="clausulas_principales" value={formulario.clausulas_principales} onChange={handleCambio} rows={2} className="campo-formulario resize-none text-sm bg-blue-50 border-blue-200" />
+                    </div>
+                  )}
+                  {formulario.clausulas_perjudiciales && (
+                    <div>
+                      <label className="etiqueta-formulario">Cláusulas perjudiciales</label>
+                      <textarea name="clausulas_perjudiciales" value={formulario.clausulas_perjudiciales} onChange={handleCambio} rows={2} className="campo-formulario resize-none text-sm bg-red-50 border-red-200" />
+                    </div>
+                  )}
+                  {formulario.obligaciones_inquilino && (
+                    <div>
+                      <label className="etiqueta-formulario">Obligaciones del inquilino</label>
+                      <textarea name="obligaciones_inquilino" value={formulario.obligaciones_inquilino} onChange={handleCambio} rows={2} className="campo-formulario resize-none text-sm" />
+                    </div>
+                  )}
+                  {formulario.obligaciones_propietario && (
+                    <div>
+                      <label className="etiqueta-formulario">Obligaciones del propietario</label>
+                      <textarea name="obligaciones_propietario" value={formulario.obligaciones_propietario} onChange={handleCambio} rows={2} className="campo-formulario resize-none text-sm" />
+                    </div>
+                  )}
+                  {formulario.analisis_juridico && (
+                    <div>
+                      <label className="etiqueta-formulario">Análisis jurídico</label>
+                      <textarea name="analisis_juridico" value={formulario.analisis_juridico} onChange={handleCambio} rows={3} className="campo-formulario resize-none text-sm bg-blue-50 border-blue-200" />
+                    </div>
+                  )}
+                  {formulario.recomendaciones_contrato && (
+                    <div>
+                      <label className="etiqueta-formulario">Recomendaciones</label>
+                      <textarea name="recomendaciones_contrato" value={formulario.recomendaciones_contrato} onChange={handleCambio} rows={2} className="campo-formulario resize-none text-sm bg-green-50 border-green-200" />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -550,6 +677,138 @@ export default function Inquilinos() {
               </button>
             </div>
           </form>
+        )}
+      </Modal>
+
+      {/* Modal análisis jurídico IA */}
+      <Modal
+        abierto={modalAnalisis}
+        onCerrar={cerrarModalAnalisis}
+        titulo={`Análisis jurídico IA — ${inquilinoAnalisis?.nombre || ''}`}
+        ancho="max-w-2xl"
+      >
+        {!inquilinoAnalisis?.documento_url ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+              <FileText size={28} className="text-gray-400" />
+            </div>
+            <p className="text-gray-600 font-medium mb-1">Sin documento del contrato</p>
+            <p className="text-sm text-gray-400">Sube el PDF del contrato para poder realizar el análisis jurídico.</p>
+          </div>
+        ) : analizando ? (
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600" />
+            </div>
+            <p className="text-gray-700 font-medium mb-1">Analizando el contrato...</p>
+            <p className="text-sm text-gray-400">La IA está revisando el contrato. Puede tardar hasta un minuto.</p>
+          </div>
+        ) : analisisActual ? (
+          <div className="space-y-4">
+            {/* Cabecera valoración + fecha */}
+            <div className="flex items-center justify-between flex-wrap gap-2 pb-3 border-b border-gray-200">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-500 font-medium">Valoración:</span>
+                {analisisActual.valoracion_contrato
+                  ? badgeValoracion(analisisActual.valoracion_contrato)
+                  : <span className="text-gray-400 text-sm">—</span>
+                }
+              </div>
+              {analisisActual.fecha_ultimo_analisis_contrato && (
+                <span className="text-xs text-gray-400">
+                  Analizado el {new Date(analisisActual.fecha_ultimo_analisis_contrato).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+            </div>
+
+            {/* Cláusulas principales */}
+            {analisisActual.clausulas_principales && (
+              <div className="bg-blue-50 rounded-xl p-4">
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Cláusulas principales</p>
+                <p className="text-sm text-blue-900 whitespace-pre-line">{analisisActual.clausulas_principales}</p>
+              </div>
+            )}
+
+            {/* Cláusulas perjudiciales */}
+            {analisisActual.clausulas_perjudiciales && (
+              <div className="bg-red-50 rounded-xl p-4">
+                <p className="text-xs font-semibold text-red-700 uppercase tracking-wide mb-2">Cláusulas perjudiciales para el arrendador</p>
+                <p className="text-sm text-red-900 whitespace-pre-line">{analisisActual.clausulas_perjudiciales}</p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* Obligaciones inquilino */}
+              {analisisActual.obligaciones_inquilino && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Obligaciones del inquilino</p>
+                  <p className="text-sm text-gray-800 whitespace-pre-line">{analisisActual.obligaciones_inquilino}</p>
+                </div>
+              )}
+
+              {/* Obligaciones propietario */}
+              {analisisActual.obligaciones_propietario && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Obligaciones del propietario</p>
+                  <p className="text-sm text-gray-800 whitespace-pre-line">{analisisActual.obligaciones_propietario}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Análisis jurídico */}
+            {analisisActual.analisis_juridico && (
+              <div className="bg-indigo-50 rounded-xl p-4">
+                <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide mb-2">Análisis jurídico (conformidad LAU)</p>
+                <p className="text-sm text-indigo-900 whitespace-pre-line">{analisisActual.analisis_juridico}</p>
+              </div>
+            )}
+
+            {/* Recomendaciones */}
+            {analisisActual.recomendaciones_contrato && (
+              <div className="bg-green-50 rounded-xl p-4">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">Recomendaciones</p>
+                <p className="text-sm text-green-900 whitespace-pre-line">{analisisActual.recomendaciones_contrato}</p>
+              </div>
+            )}
+
+            {errorAnalisis && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{errorAnalisis}</div>
+            )}
+
+            <div className="flex justify-end pt-2">
+              <button
+                type="button"
+                onClick={handleAnalizarExperto}
+                disabled={analizando}
+                className="btn-primario bg-purple-600 hover:bg-purple-700"
+              >
+                <Sparkles size={15} />
+                Regenerar análisis
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="w-14 h-14 bg-purple-50 rounded-2xl flex items-center justify-center mb-4">
+              <Sparkles size={28} className="text-purple-400" />
+            </div>
+            <p className="text-gray-700 font-medium mb-1">Sin análisis jurídico</p>
+            <p className="text-sm text-gray-400 mb-6">
+              Haz clic en "Analizar con IA" para que un experto jurídico revise el contrato.
+            </p>
+            {errorAnalisis && (
+              <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg mb-4 w-full">{errorAnalisis}</div>
+            )}
+            <button
+              type="button"
+              onClick={handleAnalizarExperto}
+              disabled={analizando}
+              className="btn-primario bg-purple-600 hover:bg-purple-700"
+            >
+              <Sparkles size={15} />
+              Analizar con IA
+            </button>
+          </div>
         )}
       </Modal>
 
