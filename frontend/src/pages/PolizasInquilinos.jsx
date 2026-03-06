@@ -173,7 +173,7 @@ export default function PolizasInquilinos() {
       clave: 'documento_url',
       titulo: 'Doc.',
       render: (f) => f.documento_url ? (
-        <a href={f.documento_url} target="_blank" rel="noopener noreferrer" className="text-[#1e3a5f] hover:text-blue-600">
+        <a href={f.documento_url} target="_blank" rel="noopener noreferrer" title="Ver documento PDF" className="text-[#1e3a5f] hover:text-blue-600">
           <ExternalLink size={15} />
         </a>
       ) : '—',
@@ -184,10 +184,10 @@ export default function PolizasInquilinos() {
       ancho: '100px',
       render: (f) => (
         <div className="flex items-center gap-2">
-          <button onClick={() => abrirEditar(f)} className="p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
+          <button onClick={() => abrirEditar(f)} title="Editar" className="p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
             <Pencil size={15} />
           </button>
-          <button onClick={() => setConfirmandoEliminar(f)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+          <button onClick={() => setConfirmandoEliminar(f)} title="Eliminar" className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
             <Trash2 size={15} />
           </button>
         </div>
