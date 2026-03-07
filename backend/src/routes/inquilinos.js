@@ -73,6 +73,8 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'El nombre del inquilino es requerido' });
     }
 
+    console.log('POST inquilino — nombre:', nombre, '| observaciones_ia:', observaciones_ia?.slice(0, 100) || '(vacío)');
+
     const resultado = await pool.query(
       `INSERT INTO inquilinos
         (inmueble_id, nombre, email, telefono, fecha_inicio_contrato, fecha_fin_contrato,
