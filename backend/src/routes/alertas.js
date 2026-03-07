@@ -11,9 +11,12 @@ router.get('/resumen', async (req, res) => {
     const [contratosPronto, inquilinosSinSeguro, inmueblesSinPoliza] = await Promise.all([
       pool.query(
         `SELECT COUNT(*)::int FROM inquilinos
-         WHERE fecha_fin_contrato IS NOT NULL
-           AND fecha_fin_contrato >= CURRENT_DATE
-           AND (fecha_fin_contrato - CURRENT_DATE) <= 30`
+         WHERE (estado = 'activo' OR estado IS NULL)
+           AND fecha_fin_contrato IS NOT NULL
+           AND (
+             fecha_fin_contrato < CURRENT_DATE
+             OR (fecha_fin_contrato - CURRENT_DATE) <= 30
+           )`
       ),
       pool.query(
         `SELECT COUNT(*)::int FROM inquilinos i

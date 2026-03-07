@@ -19,7 +19,7 @@ const elementosNav = [
   {
     ruta: '/inquilinos', etiqueta: 'Inquilinos', icono: Users,
     badgeClave: 'contratos_proximos',
-    badgeTooltip: (n) => `${n} contrato${n !== 1 ? 's' : ''} próximo${n !== 1 ? 's' : ''} a vencer`,
+    badgeTooltip: (n) => `${n} contrato${n !== 1 ? 's' : ''} vencido${n !== 1 ? 's' : ''} o próximo${n !== 1 ? 's' : ''} a vencer`,
   },
   { ruta: '/historico-inquilinos', etiqueta: 'Histórico inquilinos', icono: Archive },
   {

@@ -386,29 +386,30 @@ export default function Inquilinos() {
         : '—',
     },
     {
-      clave: 'fecha_fin_contrato', titulo: 'Fin contrato', sortable: true,
+      clave: 'fecha_fin_contrato', titulo: 'Fin / Estado contrato', sortable: true,
       valorOrden: (f) => f.fecha_fin_contrato || '9999-12-31',
       render: (f) => {
         if (!f.fecha_fin_contrato) return '—';
         const fecha = new Date(f.fecha_fin_contrato);
         const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
         const dias = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
-        const pasado = dias < 0;
-        const proximo = dias >= 0 && dias <= 30;
         return (
-          <div className="flex items-center gap-2">
-            <span className={pasado ? 'text-red-600 font-medium' : proximo ? 'text-orange-600 font-medium' : ''}>
-              {fecha.toLocaleDateString('es-ES')}
-            </span>
-            {proximo && (
-              <span className="inline-flex items-center gap-1 text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium">
-                <AlertTriangle size={10} />
-                {dias}d
+          <div className="flex flex-col gap-1">
+            <span className="text-sm text-gray-600">{fecha.toLocaleDateString('es-ES')}</span>
+            {dias < 0 && (
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-red-600 text-white w-fit">
+                VENCIDO
               </span>
             )}
-            {pasado && (
-              <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium">
-                Vencido
+            {dias >= 0 && dias <= 30 && (
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500 text-white w-fit">
+                VENCE EN {dias}D
+              </span>
+            )}
+            {dias > 30 && (
+              <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-green-600 text-white w-fit">
+                VIGENTE
               </span>
             )}
           </div>
