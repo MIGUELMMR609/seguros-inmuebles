@@ -139,6 +139,7 @@ IMPORTANTE: Si el contrato tiene varios arrendatarios, el campo "nombre_inquilin
       }
     }
 
+    console.log('analizar-contrato — nombre_inquilino:', datos.nombre_inquilino, '| otros_inquilinos:', JSON.stringify(datos.otros_inquilinos));
     const documentoUrl = await promesaUrl;
     res.json({ datos, documento_url: documentoUrl });
   } catch (error) {
