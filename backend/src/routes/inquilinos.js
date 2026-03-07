@@ -226,7 +226,7 @@ router.post('/:id/renovar', async (req, res) => {
          clausulas_principales, clausulas_perjudiciales,
          obligaciones_inquilino, obligaciones_propietario,
          analisis_juridico, recomendaciones_contrato, valoracion_contrato
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+       ) VALUES ($1,$2,$3,$4,$5::text,$6,$7::text,$8::text,$9::text,$10::text,$11::text,$12::text,$13::text,$14::text,$15::numeric)`,
       [
         inquilinoId,
         inq.fecha_inicio_contrato, inq.fecha_fin_contrato, inq.importe_renta,
@@ -256,19 +256,19 @@ router.post('/:id/renovar', async (req, res) => {
       // Contrato nuevo: sustituir todos los campos del contrato
       resultado = await pool.query(
         `UPDATE inquilinos
-         SET fecha_inicio_contrato          = COALESCE($1, fecha_inicio_contrato),
-             fecha_fin_contrato             = COALESCE($2, fecha_fin_contrato),
-             importe_renta                  = COALESCE($3, importe_renta),
-             documento_url                  = $4,
-             notas                          = $5,
-             clausulas_principales          = $6,
-             clausulas_perjudiciales        = $7,
-             obligaciones_inquilino         = $8,
-             obligaciones_propietario       = $9,
-             analisis_juridico              = $10,
-             recomendaciones_contrato       = $11,
-             valoracion_contrato            = $12,
-             fecha_ultimo_analisis_contrato = CASE WHEN $12 IS NOT NULL THEN NOW() ELSE NULL END
+         SET fecha_inicio_contrato          = COALESCE($1::date, fecha_inicio_contrato),
+             fecha_fin_contrato             = COALESCE($2::date, fecha_fin_contrato),
+             importe_renta                  = COALESCE($3::numeric, importe_renta),
+             documento_url                  = $4::text,
+             notas                          = $5::text,
+             clausulas_principales          = $6::text,
+             clausulas_perjudiciales        = $7::text,
+             obligaciones_inquilino         = $8::text,
+             obligaciones_propietario       = $9::text,
+             analisis_juridico              = $10::text,
+             recomendaciones_contrato       = $11::text,
+             valoracion_contrato            = $12::numeric,
+             fecha_ultimo_analisis_contrato = CASE WHEN $12::numeric IS NOT NULL THEN NOW() ELSE NULL END
          WHERE id = $13 RETURNING *`,
         [
           fecha_inicio || null, fecha_fin || null, importe || null,
