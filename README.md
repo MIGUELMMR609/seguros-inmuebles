@@ -246,6 +246,38 @@ seguros-inmuebles/
 
 ---
 
+## Backup de la base de datos
+
+### Ejecutar backup manual
+
+Desde la carpeta `backend/`:
+
+```bash
+cd ~/gestion-polizas/seguros-inmuebles/backend
+npm run backup
+```
+
+El backup se guarda en `~/gestion-polizas/backups/` con el nombre `backup_YYYY-MM-DD_HHhMM.json`.
+
+### Restaurar desde un backup
+
+```bash
+cd ~/gestion-polizas/seguros-inmuebles/backend
+npm run restore -- --file ~/gestion-polizas/backups/backup_2026-03-07_10h30.json
+```
+
+> ⚠️ La restauración **borrará y reemplazará** todos los datos actuales. Se pedirá confirmación escribiendo `RESTAURAR`.
+
+### Backup automático con cron (opcional)
+
+Para ejecutar un backup diario a las 2:00 AM, añade esta línea con `crontab -e`:
+
+```
+0 2 * * * cd ~/gestion-polizas/seguros-inmuebles/backend && npm run backup >> ~/gestion-polizas/backups/cron.log 2>&1
+```
+
+---
+
 ## Licencia
 
 MIT
