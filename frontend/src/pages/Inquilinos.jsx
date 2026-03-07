@@ -347,8 +347,10 @@ export default function Inquilinos() {
     {
       clave: 'nombre', titulo: 'Nombre',
       render: (f) => {
-        const adicionales = f.notas?.startsWith('Inquilinos adicionales:')
-          ? (f.notas.match(/^Nombre:/gm) || []).length
+        const marcador = 'Inquilinos adicionales:';
+        const idx = f.notas ? f.notas.indexOf(marcador) : -1;
+        const adicionales = idx !== -1
+          ? f.notas.slice(idx + marcador.length).split('\n').filter((l) => l.trim()).length
           : 0;
         return (
           <span>
