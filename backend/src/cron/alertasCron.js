@@ -72,21 +72,21 @@ async function ejecutarRevisionAlertas() {
     // Enviar email consolidado al admin
     await enviarEmailAlertas(todasLasAlertas, inquilinosSinSeguro);
 
-    // Enviar email individual a cada inquilino con email
-    let emailsInquilinos = 0;
-    for (const poliza of polizasInquilinos) {
-      if (poliza.email_inquilino) {
-        await enviarEmailInquilino(
-          { nombre: poliza.nombre_referencia, email: poliza.email_inquilino },
-          poliza
-        );
-        emailsInquilinos++;
-      }
-    }
-
-    if (emailsInquilinos > 0) {
-      console.log(`Emails de aviso enviados a ${emailsInquilinos} inquilinos`);
-    }
+    // SUSPENDIDO: envío de email individual a inquilinos desactivado hasta nuevo aviso
+    // Para reactivar, descomentar el bloque siguiente:
+    // let emailsInquilinos = 0;
+    // for (const poliza of polizasInquilinos) {
+    //   if (poliza.email_inquilino) {
+    //     await enviarEmailInquilino(
+    //       { nombre: poliza.nombre_referencia, email: poliza.email_inquilino },
+    //       poliza
+    //     );
+    //     emailsInquilinos++;
+    //   }
+    // }
+    // if (emailsInquilinos > 0) {
+    //   console.log(`Emails de aviso enviados a ${emailsInquilinos} inquilinos`);
+    // }
 
     console.log('Revisión diaria completada');
   } catch (error) {
