@@ -120,7 +120,7 @@ export default function HistoricoInquilinos() {
           columnas={columnas}
           datos={inquilinos}
           cargando={cargando}
-          mensajeVacio="No hay contratos finalizados en el histórico."
+          mensajeVacio="No hay contratos finalizados. Cuando uses el botón 'Finalizar contrato' en un inquilino activo, aparecerá aquí."
         />
       </div>
 
