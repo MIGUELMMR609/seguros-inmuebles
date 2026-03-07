@@ -176,7 +176,7 @@ export default function Inquilinos() {
         analisis_juridico: datos.analisis_juridico || prev.analisis_juridico,
         recomendaciones_contrato: datos.recomendaciones_contrato || prev.recomendaciones_contrato,
         valoracion_contrato: datos.valoracion_contrato != null ? String(datos.valoracion_contrato) : prev.valoracion_contrato,
-        notas: datos.otros_inquilinos ? `Inquilinos adicionales:\n${datos.otros_inquilinos}` : prev.notas,
+        observaciones_ia: datos.otros_inquilinos ? `Inquilinos adicionales:\n${datos.otros_inquilinos}` : prev.observaciones_ia,
         documento_url: documento_url || prev.documento_url,
       }));
       setPasoModal('form');
@@ -348,9 +348,10 @@ export default function Inquilinos() {
       clave: 'nombre', titulo: 'Nombre',
       render: (f) => {
         const marcador = 'Inquilinos adicionales:';
-        const idx = f.notas ? f.notas.indexOf(marcador) : -1;
+        const fuente = f.observaciones_ia || f.notas || '';
+        const idx = fuente.indexOf(marcador);
         const adicionales = idx !== -1
-          ? f.notas.slice(idx + marcador.length).split('\n').filter((l) => l.trim()).length
+          ? fuente.slice(idx + marcador.length).split('\n').filter((l) => l.trim()).length
           : 0;
         return (
           <span>
