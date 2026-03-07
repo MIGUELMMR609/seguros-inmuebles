@@ -563,10 +563,6 @@ export default function Inquilinos() {
                 <input name="nombre" value={formulario.nombre} onChange={handleCambio} className="campo-formulario" placeholder="Juan García López" />
               </div>
               <div className="col-span-2">
-                <label className="etiqueta-formulario">Tomador del contrato (arrendador/propietario)</label>
-                <input name="tomador_contrato" value={formulario.tomador_contrato} onChange={handleCambio} className="campo-formulario" placeholder="Nombre del arrendador" />
-              </div>
-              <div className="col-span-2">
                 <label className="etiqueta-formulario">Inmueble asociado</label>
                 <select name="inmueble_id" value={formulario.inmueble_id} onChange={handleCambio} className="campo-formulario">
                   <option value="">Sin inmueble asignado</option>
