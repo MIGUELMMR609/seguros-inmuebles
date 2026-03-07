@@ -36,6 +36,27 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /api/inquilinos/historico-renovaciones — contratos archivados por renovación
+// IMPORTANTE: debe ir antes de /:id para evitar que Express lo trate como un id
+router.get('/historico-renovaciones', async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT cr.*,
+              inq.nombre AS nombre_inquilino,
+              inq.inmueble_id,
+              inm.nombre AS nombre_inmueble
+       FROM contrato_renovaciones cr
+       JOIN inquilinos inq ON cr.inquilino_id = inq.id
+       LEFT JOIN inmuebles inm ON inq.inmueble_id = inm.id
+       ORDER BY cr.fecha_renovacion DESC`
+    );
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('Error al obtener histórico de renovaciones:', error);
+    res.status(500).json({ error: 'Error al obtener el histórico de renovaciones' });
+  }
+});
+
 // GET /api/inquilinos/:id
 router.get('/:id', async (req, res) => {
   try {

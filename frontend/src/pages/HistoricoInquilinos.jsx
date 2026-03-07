@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Archive, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Archive, RotateCcw, AlertTriangle, RefreshCw } from 'lucide-react';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
-import { obtenerHistoricoInquilinosApi, reactivarInquilinoApi } from '../api/index.js';
+import { obtenerHistoricoInquilinosApi, reactivarInquilinoApi, obtenerHistoricoRenovacionesApi } from '../api/index.js';
 
 export default function HistoricoInquilinos() {
   const [inquilinos, setInquilinos] = useState([]);
+  const [renovaciones, setRenovaciones] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState('');
   const [confirmandoReactivar, setConfirmandoReactivar] = useState(null);
@@ -13,8 +14,12 @@ export default function HistoricoInquilinos() {
 
   async function cargar() {
     try {
-      const res = await obtenerHistoricoInquilinosApi();
-      setInquilinos(res.data);
+      const [resInq, resRen] = await Promise.all([
+        obtenerHistoricoInquilinosApi(),
+        obtenerHistoricoRenovacionesApi(),
+      ]);
+      setInquilinos(resInq.data);
+      setRenovaciones(resRen.data);
     } catch {
       setError('Error al cargar el histórico de inquilinos');
     } finally {
@@ -122,6 +127,69 @@ export default function HistoricoInquilinos() {
           cargando={cargando}
           mensajeVacio="No hay contratos finalizados en el histórico."
         />
+      </div>
+
+      {/* Sección: contratos anteriores archivados por renovación */}
+      <div className="tarjeta mt-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-bold text-gray-800 flex items-center gap-2">
+            <RefreshCw size={18} className="text-blue-600" />
+            Contratos anteriores (renovados)
+          </h2>
+          <span className={`text-sm font-semibold px-3 py-1 rounded-full ${renovaciones.length > 0 ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-500'}`}>
+            {renovaciones.length} registro{renovaciones.length !== 1 ? 's' : ''}
+          </span>
+        </div>
+        {cargando ? (
+          <div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]" /></div>
+        ) : renovaciones.length === 0 ? (
+          <p className="text-sm text-gray-400 py-4 text-center">No hay contratos renovados aún.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
+                  <th className="pb-2 pr-4">Inquilino</th>
+                  <th className="pb-2 pr-4">Inmueble</th>
+                  <th className="pb-2 pr-4">Período del contrato</th>
+                  <th className="pb-2 pr-4">Renta/mes</th>
+                  <th className="pb-2 pr-4">Cláusula adicional</th>
+                  <th className="pb-2 pr-4">PDF</th>
+                  <th className="pb-2 text-right">Archivado</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {renovaciones.map((r) => (
+                  <tr key={r.id} className="hover:bg-gray-50">
+                    <td className="py-3 pr-4 font-medium text-gray-900">{r.nombre_inquilino || '—'}</td>
+                    <td className="py-3 pr-4 text-gray-600">{r.nombre_inmueble || '—'}</td>
+                    <td className="py-3 pr-4 text-gray-600">
+                      {r.fecha_inicio ? new Date(r.fecha_inicio).toLocaleDateString('es-ES') : '—'}
+                      {' → '}
+                      {r.fecha_fin ? new Date(r.fecha_fin).toLocaleDateString('es-ES') : '—'}
+                    </td>
+                    <td className="py-3 pr-4 text-gray-600">
+                      {r.importe ? `${parseFloat(r.importe).toFixed(2)} €` : '—'}
+                    </td>
+                    <td className="py-3 pr-4 text-gray-500 max-w-xs">
+                      {r.clausulas_adicionales
+                        ? <span title={r.clausulas_adicionales}>{r.clausulas_adicionales.length > 50 ? r.clausulas_adicionales.slice(0, 50) + '…' : r.clausulas_adicionales}</span>
+                        : '—'}
+                    </td>
+                    <td className="py-3 pr-4">
+                      {r.documento_url
+                        ? <a href={r.documento_url} target="_blank" rel="noopener noreferrer" className="text-[#1e3a5f] hover:underline font-medium text-xs">Ver PDF</a>
+                        : <span className="text-gray-400">—</span>}
+                    </td>
+                    <td className="py-3 text-right text-gray-400 text-xs whitespace-nowrap">
+                      {new Date(r.fecha_renovacion).toLocaleDateString('es-ES')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Modal confirmar reactivar */}
