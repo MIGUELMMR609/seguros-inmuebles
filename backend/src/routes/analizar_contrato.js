@@ -99,7 +99,7 @@ IMPORTANTE: Si el contrato tiene varios arrendatarios, el campo "nombre_inquilin
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 2048,
+        max_tokens: 4096,
         messages: [{
           role: 'user',
           content: [
@@ -122,19 +122,22 @@ IMPORTANTE: Si el contrato tiene varios arrendatarios, el campo "nombre_inquilin
     const texto = resultado.content?.[0]?.text;
     if (!texto) return res.status(422).json({ error: 'La IA no devolvió ninguna respuesta' });
 
+    // Limpiar posibles delimitadores markdown ```json ... ```
+    const textoLimpio = texto.replace(/^```(?:json)?\s*/m, '').replace(/```\s*$/m, '').trim();
+
     let datos;
     try {
-      datos = JSON.parse(texto);
+      datos = JSON.parse(textoLimpio);
     } catch {
-      const m = texto.match(/\{[\s\S]*\}/);
+      const m = textoLimpio.match(/\{[\s\S]*\}/);
       if (!m) {
-        console.error('analizar-contrato: respuesta IA no contiene JSON. stop_reason:', resultado.stop_reason, '| texto:', texto.slice(0, 500));
+        console.error('analizar-contrato: respuesta IA no contiene JSON. stop_reason:', resultado.stop_reason, '| texto:', textoLimpio.slice(0, 500));
         return res.status(422).json({ error: 'No se pudo extraer información estructurada del PDF' });
       }
       try {
         datos = JSON.parse(m[0]);
       } catch (parseErr) {
-        console.error('analizar-contrato: JSON extraído inválido:', m[0].slice(0, 300));
+        console.error('analizar-contrato: JSON extraído inválido. stop_reason:', resultado.stop_reason, '|', m[0].slice(0, 300));
         return res.status(422).json({ error: 'No se pudo extraer información estructurada del PDF' });
       }
     }
