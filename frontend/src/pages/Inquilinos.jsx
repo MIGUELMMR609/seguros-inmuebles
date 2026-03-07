@@ -344,7 +344,24 @@ export default function Inquilinos() {
       valorOrden: (f) => f.nombre_inmueble || '',
       render: (f) => <span className="font-medium">{f.nombre_inmueble || '—'}</span>,
     },
-    { clave: 'nombre', titulo: 'Nombre', render: (f) => f.nombre },
+    {
+      clave: 'nombre', titulo: 'Nombre',
+      render: (f) => {
+        const adicionales = f.notas?.startsWith('Inquilinos adicionales:')
+          ? (f.notas.match(/^Nombre:/gm) || []).length
+          : 0;
+        return (
+          <span>
+            {f.nombre}
+            {adicionales > 0 && (
+              <span className="ml-1.5 text-xs font-semibold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">
+                +{adicionales}
+              </span>
+            )}
+          </span>
+        );
+      },
+    },
     {
       clave: 'email', titulo: 'Email',
       render: (f) => f.email
