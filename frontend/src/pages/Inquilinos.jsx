@@ -571,7 +571,7 @@ export default function Inquilinos() {
               </div>
               <div>
                 <label className="etiqueta-formulario">Email</label>
-                <input type="email" name="email" value={formulario.email} onChange={handleCambio} className="campo-formulario" placeholder="inquilino@email.com" />
+                <input type="text" name="email" value={formulario.email} onChange={handleCambio} className="campo-formulario" placeholder="email@ejemplo.com, otro@ejemplo.com" />
               </div>
               <div>
                 <label className="etiqueta-formulario">Teléfono</label>
