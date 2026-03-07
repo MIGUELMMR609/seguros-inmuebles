@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   Plus, Pencil, Trash2, Users, AlertTriangle,
-  RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro, Printer, CheckCircle,
+  RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro, Printer, CheckCircle, History,
 } from 'lucide-react';
 import { imprimirInformeContrato } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
@@ -82,6 +82,12 @@ export default function Inquilinos() {
 
   // Confirmar eliminar
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(null);
+
+  // Modal historial de renovaciones
+  const [modalHistorial, setModalHistorial] = useState(false);
+  const [historialInquilino, setHistorialInquilino] = useState(null);
+  const [historialRenovaciones, setHistorialRenovaciones] = useState([]);
+  const [cargandoHistorial, setCargandoHistorial] = useState(false);
 
   // Modal análisis jurídico IA
   const [modalAnalisis, setModalAnalisis] = useState(false);
@@ -389,6 +395,22 @@ export default function Inquilinos() {
     }
   }
 
+  // --- Modal historial de renovaciones ---
+  async function abrirHistorial(inquilino) {
+    setHistorialInquilino(inquilino);
+    setHistorialRenovaciones([]);
+    setCargandoHistorial(true);
+    setModalHistorial(true);
+    try {
+      const res = await obtenerRenovacionesApi(inquilino.id);
+      setHistorialRenovaciones(res.data);
+    } catch {
+      // silencioso
+    } finally {
+      setCargandoHistorial(false);
+    }
+  }
+
   // --- Modal análisis jurídico IA ---
   function abrirAnalisis(inquilino) {
     setInquilinoAnalisis(inquilino);
@@ -513,7 +535,7 @@ export default function Inquilinos() {
     {
       clave: 'acciones',
       titulo: 'Acciones',
-      ancho: '185px',
+      ancho: '215px',
       render: (f) => (
         <div className="flex items-center gap-1">
           <button
@@ -529,6 +551,13 @@ export default function Inquilinos() {
             className="p-1.5 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
           >
             <UserX size={20} />
+          </button>
+          <button
+            onClick={() => abrirHistorial(f)}
+            title="Historial de renovaciones"
+            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+          >
+            <History size={20} />
           </button>
           <button
             onClick={() => abrirAnalisis(f)}
@@ -1177,6 +1206,61 @@ export default function Inquilinos() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal historial de renovaciones */}
+      <Modal
+        abierto={modalHistorial}
+        onCerrar={() => { setModalHistorial(false); setHistorialInquilino(null); setHistorialRenovaciones([]); }}
+        titulo={`Historial de renovaciones — ${historialInquilino?.nombre || ''}`}
+        ancho="max-w-2xl"
+      >
+        {cargandoHistorial ? (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]" />
+          </div>
+        ) : historialRenovaciones.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center">
+            <div className="w-14 h-14 bg-gray-100 rounded-2xl flex items-center justify-center mb-4">
+              <History size={28} className="text-gray-400" />
+            </div>
+            <p className="text-gray-600 font-medium mb-1">Sin contratos anteriores</p>
+            <p className="text-sm text-gray-400">No hay renovaciones registradas para este inquilino.</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {historialRenovaciones.map((r) => (
+              <div key={r.id} className="bg-gray-50 rounded-xl p-4 text-sm">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-semibold text-gray-900">
+                    {r.fecha_inicio ? new Date(r.fecha_inicio).toLocaleDateString('es-ES') : '—'}
+                    {' → '}
+                    {r.fecha_fin ? new Date(r.fecha_fin).toLocaleDateString('es-ES') : '—'}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {r.importe && <span className="font-medium text-gray-700">{parseFloat(r.importe).toFixed(0)} €/mes</span>}
+                    {r.documento_url && (
+                      <a href={r.documento_url} target="_blank" rel="noopener noreferrer" className="text-[#1e3a5f] hover:underline font-medium text-xs">PDF</a>
+                    )}
+                  </div>
+                </div>
+                {r.clausulas_adicionales && (
+                  <p className="text-xs text-gray-500 mb-1">
+                    <span className="font-semibold text-gray-600">Cláusula adicional:</span> {r.clausulas_adicionales}
+                  </p>
+                )}
+                <div className="flex items-center justify-between mt-1">
+                  {r.tipo_renovacion === 'contrato_nuevo' ? (
+                    <span className="inline-block text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Contrato nuevo</span>
+                  ) : (
+                    <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Mismas cláusulas</span>
+                  )}
+                  <span className="text-xs text-gray-400">Archivado el {new Date(r.fecha_renovacion).toLocaleDateString('es-ES')}</span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </Modal>

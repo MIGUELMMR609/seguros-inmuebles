@@ -212,6 +212,19 @@ async function inicializarBaseDatos() {
       );
     `);
 
+    // Limpiar duplicados en contrato_renovaciones (idempotente)
+    await cliente.query(`
+      DELETE FROM contrato_renovaciones
+      WHERE id NOT IN (
+        SELECT MIN(id)
+        FROM contrato_renovaciones
+        GROUP BY inquilino_id,
+                 COALESCE(fecha_inicio::text, ''),
+                 COALESCE(fecha_fin::text, ''),
+                 COALESCE(importe::text, '')
+      )
+    `);
+
     // Columnas adicionales en contrato_renovaciones para histórico completo
     await cliente.query(`
       ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS tipo_renovacion VARCHAR(50) DEFAULT 'mismas_clausulas';

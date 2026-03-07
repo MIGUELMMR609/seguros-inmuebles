@@ -36,27 +36,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-// GET /api/inquilinos/historico-renovaciones — contratos archivados por renovación
-// IMPORTANTE: debe ir antes de /:id para evitar que Express lo trate como un id
-router.get('/historico-renovaciones', async (req, res) => {
-  try {
-    const resultado = await pool.query(
-      `SELECT cr.*,
-              inq.nombre AS nombre_inquilino,
-              inq.inmueble_id,
-              inm.nombre AS nombre_inmueble
-       FROM contrato_renovaciones cr
-       JOIN inquilinos inq ON cr.inquilino_id = inq.id
-       LEFT JOIN inmuebles inm ON inq.inmueble_id = inm.id
-       ORDER BY cr.fecha_renovacion DESC`
-    );
-    res.json(resultado.rows);
-  } catch (error) {
-    console.error('Error al obtener histórico de renovaciones:', error);
-    res.status(500).json({ error: 'Error al obtener el histórico de renovaciones' });
-  }
-});
-
 // GET /api/inquilinos/:id
 router.get('/:id', async (req, res) => {
   try {
@@ -239,8 +218,18 @@ router.post('/:id/renovar', async (req, res) => {
     if (actual.rows.length === 0) return res.status(404).json({ error: 'Inquilino no encontrado' });
     const inq = actual.rows[0];
 
-    // Archivar contrato actual en histórico
-    await pool.query(
+    // Verificar si ya existe una entrada idéntica para evitar duplicados
+    const duplicado = await pool.query(
+      `SELECT id FROM contrato_renovaciones
+       WHERE inquilino_id = $1
+         AND (fecha_inicio IS NOT DISTINCT FROM $2)
+         AND (fecha_fin IS NOT DISTINCT FROM $3)
+         AND (importe IS NOT DISTINCT FROM $4)`,
+      [inquilinoId, inq.fecha_inicio_contrato, inq.fecha_fin_contrato, inq.importe_renta]
+    );
+
+    // Archivar contrato actual en histórico (solo si no es duplicado)
+    if (duplicado.rows.length === 0) await pool.query(
       `INSERT INTO contrato_renovaciones (
          inquilino_id, fecha_inicio, fecha_fin, importe, notas,
          tipo_renovacion, clausulas_adicionales, documento_url,
