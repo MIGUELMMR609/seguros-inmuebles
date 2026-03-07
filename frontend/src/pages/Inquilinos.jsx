@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   Plus, Pencil, Trash2, Users, AlertTriangle,
-  RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro, Printer,
+  RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro, Printer, CheckCircle,
 } from 'lucide-react';
 import { imprimirInformeContrato } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
@@ -10,10 +10,10 @@ import UploadPDF from '../components/UploadPDF.jsx';
 import {
   obtenerInquilinosApi, crearInquilinoApi, actualizarInquilinoApi,
   eliminarInquilinoApi, obtenerInmueblesApi,
-  finalizarInquilinoApi, renovarContratoApi, generarContratoWordApi,
-  analizarContratoExpertoApi,
+  finalizarInquilinoApi, renovarContratoApi, obtenerRenovacionesApi,
+  generarContratoWordApi, analizarContratoExpertoApi,
+  subirDocumentoApi, analizarContratoApi,
 } from '../api/index.js';
-import { analizarContratoApi } from '../api/index.js';
 
 const formularioVacio = {
   inmueble_id: '',
@@ -36,7 +36,17 @@ const formularioVacio = {
   valoracion_contrato: '',
 };
 
-const renovarVacio = { fecha_inicio: '', fecha_fin: '', importe: '', notas: '' };
+const renovarVacio = {
+  tipo: '',
+  fecha_inicio: '', fecha_fin: '', importe: '',
+  clausulas_adicionales: '',
+  nuevo_documento_url: '',
+  // Contrato nuevo:
+  notas: '', documento_url: '',
+  clausulas_principales: '', clausulas_perjudiciales: '',
+  obligaciones_inquilino: '', obligaciones_propietario: '',
+  analisis_juridico: '', recomendaciones_contrato: '', valoracion_contrato: '',
+};
 
 export default function Inquilinos() {
   const [inquilinos, setInquilinos] = useState([]);
@@ -52,6 +62,7 @@ export default function Inquilinos() {
   const [guardando, setGuardando] = useState(false);
   const [errorPdf, setErrorPdf] = useState('');
   const inputPdfRef = useRef(null);
+  const inputPdfRenovarRef = useRef(null);
 
   // Modal finalizar
   const [modalFinalizar, setModalFinalizar] = useState(null);
@@ -65,6 +76,9 @@ export default function Inquilinos() {
   const [renovacionGuardada, setRenovacionGuardada] = useState(false);
   const [idRenovado, setIdRenovado] = useState(null);
   const [generandoWord, setGenerandoWord] = useState(false);
+  const [pasoRenovar, setPasoRenovar] = useState('eleccion');
+  const [renovacionHistorial, setRenovacionHistorial] = useState([]);
+  const [subiendoPdfRenovacion, setSubiendoPdfRenovacion] = useState(false);
 
   // Confirmar eliminar
   const [confirmandoEliminar, setConfirmandoEliminar] = useState(null);
@@ -246,28 +260,108 @@ export default function Inquilinos() {
   function abrirRenovar(inquilino) {
     setModalRenovar(inquilino);
     setFormularioRenovacion({
+      ...renovarVacio,
       fecha_inicio: inquilino.fecha_inicio_contrato ? inquilino.fecha_inicio_contrato.split('T')[0] : '',
       fecha_fin: inquilino.fecha_fin_contrato ? inquilino.fecha_fin_contrato.split('T')[0] : '',
       importe: inquilino.importe_renta || '',
-      notas: '',
     });
+    setPasoRenovar('eleccion');
     setRenovacionGuardada(false);
     setIdRenovado(null);
+    setRenovacionHistorial([]);
+    setError('');
   }
 
   function cerrarRenovar() {
     setModalRenovar(null);
+    setPasoRenovar('eleccion');
     setRenovacionGuardada(false);
     setIdRenovado(null);
+    setRenovacionHistorial([]);
+    if (inputPdfRenovarRef.current) inputPdfRenovarRef.current.value = '';
+  }
+
+  async function handlePdfRenovacion(e) {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    if (inputPdfRenovarRef.current) inputPdfRenovarRef.current.value = '';
+    setSubiendoPdfRenovacion(true);
+    try {
+      const res = await subirDocumentoApi(archivo);
+      setFormularioRenovacion((p) => ({ ...p, nuevo_documento_url: res.data.url }));
+    } catch {
+      setError('Error al subir el PDF de la renovación');
+    } finally {
+      setSubiendoPdfRenovacion(false);
+    }
+  }
+
+  async function handlePdfNuevoContrato(e) {
+    const archivo = e.target.files?.[0];
+    if (!archivo) return;
+    if (inputPdfRenovarRef.current) inputPdfRenovarRef.current.value = '';
+    setPasoRenovar('analizando_nuevo');
+    setError('');
+    try {
+      const res = await analizarContratoApi(archivo);
+      const { datos, documento_url } = res.data;
+      setFormularioRenovacion((prev) => ({
+        ...prev,
+        fecha_inicio: datos.fecha_inicio || prev.fecha_inicio,
+        fecha_fin: datos.fecha_fin || prev.fecha_fin,
+        importe: datos.importe_renta != null ? String(datos.importe_renta) : prev.importe,
+        clausulas_principales: datos.clausulas_principales || '',
+        clausulas_perjudiciales: datos.clausulas_perjudiciales || '',
+        obligaciones_inquilino: datos.obligaciones_inquilino || '',
+        obligaciones_propietario: datos.obligaciones_propietario || '',
+        analisis_juridico: datos.analisis_juridico || '',
+        recomendaciones_contrato: datos.recomendaciones_contrato || '',
+        valoracion_contrato: datos.valoracion_contrato != null ? String(datos.valoracion_contrato) : '',
+        documento_url: documento_url || '',
+      }));
+      setPasoRenovar('formulario_nuevo');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al analizar el contrato');
+      setPasoRenovar('pdf_nuevo');
+    }
   }
 
   async function handleRenovar(e) {
     e.preventDefault();
     setRenovando(true);
+    setError('');
     try {
-      await renovarContratoApi(modalRenovar.id, formularioRenovacion);
-      setRenovacionGuardada(true);
+      const datos = formularioRenovacion.tipo === 'mismas_clausulas'
+        ? {
+            tipo_renovacion: 'mismas_clausulas',
+            fecha_inicio: formularioRenovacion.fecha_inicio,
+            fecha_fin: formularioRenovacion.fecha_fin,
+            importe: formularioRenovacion.importe,
+            clausulas_adicionales: formularioRenovacion.clausulas_adicionales,
+            nuevo_documento_url: formularioRenovacion.nuevo_documento_url,
+          }
+        : {
+            tipo_renovacion: 'contrato_nuevo',
+            fecha_inicio: formularioRenovacion.fecha_inicio,
+            fecha_fin: formularioRenovacion.fecha_fin,
+            importe: formularioRenovacion.importe,
+            notas: formularioRenovacion.notas,
+            documento_url: formularioRenovacion.documento_url,
+            clausulas_principales: formularioRenovacion.clausulas_principales,
+            clausulas_perjudiciales: formularioRenovacion.clausulas_perjudiciales,
+            obligaciones_inquilino: formularioRenovacion.obligaciones_inquilino,
+            obligaciones_propietario: formularioRenovacion.obligaciones_propietario,
+            analisis_juridico: formularioRenovacion.analisis_juridico,
+            recomendaciones_contrato: formularioRenovacion.recomendaciones_contrato,
+            valoracion_contrato: formularioRenovacion.valoracion_contrato,
+          };
+
+      await renovarContratoApi(modalRenovar.id, datos);
       setIdRenovado(modalRenovar.id);
+      const histRes = await obtenerRenovacionesApi(modalRenovar.id);
+      setRenovacionHistorial(histRes.data);
+      setRenovacionGuardada(true);
+      setPasoRenovar('guardado');
       await cargar();
       window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
@@ -867,83 +961,223 @@ export default function Inquilinos() {
         </div>
       </Modal>
 
-      {/* Modal renovar contrato */}
-      <Modal abierto={!!modalRenovar} onCerrar={cerrarRenovar} titulo={`Renovar contrato — ${modalRenovar?.nombre || ''}`} ancho="max-w-lg">
-        {renovacionGuardada ? (
-          <div className="text-center py-6">
-            <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <RefreshCw size={28} className="text-green-600" />
-            </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Contrato renovado</h3>
-            <p className="text-sm text-gray-500 mb-6">Los datos del contrato han sido actualizados correctamente.</p>
-            <div className="flex gap-3 justify-center">
-              <button onClick={cerrarRenovar} className="btn-secundario">Cerrar</button>
-              <button
-                onClick={() => handleGenerarWord(idRenovado)}
-                disabled={generandoWord}
-                className="btn-primario"
-              >
-                {generandoWord
-                  ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
-                  : <><Download size={15} /> Generar contrato Word</>
-                }
-              </button>
-            </div>
+      {/* Modal renovar contrato — wizard multi-paso */}
+      <Modal
+        abierto={!!modalRenovar}
+        onCerrar={cerrarRenovar}
+        titulo={
+          pasoRenovar === 'eleccion' ? `Renovar contrato — ${modalRenovar?.nombre || ''}` :
+          formularioRenovacion.tipo === 'contrato_nuevo' ? `Contrato nuevo — ${modalRenovar?.nombre || ''}` :
+          `Renovación — ${modalRenovar?.nombre || ''}`
+        }
+        ancho="max-w-lg"
+      >
+        {/* PASO 1: Elección */}
+        {pasoRenovar === 'eleccion' && (
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-gray-500 mb-4">¿Cómo deseas renovar el contrato?</p>
+            <button
+              onClick={() => { setFormularioRenovacion((p) => ({ ...p, tipo: 'mismas_clausulas' })); setPasoRenovar('formulario_mismas'); }}
+              className="w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-[#1e3a5f] hover:bg-blue-50 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center group-hover:bg-blue-200 flex-shrink-0">
+                  <RefreshCw size={20} className="text-blue-700" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Renovar con las mismas cláusulas</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Actualiza las fechas y el importe. Las cláusulas se mantienen.</p>
+                </div>
+              </div>
+            </button>
+            <button
+              onClick={() => { setFormularioRenovacion((p) => ({ ...p, tipo: 'contrato_nuevo' })); setPasoRenovar('pdf_nuevo'); }}
+              className="w-full text-left p-4 rounded-xl border-2 border-gray-200 hover:border-emerald-500 hover:bg-emerald-50 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center group-hover:bg-emerald-200 flex-shrink-0">
+                  <FileText size={20} className="text-emerald-700" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900">Hacer contrato nuevo</p>
+                  <p className="text-xs text-gray-500 mt-0.5">Nuevo contrato con nuevas condiciones. El anterior queda en el histórico.</p>
+                </div>
+              </div>
+            </button>
           </div>
-        ) : (
+        )}
+
+        {/* OPCIÓN A: formulario mismas cláusulas */}
+        {pasoRenovar === 'formulario_mismas' && (
           <form onSubmit={handleRenovar} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="etiqueta-formulario">Nueva fecha inicio</label>
-                <input
-                  type="date"
-                  value={formularioRenovacion.fecha_inicio}
-                  onChange={(e) => setFormularioRenovacion((p) => ({ ...p, fecha_inicio: e.target.value }))}
-                  className="campo-formulario"
-                />
+                <input type="date" value={formularioRenovacion.fecha_inicio} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, fecha_inicio: e.target.value }))} className="campo-formulario" />
               </div>
               <div>
                 <label className="etiqueta-formulario">Nueva fecha fin</label>
-                <input
-                  type="date"
-                  value={formularioRenovacion.fecha_fin}
-                  onChange={(e) => setFormularioRenovacion((p) => ({ ...p, fecha_fin: e.target.value }))}
-                  className="campo-formulario"
-                />
+                <input type="date" value={formularioRenovacion.fecha_fin} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, fecha_fin: e.target.value }))} className="campo-formulario" />
               </div>
               <div className="col-span-2">
                 <label className="etiqueta-formulario">Nueva renta mensual (€)</label>
                 <div className="relative">
-                  <input
-                    type="number"
-                    value={formularioRenovacion.importe}
-                    onChange={(e) => setFormularioRenovacion((p) => ({ ...p, importe: e.target.value }))}
-                    className="campo-formulario pl-8"
-                    placeholder="800.00"
-                    step="0.01"
-                    min="0"
-                  />
+                  <input type="number" value={formularioRenovacion.importe} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, importe: e.target.value }))} className="campo-formulario pl-8" placeholder="800.00" step="0.01" min="0" />
                   <Euro size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 </div>
               </div>
               <div className="col-span-2">
-                <label className="etiqueta-formulario">Notas de la renovación</label>
-                <textarea
-                  value={formularioRenovacion.notas}
-                  onChange={(e) => setFormularioRenovacion((p) => ({ ...p, notas: e.target.value }))}
-                  rows={2}
-                  className="campo-formulario resize-none"
-                  placeholder="Condiciones acordadas, subida de renta..."
-                />
+                <label className="etiqueta-formulario">Cláusula adicional (opcional)</label>
+                <textarea value={formularioRenovacion.clausulas_adicionales} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, clausulas_adicionales: e.target.value }))} rows={2} className="campo-formulario resize-none" placeholder="Subida de renta según IPC, condición especial..." />
+              </div>
+              <div className="col-span-2">
+                <label className="etiqueta-formulario">PDF de la renovación (opcional)</label>
+                <div className="flex items-center gap-3">
+                  <button type="button" onClick={() => inputPdfRenovarRef.current?.click()} disabled={subiendoPdfRenovacion} className="btn-secundario text-sm flex items-center gap-2">
+                    {subiendoPdfRenovacion ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600" /> : <Download size={14} />}
+                    {formularioRenovacion.nuevo_documento_url ? 'Cambiar PDF' : 'Subir PDF'}
+                  </button>
+                  {formularioRenovacion.nuevo_documento_url && (
+                    <span className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle size={12} /> PDF subido</span>
+                  )}
+                </div>
+                <input ref={inputPdfRenovarRef} type="file" accept="application/pdf" onChange={handlePdfRenovacion} className="hidden" />
               </div>
             </div>
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={cerrarRenovar} className="btn-secundario flex-1">Cancelar</button>
+              <button type="button" onClick={() => setPasoRenovar('eleccion')} className="btn-secundario flex-1">Atrás</button>
               <button type="submit" disabled={renovando} className="btn-primario flex-1 justify-center">
                 {renovando ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : 'Guardar renovación'}
               </button>
             </div>
           </form>
+        )}
+
+        {/* OPCIÓN B paso 1: ¿tienes PDF? */}
+        {pasoRenovar === 'pdf_nuevo' && (
+          <div className="py-4 text-center">
+            <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <FileText size={28} className="text-emerald-600" />
+            </div>
+            <p className="text-gray-700 font-medium mb-1">¿Tienes el PDF del nuevo contrato?</p>
+            <p className="text-sm text-gray-400 mb-6">La IA puede extraer los datos automáticamente.</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => inputPdfRenovarRef.current?.click()} className="btn-primario flex items-center gap-2">
+                <Sparkles size={15} /> Sí, analizar PDF
+              </button>
+              <button onClick={() => setPasoRenovar('formulario_nuevo')} className="btn-secundario flex items-center gap-2">
+                <SkipForward size={15} /> Rellenar manualmente
+              </button>
+            </div>
+            <button onClick={() => setPasoRenovar('eleccion')} className="text-xs text-gray-400 hover:text-gray-600 mt-4 block mx-auto">Atrás</button>
+            <input ref={inputPdfRenovarRef} type="file" accept="application/pdf" onChange={handlePdfNuevoContrato} className="hidden" />
+          </div>
+        )}
+
+        {/* OPCIÓN B paso 2: analizando */}
+        {pasoRenovar === 'analizando_nuevo' && (
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]" />
+            </div>
+            <p className="text-gray-700 font-medium">Analizando el nuevo contrato...</p>
+            <p className="text-sm text-gray-400 mt-1">La IA está leyendo el documento. Puede tardar unos segundos.</p>
+          </div>
+        )}
+
+        {/* OPCIÓN B paso 3: formulario nuevo contrato */}
+        {pasoRenovar === 'formulario_nuevo' && (
+          <form onSubmit={handleRenovar} className="space-y-4">
+            {formularioRenovacion.documento_url && (
+              <div className="flex items-center gap-2 bg-green-50 text-green-700 text-sm px-3 py-2 rounded-lg">
+                <CheckCircle size={14} /> <span>PDF analizado — datos extraídos automáticamente</span>
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="etiqueta-formulario">Fecha inicio *</label>
+                <input type="date" value={formularioRenovacion.fecha_inicio} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, fecha_inicio: e.target.value }))} className="campo-formulario" />
+              </div>
+              <div>
+                <label className="etiqueta-formulario">Fecha fin *</label>
+                <input type="date" value={formularioRenovacion.fecha_fin} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, fecha_fin: e.target.value }))} className="campo-formulario" />
+              </div>
+              <div className="col-span-2">
+                <label className="etiqueta-formulario">Renta mensual (€)</label>
+                <div className="relative">
+                  <input type="number" value={formularioRenovacion.importe} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, importe: e.target.value }))} className="campo-formulario pl-8" placeholder="800.00" step="0.01" min="0" />
+                  <Euro size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                </div>
+              </div>
+              <div className="col-span-2">
+                <label className="etiqueta-formulario">Notas</label>
+                <textarea value={formularioRenovacion.notas} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, notas: e.target.value }))} rows={2} className="campo-formulario resize-none" placeholder="Condiciones del nuevo contrato..." />
+              </div>
+              {!formularioRenovacion.documento_url && (
+                <div className="col-span-2">
+                  <label className="etiqueta-formulario">PDF del contrato (opcional)</label>
+                  <UploadPDF urlActual={formularioRenovacion.documento_url} onSubida={(url) => setFormularioRenovacion((p) => ({ ...p, documento_url: url }))} />
+                </div>
+              )}
+            </div>
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => setPasoRenovar('pdf_nuevo')} className="btn-secundario flex-1">Atrás</button>
+              <button type="submit" disabled={renovando} className="btn-primario flex-1 justify-center">
+                {renovando ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : 'Guardar contrato nuevo'}
+              </button>
+            </div>
+          </form>
+        )}
+
+        {/* GUARDADO: confirmación + histórico */}
+        {pasoRenovar === 'guardado' && (
+          <div>
+            <div className="text-center py-4">
+              <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <CheckCircle size={28} className="text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">Contrato renovado</h3>
+              <p className="text-sm text-gray-500 mb-5">Los datos han sido actualizados correctamente.</p>
+              <div className="flex gap-3 justify-center">
+                <button onClick={cerrarRenovar} className="btn-secundario">Cerrar</button>
+                <button onClick={() => handleGenerarWord(idRenovado)} disabled={generandoWord} className="btn-primario">
+                  {generandoWord ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : <><Download size={15} /> Generar contrato Word</>}
+                </button>
+              </div>
+            </div>
+            {renovacionHistorial.length > 0 && (
+              <div className="border-t border-gray-200 pt-4 mt-2">
+                <h4 className="text-sm font-semibold text-gray-700 mb-3">Histórico de contratos anteriores</h4>
+                <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
+                  {renovacionHistorial.map((r) => (
+                    <div key={r.id} className="bg-gray-50 rounded-lg p-3 text-xs text-gray-600">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-semibold text-gray-800">
+                          {r.fecha_inicio ? new Date(r.fecha_inicio).toLocaleDateString('es-ES') : '—'}
+                          {' → '}
+                          {r.fecha_fin ? new Date(r.fecha_fin).toLocaleDateString('es-ES') : '—'}
+                        </span>
+                        {r.importe && <span className="font-medium text-gray-700">{parseFloat(r.importe).toFixed(0)} €/mes</span>}
+                      </div>
+                      <div className="flex items-center justify-between flex-wrap gap-1">
+                        <span className="text-gray-400">Archivado el {new Date(r.fecha_renovacion).toLocaleDateString('es-ES')}</span>
+                        <div className="flex gap-2 items-center">
+                          {r.clausulas_adicionales && (
+                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded">{r.clausulas_adicionales.length > 45 ? r.clausulas_adicionales.slice(0, 45) + '…' : r.clausulas_adicionales}</span>
+                          )}
+                          {r.documento_url && (
+                            <a href={r.documento_url} target="_blank" rel="noopener noreferrer" className="text-[#1e3a5f] hover:underline font-medium">PDF</a>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         )}
       </Modal>
 

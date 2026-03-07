@@ -212,6 +212,20 @@ async function inicializarBaseDatos() {
       );
     `);
 
+    // Columnas adicionales en contrato_renovaciones para histórico completo
+    await cliente.query(`
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS tipo_renovacion VARCHAR(50) DEFAULT 'mismas_clausulas';
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS clausulas_adicionales TEXT;
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS documento_url VARCHAR(500);
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS clausulas_principales TEXT;
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS clausulas_perjudiciales TEXT;
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS obligaciones_inquilino TEXT;
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS obligaciones_propietario TEXT;
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS analisis_juridico TEXT;
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS recomendaciones_contrato TEXT;
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS valoracion_contrato NUMERIC(3,1);
+    `);
+
     // Usuario admin por defecto
     const bcrypt = require('bcryptjs');
     const usuarioExistente = await cliente.query(

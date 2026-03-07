@@ -200,26 +200,88 @@ router.put('/:id/reactivar', async (req, res) => {
 // POST /api/inquilinos/:id/renovar
 router.post('/:id/renovar', async (req, res) => {
   try {
-    const { fecha_inicio, fecha_fin, importe, notas } = req.body;
+    const {
+      tipo_renovacion,
+      fecha_inicio, fecha_fin, importe,
+      clausulas_adicionales,
+      nuevo_documento_url,
+      // Contrato nuevo:
+      notas, documento_url,
+      clausulas_principales, clausulas_perjudiciales,
+      obligaciones_inquilino, obligaciones_propietario,
+      analisis_juridico, recomendaciones_contrato, valoracion_contrato,
+    } = req.body;
     const inquilinoId = req.params.id;
 
-    // Insertar en historial de renovaciones
+    // Leer datos actuales del inquilino para archivarlos
+    const actual = await pool.query('SELECT * FROM inquilinos WHERE id = $1', [inquilinoId]);
+    if (actual.rows.length === 0) return res.status(404).json({ error: 'Inquilino no encontrado' });
+    const inq = actual.rows[0];
+
+    // Archivar contrato actual en histórico
     await pool.query(
-      `INSERT INTO contrato_renovaciones (inquilino_id, fecha_inicio, fecha_fin, importe, notas)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [inquilinoId, fecha_inicio || null, fecha_fin || null, importe || null, notas || null]
+      `INSERT INTO contrato_renovaciones (
+         inquilino_id, fecha_inicio, fecha_fin, importe, notas,
+         tipo_renovacion, clausulas_adicionales, documento_url,
+         clausulas_principales, clausulas_perjudiciales,
+         obligaciones_inquilino, obligaciones_propietario,
+         analisis_juridico, recomendaciones_contrato, valoracion_contrato
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+      [
+        inquilinoId,
+        inq.fecha_inicio_contrato, inq.fecha_fin_contrato, inq.importe_renta,
+        inq.notas,
+        tipo_renovacion || 'mismas_clausulas',
+        clausulas_adicionales || null,
+        inq.documento_url,
+        inq.clausulas_principales, inq.clausulas_perjudiciales,
+        inq.obligaciones_inquilino, inq.obligaciones_propietario,
+        inq.analisis_juridico, inq.recomendaciones_contrato, inq.valoracion_contrato,
+      ]
     );
 
-    // Actualizar inquilino con nuevas fechas e importe
-    const resultado = await pool.query(
-      `UPDATE inquilinos
-       SET fecha_inicio_contrato = COALESCE($1, fecha_inicio_contrato),
-           fecha_fin_contrato = COALESCE($2, fecha_fin_contrato),
-           importe_renta = COALESCE($3, importe_renta)
-       WHERE id = $4
-       RETURNING *`,
-      [fecha_inicio || null, fecha_fin || null, importe || null, inquilinoId]
-    );
+    let resultado;
+    if (!tipo_renovacion || tipo_renovacion === 'mismas_clausulas') {
+      // Solo actualizar fechas, importe y opcionalmente nuevo PDF
+      resultado = await pool.query(
+        `UPDATE inquilinos
+         SET fecha_inicio_contrato = COALESCE($1, fecha_inicio_contrato),
+             fecha_fin_contrato    = COALESCE($2, fecha_fin_contrato),
+             importe_renta         = COALESCE($3, importe_renta),
+             documento_url         = COALESCE($4, documento_url)
+         WHERE id = $5 RETURNING *`,
+        [fecha_inicio || null, fecha_fin || null, importe || null, nuevo_documento_url || null, inquilinoId]
+      );
+    } else {
+      // Contrato nuevo: sustituir todos los campos del contrato
+      resultado = await pool.query(
+        `UPDATE inquilinos
+         SET fecha_inicio_contrato          = COALESCE($1, fecha_inicio_contrato),
+             fecha_fin_contrato             = COALESCE($2, fecha_fin_contrato),
+             importe_renta                  = COALESCE($3, importe_renta),
+             documento_url                  = $4,
+             notas                          = $5,
+             clausulas_principales          = $6,
+             clausulas_perjudiciales        = $7,
+             obligaciones_inquilino         = $8,
+             obligaciones_propietario       = $9,
+             analisis_juridico              = $10,
+             recomendaciones_contrato       = $11,
+             valoracion_contrato            = $12,
+             fecha_ultimo_analisis_contrato = CASE WHEN $12 IS NOT NULL THEN NOW() ELSE NULL END
+         WHERE id = $13 RETURNING *`,
+        [
+          fecha_inicio || null, fecha_fin || null, importe || null,
+          documento_url || null,
+          notas || null,
+          clausulas_principales || null, clausulas_perjudiciales || null,
+          obligaciones_inquilino || null, obligaciones_propietario || null,
+          analisis_juridico || null, recomendaciones_contrato || null,
+          valoracion_contrato || null,
+          inquilinoId,
+        ]
+      );
+    }
 
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Inquilino no encontrado' });
