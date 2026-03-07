@@ -68,10 +68,10 @@ router.post('/', uploadMemoria.single('documento'), async (req, res) => {
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
 
 {
-  "nombre_inquilino": "nombre completo del PRIMER arrendatario/inquilino o null",
-  "email": "email del PRIMER arrendatario o null",
-  "telefono": "teléfono del PRIMER arrendatario o null",
-  "otros_inquilinos": "Si hay más de un arrendatario, datos de los demás en formato: 'Nombre: X, Email: Y, Teléfono: Z'. Si solo hay uno, null",
+  "nombre_inquilino": "nombre completo del PRIMER arrendatario/inquilino únicamente o null",
+  "email": "email del PRIMER arrendatario únicamente o null",
+  "telefono": "teléfono del PRIMER arrendatario únicamente o null",
+  "otros_inquilinos": "Si hay 2 o más arrendatarios en el contrato, incluye TODOS los arrendatarios excepto el primero. Cada uno en una línea separada con este formato exacto: 'Nombre: X | Email: Y | Teléfono: Z'. Ejemplo con dos adicionales: 'Nombre: Ana López | Email: ana@mail.com | Teléfono: 600111222\nNombre: Carlos Ruiz | Email: carlos@mail.com | Teléfono: 600333444'. Si solo hay un arrendatario usa null",
   "fecha_inicio": "YYYY-MM-DD o null",
   "fecha_fin": "YYYY-MM-DD o null",
   "importe_renta": número decimal (renta mensual en euros) o null,
@@ -85,7 +85,8 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
   "valoracion_contrato": número del 1 al 10 como experto jurídico o null
 }
 
-Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda.`;
+Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda.
+IMPORTANTE: Si el contrato tiene varios arrendatarios, el campo "nombre_inquilino" solo lleva el nombre del primero, y "otros_inquilinos" debe incluir obligatoriamente los datos de TODOS los demás (nombre, email y teléfono de cada uno).`;
 
     const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
