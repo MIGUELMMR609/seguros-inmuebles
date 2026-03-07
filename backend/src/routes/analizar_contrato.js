@@ -68,9 +68,10 @@ router.post('/', uploadMemoria.single('documento'), async (req, res) => {
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
 
 {
-  "nombre_inquilino": "nombre completo del arrendatario/inquilino o null",
-  "email": "email del arrendatario o null",
-  "telefono": "teléfono del arrendatario o null",
+  "nombre_inquilino": "nombre completo del PRIMER arrendatario/inquilino o null",
+  "email": "email del PRIMER arrendatario o null",
+  "telefono": "teléfono del PRIMER arrendatario o null",
+  "otros_inquilinos": "Si hay más de un arrendatario, datos de los demás en formato: 'Nombre: X, Email: Y, Teléfono: Z'. Si solo hay uno, null",
   "fecha_inicio": "YYYY-MM-DD o null",
   "fecha_fin": "YYYY-MM-DD o null",
   "importe_renta": número decimal (renta mensual en euros) o null,
