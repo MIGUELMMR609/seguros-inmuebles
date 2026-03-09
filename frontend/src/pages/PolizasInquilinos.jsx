@@ -187,7 +187,7 @@ export default function PolizasInquilinos() {
   async function handleGuardar(e) {
     e.preventDefault();
     if (!formulario.inquilino_id) {
-      setError('Debes seleccionar un inquilino');
+      setToast({ mensaje: 'Debes seleccionar un inquilino antes de guardar la póliza', tipo: 'error' });
       return;
     }
     setGuardando(true);
