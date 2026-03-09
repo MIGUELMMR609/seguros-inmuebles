@@ -755,6 +755,7 @@ export default function PolizasInquilinos() {
       <ModalComparador
         abierto={!!resultadoComparacion}
         onCerrar={() => setResultadoComparacion(null)}
+        onDescargar={() => { setResultadoComparacion(null); setModoComparar(false); setSeleccionadas([]); }}
         datos={resultadoComparacion}
         tipo="inquilinos"
       />

@@ -991,6 +991,7 @@ export default function Polizas() {
       <ModalComparador
         abierto={!!resultadoComparacion}
         onCerrar={() => setResultadoComparacion(null)}
+        onDescargar={() => { setResultadoComparacion(null); setModoComparar(false); setSeleccionadas([]); }}
         datos={resultadoComparacion}
         tipo="inmuebles"
       />

@@ -17,7 +17,7 @@ function colorCelda(valor) {
   return 'bg-gray-50 text-gray-600';
 }
 
-export default function ModalComparador({ abierto, onCerrar, datos, tipo }) {
+export default function ModalComparador({ abierto, onCerrar, onDescargar, datos, tipo }) {
   const navigate = useNavigate();
   if (!datos) return null;
 
@@ -36,7 +36,7 @@ export default function ModalComparador({ abierto, onCerrar, datos, tipo }) {
         {/* Botón descargar */}
         <div className="flex justify-end">
           <button
-            onClick={() => { imprimirComparador(datos, tipo); onCerrar(); navigate('/polizas'); }}
+            onClick={() => { imprimirComparador(datos, tipo); if (onDescargar) onDescargar(); else { onCerrar(); navigate('/polizas'); } }}
             className="btn-secundario flex items-center gap-2"
           >
             <Download size={14} />
