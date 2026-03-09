@@ -191,7 +191,19 @@ export default function Inquilinos() {
 
     try {
       const res = await analizarContratoApi(archivo);
-      const { datos, documento_url } = res.data;
+      const { datos, documento_url: urlDesdeAnalisis } = res.data;
+
+      // Si el análisis no devolvió URL (Cloudinary falló), subir el archivo directamente
+      let urlDocumento = urlDesdeAnalisis;
+      if (!urlDocumento) {
+        try {
+          const resUpload = await subirDocumentoApi(archivo);
+          urlDocumento = resUpload.data.url;
+        } catch {
+          // Si también falla, continuar sin URL — el usuario puede subir manualmente
+        }
+      }
+
       setFormulario((prev) => ({
         ...prev,
         nombre: datos.nombre_inquilino || prev.nombre,
@@ -209,7 +221,7 @@ export default function Inquilinos() {
         valoracion_contrato: datos.valoracion_contrato != null ? String(datos.valoracion_contrato) : prev.valoracion_contrato,
         notas: datos.otros_inquilinos ? `Inquilinos adicionales:\n${datos.otros_inquilinos}` : prev.notas,
         observaciones_ia: datos.otros_inquilinos ? `Inquilinos adicionales:\n${datos.otros_inquilinos}` : prev.observaciones_ia,
-        documento_url: documento_url || prev.documento_url,
+        documento_url: urlDocumento || prev.documento_url,
       }));
       setPasoModal('form');
     } catch (err) {
