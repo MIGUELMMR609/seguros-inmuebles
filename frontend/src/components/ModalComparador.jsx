@@ -1,6 +1,7 @@
 import Modal from './Modal.jsx';
 import { Download } from 'lucide-react';
 import { imprimirComparador } from '../utils/imprimirInforme.js';
+import { useNavigate } from 'react-router-dom';
 
 function colorValoracion(v) {
   if (!v && v !== 0) return 'bg-gray-100 text-gray-500';
@@ -17,6 +18,7 @@ function colorCelda(valor) {
 }
 
 export default function ModalComparador({ abierto, onCerrar, datos, tipo }) {
+  const navigate = useNavigate();
   if (!datos) return null;
 
   const { resumen, polizas = [], tabla_coberturas = [], recomendacion } = datos;
@@ -34,7 +36,7 @@ export default function ModalComparador({ abierto, onCerrar, datos, tipo }) {
         {/* Botón descargar */}
         <div className="flex justify-end">
           <button
-            onClick={() => imprimirComparador(datos, tipo)}
+            onClick={() => { imprimirComparador(datos, tipo); onCerrar(); navigate('/polizas'); }}
             className="btn-secundario flex items-center gap-2"
           >
             <Download size={14} />
