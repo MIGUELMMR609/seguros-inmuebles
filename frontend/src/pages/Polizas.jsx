@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Download, Scale } from 'lucide-react';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
-import Tabla from '../components/Tabla.jsx';
+import { Building2 } from 'lucide-react';
 import Modal from '../components/Modal.jsx';
 import ModalComparador from '../components/ModalComparador.jsx';
 import UploadPDF from '../components/UploadPDF.jsx';
@@ -382,11 +382,6 @@ export default function Polizas() {
   }
 
   const columnas = [
-    {
-      clave: 'nombre_inmueble', titulo: 'Inmueble', sortable: true,
-      valorOrden: (f) => f.nombre_inmueble || '',
-      render: (f) => <span className="font-medium">{f.nombre_inmueble || '—'}</span>,
-    },
     { clave: 'tipo', titulo: 'Tipo', sortable: true, render: (f) => etiquetaTipo(f.tipo) },
     {
       clave: 'compania_aseguradora', titulo: 'Compañía', sortable: true,
@@ -548,8 +543,71 @@ export default function Polizas() {
         </div>
       )}
 
-      <div className="tarjeta">
-        <Tabla columnas={columnas} datos={polizas} cargando={cargando} mensajeVacio="No hay pólizas registradas." filasPorPagina={9999} />
+      <div className="tarjeta overflow-x-auto">
+        {cargando ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#1e3a5f]" />
+          </div>
+        ) : polizas.length === 0 ? (
+          <p className="text-center text-gray-400 py-12 text-sm">No hay pólizas registradas.</p>
+        ) : (() => {
+          // Agrupar por inmueble
+          const grupos = {};
+          for (const p of polizas) {
+            const key = p.nombre_inmueble || 'Sin inmueble asignado';
+            if (!grupos[key]) grupos[key] = [];
+            grupos[key].push(p);
+          }
+          const gruposOrdenados = Object.entries(grupos).sort(([a], [b]) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+          const colSpan = columnas.length + (modoComparar ? 1 : 0);
+          return (
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-50 border-b border-gray-200">
+                  {modoComparar && <th className="px-3 py-3 w-8" />}
+                  {columnas.map((col) => (
+                    <th key={col.clave} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap" style={{ width: col.ancho }}>
+                      {col.titulo}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {gruposOrdenados.map(([nombreInmueble, grupo]) => (
+                  <>
+                    <tr key={`hdr-${nombreInmueble}`} className="bg-[#1e3a5f]/5 border-t border-[#1e3a5f]/15">
+                      <td colSpan={colSpan} className="px-4 py-2">
+                        <span className="inline-flex items-center gap-2 text-[#1e3a5f] font-semibold text-sm">
+                          <Building2 size={14} />
+                          {nombreInmueble}
+                        </span>
+                      </td>
+                    </tr>
+                    {grupo.map((fila) => (
+                      <tr key={fila.id} className="hover:bg-gray-50 transition-colors">
+                        {modoComparar && (
+                          <td className="px-3 py-3">
+                            <input
+                              type="checkbox"
+                              checked={seleccionadas.includes(fila.id)}
+                              onChange={() => toggleSeleccion(fila.id)}
+                              className="w-4 h-4 text-blue-600"
+                            />
+                          </td>
+                        )}
+                        {columnas.map((col) => (
+                          <td key={col.clave} className="px-4 py-3 text-gray-700">
+                            {col.render ? col.render(fila) : fila[col.clave] ?? '—'}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </>
+                ))}
+              </tbody>
+            </table>
+          );
+        })()}
       </div>
 
       {/* Modal alta/edición */}
