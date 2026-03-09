@@ -78,6 +78,13 @@ export default function ModalComparador({ abierto, onCerrar, onDescargar, datos,
                 </tr>
               </thead>
               <tbody>
+                {/* Inmueble */}
+                <tr className="border-t border-gray-100">
+                  <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50">Inmueble</td>
+                  {polizas.map((p) => (
+                    <td key={p.id} className="py-2 px-3 text-center text-gray-700 font-medium">{p.nombre_inmueble || '—'}</td>
+                  ))}
+                </tr>
                 {/* Compañía */}
                 <tr className="border-t border-gray-100">
                   <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50">Compañía</td>

@@ -55,10 +55,10 @@ router.post('/', async (req, res) => {
   let polizas;
   try {
     const placeholders = ids.map((_, i) => `$${i + 1}`).join(', ');
-    const resultado = await pool.query(
-      `SELECT * FROM ${tabla} WHERE id IN (${placeholders})`,
-      ids
-    );
+    const consulta = tipo === 'inmuebles'
+      ? `SELECT p.*, i.nombre AS nombre_inmueble FROM polizas p LEFT JOIN inmuebles i ON p.inmueble_id = i.id WHERE p.id IN (${placeholders})`
+      : `SELECT pi.*, inq.nombre AS nombre_inquilino, i.nombre AS nombre_inmueble FROM polizas_inquilinos pi LEFT JOIN inquilinos inq ON pi.inquilino_id = inq.id LEFT JOIN inmuebles i ON inq.inmueble_id = i.id WHERE pi.id IN (${placeholders})`;
+    const resultado = await pool.query(consulta, ids);
     polizas = resultado.rows;
     if (polizas.length < 2) {
       return res.status(404).json({ error: 'No se encontraron suficientes pólizas con esos IDs' });
@@ -201,6 +201,14 @@ IMPORTANTE:
       } catch {
         return res.status(422).json({ error: 'La respuesta de la IA no tiene el formato esperado' });
       }
+    }
+
+    // Enriquecer con nombre_inmueble de la BD (la IA no lo sabe)
+    if (Array.isArray(datos.polizas)) {
+      datos.polizas = datos.polizas.map((p) => {
+        const bdPoliza = polizas.find((bp) => bp.id === p.id || String(bp.id) === String(p.id));
+        return bdPoliza ? { ...p, nombre_inmueble: bdPoliza.nombre_inmueble || null } : p;
+      });
     }
 
     res.json(datos);
