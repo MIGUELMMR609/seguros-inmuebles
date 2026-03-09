@@ -18,6 +18,7 @@ const TIPOS_POLIZA = [
   { valor: 'vivienda', etiqueta: 'Vivienda' },
   { valor: 'nave', etiqueta: 'Nave' },
   { valor: 'local', etiqueta: 'Local' },
+  { valor: 'local_negocio', etiqueta: 'Local de Negocio' },
   { valor: 'inquilino_resp_civil', etiqueta: 'Inquilino Resp. Civil' },
   { valor: 'activ_economica', etiqueta: 'Activ. Económica' },
   { valor: 'comunidad', etiqueta: 'Comunidad' },
@@ -46,6 +47,7 @@ const formularioVacio = {
   riesgos_cubiertos: '', riesgos_no_cubiertos: '',
   analisis_fortalezas: '', analisis_carencias: '',
   como_complementar: '',
+  direccion_bien_asegurado: '',
 };
 
 const renovarVacio = {
@@ -197,6 +199,7 @@ export default function Polizas() {
       analisis_fortalezas: datos.analisis_fortalezas || prev.analisis_fortalezas,
       analisis_carencias: datos.analisis_carencias || prev.analisis_carencias,
       como_complementar: datos.como_complementar || prev.como_complementar,
+      direccion_bien_asegurado: datos.direccion_bien_asegurado || prev.direccion_bien_asegurado,
       documento_url: documentoUrl || prev.documento_url,
     }));
     setPasoModal('form');
@@ -580,9 +583,13 @@ export default function Polizas() {
                     {inmuebles.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
                   </select>
                 </div>
+                <div className="col-span-2">
+                  <label className="etiqueta-formulario">Dirección del bien asegurado</label>
+                  <input name="direccion_bien_asegurado" value={formulario.direccion_bien_asegurado} onChange={handleCambio} className="campo-formulario" placeholder="Calle, número, ciudad..." />
+                </div>
                 <div>
                   <label className="etiqueta-formulario">Tipo de seguro</label>
-                  <select name="tipo" value={formulario.tipo} onChange={handleCambio} className="campo-formulario">
+                  <select name="tipo" value={formulario.tipo} onChange={handleCambio} className="campo-formulario text-sm py-1.5">
                     {TIPOS_POLIZA.map((t) => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
                   </select>
                 </div>

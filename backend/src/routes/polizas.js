@@ -91,6 +91,7 @@ router.post('/', async (req, res) => {
       contacto_nombre, contacto_telefono, contacto_email,
       periodicidad_pago, importe_pago, fecha_proximo_pago, tomador_poliza,
       riesgos_cubiertos, riesgos_no_cubiertos, analisis_fortalezas, analisis_carencias, como_complementar,
+      direccion_bien_asegurado,
     } = req.body;
 
     if (!inmueble_id) {
@@ -120,22 +121,22 @@ router.post('/', async (req, res) => {
     const polizaId = resultado.rows[0].id;
 
     // UPDATE con campos IA (pueden no existir aún en BD si la migración no ha corrido)
-    if (riesgos_cubiertos || riesgos_no_cubiertos || analisis_fortalezas || analisis_carencias || como_complementar) {
-      try {
-        await pool.query(
-          `UPDATE polizas SET
-            riesgos_cubiertos=$1, riesgos_no_cubiertos=$2,
-            analisis_fortalezas=$3, analisis_carencias=$4, como_complementar=$5
-           WHERE id=$6`,
-          [
-            riesgos_cubiertos || null, riesgos_no_cubiertos || null,
-            analisis_fortalezas || null, analisis_carencias || null, como_complementar || null,
-            polizaId,
-          ]
-        );
-      } catch (errIA) {
-        console.warn('No se pudieron guardar campos IA (migración pendiente):', errIA.message);
-      }
+    try {
+      await pool.query(
+        `UPDATE polizas SET
+          riesgos_cubiertos=$1, riesgos_no_cubiertos=$2,
+          analisis_fortalezas=$3, analisis_carencias=$4, como_complementar=$5,
+          direccion_bien_asegurado=$6
+         WHERE id=$7`,
+        [
+          riesgos_cubiertos || null, riesgos_no_cubiertos || null,
+          analisis_fortalezas || null, analisis_carencias || null, como_complementar || null,
+          direccion_bien_asegurado || null,
+          polizaId,
+        ]
+      );
+    } catch (errIA) {
+      console.warn('No se pudieron guardar campos IA (migración pendiente):', errIA.message);
     }
 
     // Devolver la poliza con todos los campos
@@ -156,6 +157,7 @@ router.put('/:id', async (req, res) => {
       contacto_nombre, contacto_telefono, contacto_email,
       periodicidad_pago, importe_pago, fecha_proximo_pago, tomador_poliza,
       riesgos_cubiertos, riesgos_no_cubiertos, analisis_fortalezas, analisis_carencias, como_complementar,
+      direccion_bien_asegurado,
     } = req.body;
 
     const tipoFinal = TIPOS_VALIDOS.includes(tipo) ? tipo : 'vivienda';
@@ -189,11 +191,13 @@ router.put('/:id', async (req, res) => {
       await pool.query(
         `UPDATE polizas SET
           riesgos_cubiertos=$1, riesgos_no_cubiertos=$2,
-          analisis_fortalezas=$3, analisis_carencias=$4, como_complementar=$5
-         WHERE id=$6`,
+          analisis_fortalezas=$3, analisis_carencias=$4, como_complementar=$5,
+          direccion_bien_asegurado=$6
+         WHERE id=$7`,
         [
           riesgos_cubiertos || null, riesgos_no_cubiertos || null,
           analisis_fortalezas || null, analisis_carencias || null, como_complementar || null,
+          direccion_bien_asegurado || null,
           req.params.id,
         ]
       );
