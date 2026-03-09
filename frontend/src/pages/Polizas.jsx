@@ -212,7 +212,7 @@ export default function Polizas() {
 
   async function handleGuardar(e) {
     e.preventDefault();
-    if (!formulario.inmueble_id) { setError('Debes seleccionar un inmueble'); return; }
+    if (!formulario.inmueble_id) { setToast({ mensaje: 'Debes seleccionar un inmueble antes de guardar la póliza', tipo: 'error' }); return; }
     setGuardando(true);
     setError('');
     try {
