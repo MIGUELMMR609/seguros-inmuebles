@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Printer, Scale } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale } from 'lucide-react';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
@@ -714,8 +714,8 @@ export default function PolizasInquilinos() {
                     onClick={() => imprimirInformePoliza(analisisActual, polizaAnalisis)}
                     className="btn-secundario flex items-center gap-2"
                   >
-                    <Printer size={14} />
-                    Imprimir informe
+                    <Download size={14} />
+                    Descargar informe
                   </button>
                   <button onClick={handleAnalizarExperto} disabled={analizando} className="btn-secundario flex items-center gap-2">
                     <RefreshCw size={14} />

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import {
   Plus, Pencil, Trash2, Users, AlertTriangle,
-  RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro, Printer, CheckCircle, History,
+  RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro, CheckCircle, History,
 } from 'lucide-react';
 import { imprimirInformeContrato } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
@@ -933,8 +933,8 @@ export default function Inquilinos() {
                 onClick={() => imprimirInformeContrato(analisisActual, inquilinoAnalisis)}
                 className="btn-secundario flex items-center gap-2"
               >
-                <Printer size={14} />
-                Imprimir informe
+                <Download size={14} />
+                Descargar informe
               </button>
               <button
                 type="button"

@@ -95,26 +95,27 @@ function valoracionHtml(val, etiqueta, descripcion) {
   </div>`;
 }
 
-function abrirVentana(titulo, cuerpo) {
+function descargar(nombre, titulo, cuerpo, cssExtra) {
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <title>${esc(titulo)}</title>
-  <style>${CSS}</style>
+  <style>${cssExtra || CSS}</style>
 </head>
 <body>
   ${cuerpo}
-  <script>window.onload = function() { window.focus(); window.print(); }<\/script>
 </body>
 </html>`;
-  const win = window.open('', '_blank', 'width=900,height=720');
-  if (!win) {
-    alert('Permite las ventanas emergentes en tu navegador para imprimir el informe.');
-    return;
-  }
-  win.document.write(html);
-  win.document.close();
+  const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombre;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 export function imprimirInformePoliza(analisis, poliza) {
@@ -165,7 +166,9 @@ export function imprimirInformePoliza(analisis, poliza) {
     </div>
   `;
 
-  abrirVentana(
+  const nombreArchivo = `informe-poliza-${(poliza.numero_poliza || poliza.compania_aseguradora || poliza.id || 'sin-numero').replace(/[^a-z0-9]/gi, '-')}.html`;
+  descargar(
+    nombreArchivo,
     `Informe Póliza — ${poliza.compania_aseguradora || ''} ${poliza.numero_poliza || ''}`,
     cuerpo
   );
@@ -282,7 +285,6 @@ li { margin-bottom: 3px; }
 </div>` : '';
 
   const cuerpo = `
-<style>${css}</style>
 <div class="header">
   <div>
     <div class="logo">Gestión de Seguros<small>${esc(titulo)}</small></div>
@@ -295,13 +297,7 @@ ${tablaCoberturas}
 ${htmlRecomendacion}
 <div class="footer">Informe generado el ${fechaHoy} · Gestión de Seguros</div>`;
 
-  const win = window.open('', '_blank', 'width=1100,height=800');
-  if (!win) {
-    alert('Permite las ventanas emergentes en tu navegador para imprimir el informe.');
-    return;
-  }
-  win.document.write(`<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><title>${esc(titulo)}</title></head><body>${cuerpo}<script>window.onload=function(){window.focus();window.print();}<\/script></body></html>`);
-  win.document.close();
+  descargar('comparador-polizas.html', titulo, cuerpo, css);
 }
 
 export function imprimirInformeContrato(analisis, inquilino) {
@@ -344,5 +340,6 @@ export function imprimirInformeContrato(analisis, inquilino) {
     </div>
   `;
 
-  abrirVentana(`Informe Jurídico — ${inquilino?.nombre || ''}`, cuerpo);
+  const nombreArchivo = `informe-contrato-${(inquilino?.nombre || 'inquilino').replace(/[^a-z0-9]/gi, '-')}.html`;
+  descargar(nombreArchivo, `Informe Jurídico — ${inquilino?.nombre || ''}`, cuerpo);
 }

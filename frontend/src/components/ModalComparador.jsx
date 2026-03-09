@@ -1,5 +1,5 @@
 import Modal from './Modal.jsx';
-import { Printer } from 'lucide-react';
+import { Download } from 'lucide-react';
 import { imprimirComparador } from '../utils/imprimirInforme.js';
 
 function colorValoracion(v) {
@@ -31,14 +31,14 @@ export default function ModalComparador({ abierto, onCerrar, datos, tipo }) {
     >
       <div className="space-y-6 print:space-y-4">
 
-        {/* Botón imprimir */}
-        <div className="flex justify-end print:hidden">
+        {/* Botón descargar */}
+        <div className="flex justify-end">
           <button
             onClick={() => imprimirComparador(datos, tipo)}
             className="btn-secundario flex items-center gap-2"
           >
-            <Printer size={14} />
-            Imprimir
+            <Download size={14} />
+            Descargar informe
           </button>
         </div>
 
