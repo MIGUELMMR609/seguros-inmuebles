@@ -137,4 +137,9 @@ export const analizarContratoApi = (archivo) => {
   });
 };
 
+// --- Backup ---
+export const obtenerBackupsApi = () => api.get('/backup');
+export const crearBackupApi = () => api.post('/backup', {}, { responseType: 'blob', timeout: 60_000 });
+export const descargarBackupApi = (id) => api.get(`/backup/${id}/download`, { responseType: 'blob' });
+
 export default api;

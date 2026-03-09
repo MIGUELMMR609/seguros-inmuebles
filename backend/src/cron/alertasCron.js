@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const { pool } = require('../config/database');
 const { enviarEmailAlertas, enviarEmailInquilino } = require('../services/emailService');
+const { crearBackup } = require('../routes/backup');
 
 async function obtenerPolizasProximasAVencer() {
   const polizasInmuebles = await pool.query(
@@ -94,12 +95,28 @@ async function ejecutarRevisionAlertas() {
   }
 }
 
+async function ejecutarBackupAutomatico() {
+  console.log('Iniciando backup automático semanal...');
+  try {
+    const { meta } = await crearBackup();
+    console.log(`Backup automático completado: ${meta.nombre_archivo} (${Math.round(meta.tamanyo / 1024)} KB)`);
+  } catch (error) {
+    console.error('Error en backup automático:', error);
+  }
+}
+
 function iniciarCronAlertas() {
   // Ejecutar todos los días a las 9:00 AM (hora de Madrid)
   cron.schedule('0 9 * * *', ejecutarRevisionAlertas, {
     timezone: 'Europe/Madrid',
   });
   console.log('Cron de alertas programado: todos los días a las 9:00 AM (Europe/Madrid)');
+
+  // Backup automático: cada lunes a las 8:00 AM (hora de Madrid)
+  cron.schedule('0 8 * * 1', ejecutarBackupAutomatico, {
+    timezone: 'Europe/Madrid',
+  });
+  console.log('Cron de backup programado: cada lunes a las 8:00 AM (Europe/Madrid)');
 }
 
 module.exports = { iniciarCronAlertas, ejecutarRevisionAlertas };

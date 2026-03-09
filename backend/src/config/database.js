@@ -199,6 +199,19 @@ async function inicializarBaseDatos() {
     // Actualizar inquilinos existentes sin estado
     await cliente.query(`UPDATE inquilinos SET estado = 'activo' WHERE estado IS NULL`);
 
+    // Tabla de copias de seguridad
+    await cliente.query(`
+      CREATE TABLE IF NOT EXISTS backups (
+        id SERIAL PRIMARY KEY,
+        fecha TIMESTAMP DEFAULT NOW(),
+        nombre_archivo VARCHAR(255) NOT NULL,
+        tamanyo INTEGER,
+        registros_json TEXT,
+        conteo_registros JSONB,
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
     // Tabla de renovaciones de contrato de inquilino
     await cliente.query(`
       CREATE TABLE IF NOT EXISTS contrato_renovaciones (

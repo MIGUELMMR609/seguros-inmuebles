@@ -22,6 +22,7 @@ const registroEmailsRoutes = require('./src/routes/registro_emails');
 const analizarPdfRoutes = require('./src/routes/analizar_pdf');
 const analizarContratoRoutes = require('./src/routes/analizar_contrato');
 const generarContratoRoutes = require('./src/routes/generar_contrato');
+const { router: backupRoutes } = require('./src/routes/backup');
 
 const app = express();
 const PUERTO = process.env.PORT || 3000;
@@ -75,6 +76,7 @@ app.use('/api/contabilidad', contabilidadRoutes);
 app.use('/api/registro-emails', registroEmailsRoutes);
 app.use('/api/analizar-pdf', analizarPdfRoutes);
 app.use('/api/analizar-contrato', analizarContratoRoutes);
+app.use('/api/backup', backupRoutes);
 app.use('/api', generarContratoRoutes);
 
 // Servir frontend en producción (solo si el build existe localmente)
