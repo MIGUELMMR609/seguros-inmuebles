@@ -137,9 +137,10 @@ export function imprimirInformePoliza(analisis, poliza) {
 
     <div class="datos-box">
       <table class="datos-tabla">
+        ${poliza.nombre_inmueble ? fila('Inmueble', poliza.nombre_inmueble) : ''}
         ${filaDupla('Compañía', poliza.compania_aseguradora, 'Nº Póliza', poliza.numero_poliza)}
         ${filaDupla('Tipo', tipo, 'Tomador', poliza.tomador_poliza)}
-        ${poliza.nombre_inmueble ? filaDupla('Inmueble', poliza.nombre_inmueble, 'Inquilino', poliza.nombre_inquilino) : fila('Inquilino', poliza.nombre_inquilino)}
+        ${poliza.nombre_inquilino ? fila('Inquilino', poliza.nombre_inquilino) : ''}
         ${filaDupla('Inicio', formatFecha(poliza.fecha_inicio), 'Vencimiento', formatFecha(poliza.fecha_vencimiento))}
         ${poliza.importe_anual ? fila('Importe anual', parseFloat(poliza.importe_anual).toFixed(2) + ' €') : ''}
       </table>
