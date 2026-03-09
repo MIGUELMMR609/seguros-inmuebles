@@ -361,7 +361,7 @@ export default function Polizas() {
       valorOrden: (f) => f.nombre_inmueble || '',
       render: (f) => <span className="font-medium">{f.nombre_inmueble || '—'}</span>,
     },
-    { clave: 'tipo', titulo: 'Tipo', render: (f) => etiquetaTipo(f.tipo) },
+    { clave: 'tipo', titulo: 'Tipo', sortable: true, render: (f) => etiquetaTipo(f.tipo) },
     {
       clave: 'compania_aseguradora', titulo: 'Compañía', sortable: true,
       valorOrden: (f) => f.compania_aseguradora || '',
