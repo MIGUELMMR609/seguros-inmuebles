@@ -90,10 +90,10 @@ export default function Backup() {
           </h1>
           <p className="text-gray-500 text-sm mt-1">Backup automático cada lunes a las 8:00 AM · Se conservan los últimos 10</p>
           {backups.length > 0 && (
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-sm text-gray-500 mt-1">
               Último backup en Render:{' '}
-              <span className="font-medium text-gray-600">
-                {new Date(backups[0].fecha).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
+              <span className="font-semibold text-gray-700">
+                {new Date(backups[0].fecha || backups[0].created_at).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
               </span>
             </p>
           )}
