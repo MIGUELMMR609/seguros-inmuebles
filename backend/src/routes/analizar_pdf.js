@@ -86,7 +86,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
   "analisis_fortalezas": "puntos fuertes y aspectos destacables de esta póliza o null",
   "analisis_carencias": "carencias, limitaciones o aspectos a mejorar detectados o null",
   "como_complementar": "recomendaciones para completar o mejorar la cobertura actual o null",
-  "direccion_bien_asegurado": "dirección completa del bien asegurado (calle, número, piso, ciudad) o null"
+  "direccion_bien_asegurado": "dirección completa del bien asegurado: búscala en campos como SITUACIÓN DEL RIESGO, UBICACIÓN DEL RIESGO, DESCRIPCIÓN DEL RIESGO, SITUADA EN, DOMICILIO DEL RIESGO. Extrae la dirección completa con calle, número, piso/local, código postal y ciudad. Ejemplo: CL SANTA ENGRACIA 136 LOCAL 1 28003 MADRID. Si no aparece, null"
 }
 
 Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda. Los campos de análisis deben ser texto descriptivo en español.`;
