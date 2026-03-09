@@ -149,4 +149,8 @@ export const crearBackupApi = () => api.post('/backup', {}, { responseType: 'blo
 export const descargarBackupApi = (id) => api.get(`/backup/${id}/download`, { responseType: 'blob' });
 export const eliminarBackupApi = (id) => api.delete(`/backup/${id}`);
 
+// --- Actividad ---
+export const obtenerActividadApi = (params = {}) => api.get('/actividad', { params });
+export const obtenerUsuariosActividadApi = () => api.get('/actividad/usuarios');
+
 export default api;

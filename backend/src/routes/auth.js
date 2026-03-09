@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
+const { registrarActividad } = require('../utils/actividad');
 
 const router = express.Router();
 
@@ -36,6 +37,9 @@ router.post('/login', async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(usuario.id, usuario.email, 'login', 'usuarios', usuario.id, `Login desde ${req.headers['user-agent']?.slice(0, 100) || 'desconocido'}`, ip);
 
     res.json({
       token,

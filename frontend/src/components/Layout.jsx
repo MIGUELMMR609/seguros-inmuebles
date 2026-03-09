@@ -3,7 +3,7 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   LayoutDashboard, Building2, FileText, Users, Shield,
   Bell, UserCog, LogOut, ShieldCheck, AlertOctagon, Calculator, Mail, Archive, Database,
-  Menu, X,
+  Menu, X, Activity,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { obtenerAlertasApi, obtenerResumenAlertasApi } from '../api/index.js';
@@ -149,6 +149,22 @@ export default function Layout() {
           >
             <UserCog size={17} />
             <span>Usuarios</span>
+          </NavLink>
+        )}
+        {esAdmin && (
+          <NavLink
+            to="/actividad"
+            onClick={handleNavClick}
+            className={({ isActive }) =>
+              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isActive
+                  ? 'bg-white/20 text-white'
+                  : 'text-white/70 hover:bg-white/10 hover:text-white'
+              }`
+            }
+          >
+            <Activity size={17} />
+            <span>Actividad</span>
           </NavLink>
         )}
       </nav>

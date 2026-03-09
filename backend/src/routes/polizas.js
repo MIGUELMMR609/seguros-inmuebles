@@ -4,6 +4,7 @@ const path = require('path');
 const { PDFDocument } = require('pdf-lib');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
+const { registrarActividad } = require('../utils/actividad');
 
 const MAX_BYTES_PDF = 5 * 1024 * 1024; // 5 MB límite Anthropic
 const MAX_PAGINAS_PDF = 10;
@@ -141,6 +142,8 @@ router.post('/', async (req, res) => {
 
     // Devolver la poliza con todos los campos
     const final = await pool.query('SELECT * FROM polizas WHERE id=$1', [polizaId]);
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'crear', 'poliza_inmueble', polizaId, `${compania_aseguradora || ''} · ${numero_poliza || ''}`, ip);
     res.status(201).json(final.rows[0]);
   } catch (error) {
     console.error('Error al crear póliza:', error);
@@ -206,6 +209,8 @@ router.put('/:id', async (req, res) => {
     }
 
     const final = await pool.query('SELECT * FROM polizas WHERE id=$1', [req.params.id]);
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'editar', 'poliza_inmueble', parseInt(req.params.id), `${compania_aseguradora || ''} · ${numero_poliza || ''}`, ip);
     res.json(final.rows[0]);
   } catch (error) {
     console.error('Error al actualizar póliza:', error);
@@ -217,13 +222,17 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const resultado = await pool.query(
-      'DELETE FROM polizas WHERE id = $1 RETURNING id',
+      'DELETE FROM polizas WHERE id = $1 RETURNING id, compania_aseguradora, numero_poliza',
       [req.params.id]
     );
 
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Póliza no encontrada' });
     }
+
+    const { id: polizaId, compania_aseguradora, numero_poliza } = resultado.rows[0];
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'eliminar', 'poliza_inmueble', polizaId, `${compania_aseguradora || ''} · ${numero_poliza || ''}`, ip);
 
     res.json({ mensaje: 'Póliza eliminada correctamente' });
   } catch (error) {

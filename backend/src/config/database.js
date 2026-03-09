@@ -158,6 +158,23 @@ async function inicializarBaseDatos() {
       );
     `);
 
+    // Tabla registro de actividad de usuarios
+    await cliente.query(`
+      CREATE TABLE IF NOT EXISTS registro_actividad (
+        id SERIAL PRIMARY KEY,
+        usuario_id INTEGER REFERENCES usuarios(id) ON DELETE SET NULL,
+        usuario_email VARCHAR(255),
+        accion VARCHAR(50) NOT NULL,
+        entidad VARCHAR(100),
+        entidad_id INTEGER,
+        detalle TEXT,
+        ip VARCHAR(100),
+        fecha TIMESTAMP DEFAULT NOW()
+      );
+      CREATE INDEX IF NOT EXISTS idx_actividad_fecha ON registro_actividad(fecha DESC);
+      CREATE INDEX IF NOT EXISTS idx_actividad_usuario ON registro_actividad(usuario_id);
+    `);
+
     // Nuevas columnas en polizas_inquilinos (migración)
     await cliente.query(`
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS tipo VARCHAR(100) DEFAULT 'hogar';

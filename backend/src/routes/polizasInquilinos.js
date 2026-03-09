@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
+const { registrarActividad } = require('../utils/actividad');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -144,6 +145,8 @@ router.post('/', async (req, res) => {
     }
 
     const final = await pool.query('SELECT * FROM polizas_inquilinos WHERE id = $1', [polizaId]);
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'crear', 'poliza_inquilino', polizaId, `${compania_aseguradora || ''} · ${numero_poliza || ''}`, ip);
     res.status(201).json(final.rows[0]);
   } catch (error) {
     console.error('Error al crear póliza de inquilino:', error);
@@ -236,6 +239,8 @@ router.put('/:id', async (req, res) => {
     }
 
     const final = await pool.query('SELECT * FROM polizas_inquilinos WHERE id = $1', [req.params.id]);
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'editar', 'poliza_inquilino', parseInt(req.params.id), `${compania_aseguradora || ''} · ${numero_poliza || ''}`, ip);
     res.json(final.rows[0]);
   } catch (error) {
     console.error('Error al actualizar póliza de inquilino:', error);
@@ -247,13 +252,17 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const resultado = await pool.query(
-      'DELETE FROM polizas_inquilinos WHERE id = $1 RETURNING id',
+      'DELETE FROM polizas_inquilinos WHERE id = $1 RETURNING id, compania_aseguradora, numero_poliza',
       [req.params.id]
     );
 
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Póliza de inquilino no encontrada' });
     }
+
+    const { id: polizaId, compania_aseguradora, numero_poliza } = resultado.rows[0];
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'eliminar', 'poliza_inquilino', polizaId, `${compania_aseguradora || ''} · ${numero_poliza || ''}`, ip);
 
     res.json({ mensaje: 'Póliza de inquilino eliminada correctamente' });
   } catch (error) {

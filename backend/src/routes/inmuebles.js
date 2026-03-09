@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
+const { registrarActividad } = require('../utils/actividad');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -63,6 +64,8 @@ router.post('/', async (req, res) => {
       [nombre.trim(), direccion || null, tipoFinal, notas || null]
     );
 
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'crear', 'inmueble', resultado.rows[0].id, nombre.trim(), ip);
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
     console.error('Error al crear inmueble:', error);
@@ -93,6 +96,8 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Inmueble no encontrado' });
     }
 
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'editar', 'inmueble', parseInt(req.params.id), nombre.trim(), ip);
     res.json(resultado.rows[0]);
   } catch (error) {
     console.error('Error al actualizar inmueble:', error);
@@ -104,13 +109,17 @@ router.put('/:id', async (req, res) => {
 router.delete('/:id', async (req, res) => {
   try {
     const resultado = await pool.query(
-      'DELETE FROM inmuebles WHERE id = $1 RETURNING id',
+      'DELETE FROM inmuebles WHERE id = $1 RETURNING id, nombre',
       [req.params.id]
     );
 
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Inmueble no encontrado' });
     }
+
+    const { id: inmuebleId, nombre } = resultado.rows[0];
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'eliminar', 'inmueble', inmuebleId, nombre, ip);
 
     res.json({ mensaje: 'Inmueble eliminado correctamente' });
   } catch (error) {

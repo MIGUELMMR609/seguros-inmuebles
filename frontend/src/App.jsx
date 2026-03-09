@@ -14,6 +14,7 @@ import Contabilidad from './pages/Contabilidad.jsx';
 import RegistroEmails from './pages/RegistroEmails.jsx';
 import HistoricoInquilinos from './pages/HistoricoInquilinos.jsx';
 import Backup from './pages/Backup.jsx';
+import Actividad from './pages/Actividad.jsx';
 
 function RutaProtegida({ children, soloAdmin = false }) {
   const { usuario, cargando } = useAuth();
@@ -74,6 +75,10 @@ export default function App() {
             <Route
               path="usuarios"
               element={<RutaProtegida soloAdmin><Usuarios /></RutaProtegida>}
+            />
+            <Route
+              path="actividad"
+              element={<RutaProtegida soloAdmin><Actividad /></RutaProtegida>}
             />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

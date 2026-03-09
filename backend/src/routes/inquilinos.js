@@ -2,6 +2,7 @@ const express = require('express');
 const { PDFDocument } = require('pdf-lib');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
+const { registrarActividad } = require('../utils/actividad');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -95,6 +96,8 @@ router.post('/', async (req, res) => {
       ]
     );
 
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'crear', 'inquilino', resultado.rows[0].id, nombre.trim(), ip);
     res.status(201).json(resultado.rows[0]);
   } catch (error) {
     console.error('Error al crear inquilino:', error);
@@ -144,6 +147,8 @@ router.put('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Inquilino no encontrado' });
     }
 
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'editar', 'inquilino', parseInt(req.params.id), nombre.trim(), ip);
     res.json(resultado.rows[0]);
   } catch (error) {
     console.error('Error al actualizar inquilino:', error);
@@ -512,13 +517,17 @@ La valoración es un número del 1 al 10 (puede tener un decimal). Todos los cam
 router.delete('/:id', async (req, res) => {
   try {
     const resultado = await pool.query(
-      'DELETE FROM inquilinos WHERE id = $1 RETURNING id',
+      'DELETE FROM inquilinos WHERE id = $1 RETURNING id, nombre',
       [req.params.id]
     );
 
     if (resultado.rows.length === 0) {
       return res.status(404).json({ error: 'Inquilino no encontrado' });
     }
+
+    const { id: inquilinoId, nombre } = resultado.rows[0];
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(req.usuario.id, req.usuario.email, 'eliminar', 'inquilino', inquilinoId, nombre, ip);
 
     res.json({ mensaje: 'Inquilino eliminado correctamente' });
   } catch (error) {
