@@ -118,6 +118,7 @@ export default function Inmuebles() {
     {
       clave: 'nombre',
       titulo: 'Nombre',
+      sortable: true,
       render: (f) => (
         <div className="flex items-center gap-2">
           <span className="font-medium">{f.nombre}</span>
@@ -135,6 +136,7 @@ export default function Inmuebles() {
     {
       clave: 'tipo',
       titulo: 'Tipo',
+      sortable: true,
       render: (f) => {
         const tipo = TIPOS.find((t) => t.valor === f.tipo);
         return tipo ? tipo.etiqueta : f.tipo;
@@ -144,6 +146,7 @@ export default function Inmuebles() {
     {
       clave: 'total_polizas',
       titulo: 'Pólizas',
+      sortable: true,
       render: (f) => (
         <span className={`text-sm font-semibold ${!Number(f.total_polizas) ? 'text-orange-500' : 'text-gray-700'}`}>
           {f.total_polizas}
