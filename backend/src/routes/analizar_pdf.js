@@ -3,6 +3,7 @@ const { PDFDocument } = require('pdf-lib');
 const { uploadMemoria } = require('../middleware/upload');
 const { verificarToken } = require('../middleware/auth');
 const cloudinary = require('../config/cloudinary');
+const { llamarAnthropicApi } = require('../utils/anthropic');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -91,7 +92,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
 
 Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda. Los campos de análisis deben ser texto descriptivo en español.`;
 
-    const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+    const respuesta = await llamarAnthropicApi( {
       method: 'POST',
       signal: controlador.signal,
       headers: {

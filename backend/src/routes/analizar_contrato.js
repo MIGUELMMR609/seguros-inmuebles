@@ -3,6 +3,7 @@ const { PDFDocument } = require('pdf-lib');
 const { verificarToken } = require('../middleware/auth');
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
+const { llamarAnthropicApi } = require('../utils/anthropic');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -106,7 +107,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
 Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda.
 IMPORTANTE: Si el contrato tiene varios arrendatarios, el campo "nombre_inquilino" solo lleva el nombre del primero, y "otros_inquilinos" debe incluir obligatoriamente los datos de TODOS los demás (nombre, email y teléfono de cada uno).`;
 
-    const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+    const respuesta = await llamarAnthropicApi( {
       method: 'POST',
       signal: controlador.signal,
       headers: {

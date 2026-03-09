@@ -4,6 +4,7 @@ const path = require('path');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
 const { registrarActividad } = require('../utils/actividad');
+const { llamarAnthropicApi } = require('../utils/anthropic');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -346,7 +347,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
     const controlador = new AbortController();
     const temporizador = setTimeout(() => controlador.abort(), 115_000);
 
-    const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+    const respuesta = await llamarAnthropicApi( {
       method: 'POST',
       signal: controlador.signal,
       headers: {

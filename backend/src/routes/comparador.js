@@ -1,6 +1,7 @@
 const express = require('express');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
+const { llamarAnthropicApi } = require('../utils/anthropic');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -160,7 +161,7 @@ IMPORTANTE:
   const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
 
   try {
-    const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+    const respuesta = await llamarAnthropicApi( {
       method: 'POST',
       signal: controlador.signal,
       headers: {

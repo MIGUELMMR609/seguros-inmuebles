@@ -5,6 +5,7 @@ const { PDFDocument } = require('pdf-lib');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
 const { registrarActividad } = require('../utils/actividad');
+const { llamarAnthropicApi } = require('../utils/anthropic');
 
 const MAX_BYTES_PDF = 5 * 1024 * 1024; // 5 MB límite Anthropic
 const MAX_PAGINAS_PDF = 10;
@@ -312,7 +313,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown) 
 
 La valoración es un número del 1 al 10 (puede tener un decimal). Todos los campos de texto en español.`;
 
-    const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+    const respuesta = await llamarAnthropicApi( {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -410,7 +411,7 @@ router.get('/:id/coberturas', async (req, res) => {
 
     const base64 = fs.readFileSync(rutaArchivo).toString('base64');
 
-    const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+    const respuesta = await llamarAnthropicApi( {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

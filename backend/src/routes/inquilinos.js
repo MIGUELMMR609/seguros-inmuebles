@@ -3,6 +3,7 @@ const { PDFDocument } = require('pdf-lib');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
 const { registrarActividad } = require('../utils/actividad');
+const { llamarAnthropicApi } = require('../utils/anthropic');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -431,7 +432,7 @@ La valoración es un número del 1 al 10 (puede tener un decimal). Todos los cam
     const controlador = new AbortController();
     const temporizador = setTimeout(() => controlador.abort(), 115_000);
 
-    const respuesta = await fetch('https://api.anthropic.com/v1/messages', {
+    const respuesta = await llamarAnthropicApi( {
       method: 'POST',
       signal: controlador.signal,
       headers: {
