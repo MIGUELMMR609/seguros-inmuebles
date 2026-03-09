@@ -34,7 +34,7 @@ export default function Dashboard() {
     totalAlertas: 0,
     hayUrgentes: false,
     siniestrosAbiertos: 0,
-    contratosProximos: [],
+
     contratosVencidosList: [],
     cargando: true,
   });
@@ -49,14 +49,6 @@ export default function Dashboard() {
           obtenerAlertasApi(30),
           obtenerSiniestrosApi({ estado: 'abierto' }),
         ]);
-
-        // Inquilinos con contrato próximo a vencer (≤30 días o ≤150 para pisos)
-        const contratosProximos = resInquilinos.data.filter((inq) => {
-          if (!inq.fecha_fin_contrato) return false;
-          const dias = calcularDiasRestantes(inq.fecha_fin_contrato);
-          const umbral = inq.tipo_inmueble && inq.tipo_inmueble.toLowerCase() === 'piso' ? 150 : 30;
-          return dias >= 0 && dias <= umbral;
-        });
 
         // Contratos vencidos + próximos, ordenados por urgencia
         const contratosAlerta = resInquilinos.data
@@ -78,7 +70,6 @@ export default function Dashboard() {
           totalAlertas: resAlertas.data.total,
           hayUrgentes: resAlertas.data.hay_urgentes || false,
           siniestrosAbiertos: resSiniestros.data.length,
-          contratosProximos,
           contratosAlerta,
           cargando: false,
         });
@@ -89,7 +80,7 @@ export default function Dashboard() {
     cargar();
   }, []);
 
-  const { inmuebles, polizas, inquilinos, alertas, polizasVencidas, contratosVencidos, totalAlertas, hayUrgentes, siniestrosAbiertos, contratosProximos, contratosAlerta = [], cargando } = datos;
+  const { inmuebles, polizas, inquilinos, alertas, polizasVencidas, contratosVencidos, totalAlertas, hayUrgentes, siniestrosAbiertos, contratosAlerta = [], cargando } = datos;
 
   const tarjetasResumen = [
     {
@@ -193,51 +184,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Contratos próximos a vencer */}
-        {contratosProximos.length > 0 && (
-          <div className="tarjeta">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-                <CalendarClock size={16} className="text-red-500" />
-                Contratos próximos a vencer
-              </h2>
-              <Link to="/inquilinos" className="text-sm text-[#1e3a5f] font-medium hover:underline">
-                Ver inquilinos →
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {contratosProximos.slice(0, 5).map((inq) => {
-                const dias = calcularDiasRestantes(inq.fecha_fin_contrato);
-                return (
-                  <div
-                    key={inq.id}
-                    className={`flex items-center justify-between p-3 rounded-lg ${
-                      dias <= 7 ? 'bg-red-50 border border-red-100' : 'bg-orange-50 border border-orange-100'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
-                        <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase tracking-wide">
-                          {inq.nombre_inmueble || 'Sin inmueble'}
-                        </span>
-                        {inq.nombre}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Vence {new Date(inq.fecha_fin_contrato).toLocaleDateString('es-ES')}
-                      </p>
-                    </div>
-                    <span className={`ml-3 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full ${
-                      dias <= 7 ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'
-                    }`}>
-                      {dias}d
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* Pólizas vencidas + próximas a vencer */}
         {(polizasVencidas.length > 0 || alertas.length > 0) && (
           <div className="tarjeta">
