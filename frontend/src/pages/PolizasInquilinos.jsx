@@ -19,6 +19,7 @@ import {
 
 const TIPOS_POLIZA = [
   { valor: 'hogar', etiqueta: 'Hogar' },
+  { valor: 'local_negocio', etiqueta: 'Local de Negocio' },
   { valor: 'responsabilidad_civil', etiqueta: 'Responsabilidad Civil' },
   { valor: 'vida', etiqueta: 'Vida' },
   { valor: 'accidentes', etiqueta: 'Accidentes' },
@@ -50,6 +51,7 @@ const formularioVacio = {
   analisis_fortalezas: '',
   analisis_carencias: '',
   como_complementar: '',
+  direccion_bien_asegurado: '',
 };
 
 function calcularEstado(fechaVencimiento) {
@@ -175,6 +177,7 @@ export default function PolizasInquilinos() {
       analisis_fortalezas: datos.analisis_fortalezas || prev.analisis_fortalezas,
       analisis_carencias: datos.analisis_carencias || prev.analisis_carencias,
       como_complementar: datos.como_complementar || prev.como_complementar,
+      direccion_bien_asegurado: datos.direccion_bien_asegurado || prev.direccion_bien_asegurado,
       documento_url: documentoUrl || prev.documento_url,
     }));
     setPasoModal('form');
@@ -486,7 +489,7 @@ export default function PolizasInquilinos() {
                 </div>
                 <div>
                   <label className="etiqueta-formulario">Tipo de seguro</label>
-                  <select name="tipo" value={formulario.tipo} onChange={handleCambio} className="campo-formulario">
+                  <select name="tipo" value={formulario.tipo} onChange={handleCambio} className="campo-formulario text-sm py-1.5">
                     {TIPOS_POLIZA.map((t) => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
                   </select>
                 </div>
@@ -497,6 +500,10 @@ export default function PolizasInquilinos() {
                 <div>
                   <label className="etiqueta-formulario">Número de póliza</label>
                   <input name="numero_poliza" value={formulario.numero_poliza} onChange={handleCambio} className="campo-formulario font-mono" placeholder="POL-2024-XXXX" />
+                </div>
+                <div className="col-span-2">
+                  <label className="etiqueta-formulario">Dirección del bien asegurado</label>
+                  <input name="direccion_bien_asegurado" value={formulario.direccion_bien_asegurado} onChange={handleCambio} className="campo-formulario" placeholder="Calle, número, ciudad..." />
                 </div>
                 <div>
                   <label className="etiqueta-formulario">Importe anual (€)</label>

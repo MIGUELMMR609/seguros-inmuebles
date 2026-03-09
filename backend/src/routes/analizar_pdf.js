@@ -85,7 +85,8 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
   "riesgos_no_cubiertos": "descripción de las exclusiones y riesgos no cubiertos mencionados o null",
   "analisis_fortalezas": "puntos fuertes y aspectos destacables de esta póliza o null",
   "analisis_carencias": "carencias, limitaciones o aspectos a mejorar detectados o null",
-  "como_complementar": "recomendaciones para completar o mejorar la cobertura actual o null"
+  "como_complementar": "recomendaciones para completar o mejorar la cobertura actual o null",
+  "direccion_bien_asegurado": "dirección completa del bien asegurado (calle, número, piso, ciudad) o null"
 }
 
 Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda. Los campos de análisis deben ser texto descriptivo en español.`;

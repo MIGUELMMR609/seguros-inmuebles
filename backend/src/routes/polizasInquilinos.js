@@ -82,6 +82,7 @@ router.post('/', async (req, res) => {
       analisis_fortalezas,
       analisis_carencias,
       como_complementar,
+      direccion_bien_asegurado,
     } = req.body;
 
     if (!inquilino_id) {
@@ -121,8 +122,9 @@ router.post('/', async (req, res) => {
           riesgos_no_cubiertos = $6,
           analisis_fortalezas = $7,
           analisis_carencias = $8,
-          como_complementar = $9
-         WHERE id = $10`,
+          como_complementar = $9,
+          direccion_bien_asegurado = $10
+         WHERE id = $11`,
         [
           tipo || 'hogar',
           contacto_nombre || null,
@@ -133,6 +135,7 @@ router.post('/', async (req, res) => {
           analisis_fortalezas || null,
           analisis_carencias || null,
           como_complementar || null,
+          direccion_bien_asegurado || null,
           polizaId,
         ]
       );
@@ -170,6 +173,7 @@ router.put('/:id', async (req, res) => {
       analisis_fortalezas,
       analisis_carencias,
       como_complementar,
+      direccion_bien_asegurado,
     } = req.body;
 
     // UPDATE base
@@ -210,8 +214,9 @@ router.put('/:id', async (req, res) => {
           riesgos_no_cubiertos = $6,
           analisis_fortalezas = $7,
           analisis_carencias = $8,
-          como_complementar = $9
-         WHERE id = $10`,
+          como_complementar = $9,
+          direccion_bien_asegurado = $10
+         WHERE id = $11`,
         [
           tipo || 'hogar',
           contacto_nombre || null,
@@ -222,6 +227,7 @@ router.put('/:id', async (req, res) => {
           analisis_fortalezas || null,
           analisis_carencias || null,
           como_complementar || null,
+          direccion_bien_asegurado || null,
           req.params.id,
         ]
       );

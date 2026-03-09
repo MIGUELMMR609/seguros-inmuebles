@@ -168,6 +168,7 @@ async function inicializarBaseDatos() {
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS analisis_fortalezas TEXT;
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS analisis_carencias TEXT;
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS como_complementar TEXT;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS direccion_bien_asegurado TEXT;
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS valoracion NUMERIC(3,1);
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS comparador_mercado JSONB;
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS fecha_ultimo_analisis TIMESTAMP;
