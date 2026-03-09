@@ -487,6 +487,10 @@ export default function PolizasInquilinos() {
                     {inquilinos.map((i) => <option key={i.id} value={i.id}>{i.nombre}{i.nombre_inmueble ? ` — ${i.nombre_inmueble}` : ''}</option>)}
                   </select>
                 </div>
+                <div className="col-span-2">
+                  <label className="etiqueta-formulario">Dirección del bien asegurado</label>
+                  <input name="direccion_bien_asegurado" value={formulario.direccion_bien_asegurado} onChange={handleCambio} className="campo-formulario" placeholder="Calle, número, ciudad..." />
+                </div>
                 <div>
                   <label className="etiqueta-formulario">Tipo de seguro</label>
                   <select name="tipo" value={formulario.tipo} onChange={handleCambio} className="campo-formulario text-sm py-1.5">
@@ -500,10 +504,6 @@ export default function PolizasInquilinos() {
                 <div>
                   <label className="etiqueta-formulario">Número de póliza</label>
                   <input name="numero_poliza" value={formulario.numero_poliza} onChange={handleCambio} className="campo-formulario font-mono" placeholder="POL-2024-XXXX" />
-                </div>
-                <div className="col-span-2">
-                  <label className="etiqueta-formulario">Dirección del bien asegurado</label>
-                  <input name="direccion_bien_asegurado" value={formulario.direccion_bien_asegurado} onChange={handleCambio} className="campo-formulario" placeholder="Calle, número, ciudad..." />
                 </div>
                 <div>
                   <label className="etiqueta-formulario">Importe anual (€)</label>
