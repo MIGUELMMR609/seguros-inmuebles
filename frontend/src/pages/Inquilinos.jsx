@@ -89,6 +89,9 @@ export default function Inquilinos() {
   const [historialRenovaciones, setHistorialRenovaciones] = useState([]);
   const [cargandoHistorial, setCargandoHistorial] = useState(false);
 
+  // Aviso inmueble no asociado
+  const [avisoSinInmueble, setAvisoSinInmueble] = useState(false);
+
   // Modal análisis jurídico IA
   const [modalAnalisis, setModalAnalisis] = useState(false);
   const [inquilinoAnalisis, setInquilinoAnalisis] = useState(null);
@@ -211,6 +214,10 @@ export default function Inquilinos() {
     e.preventDefault();
     if (!formulario.nombre.trim()) {
       setError('El nombre del inquilino es requerido');
+      return;
+    }
+    if (!formulario.inmueble_id) {
+      setAvisoSinInmueble(true);
       return;
     }
     setGuardando(true);
@@ -1270,6 +1277,22 @@ export default function Inquilinos() {
             ))}
           </div>
         )}
+      </Modal>
+
+      {/* Modal aviso sin inmueble */}
+      <Modal abierto={avisoSinInmueble} onCerrar={() => setAvisoSinInmueble(false)} titulo="Inmueble requerido" ancho="max-w-sm">
+        <div className="flex flex-col items-center text-center gap-4 py-2">
+          <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+            <AlertTriangle size={24} className="text-orange-500" />
+          </div>
+          <p className="text-gray-700 text-sm">
+            Debes asociar un <strong>inmueble</strong> al inquilino antes de guardarlo.
+            Selecciona el inmueble en el campo correspondiente.
+          </p>
+          <button onClick={() => setAvisoSinInmueble(false)} className="btn-primario w-full justify-center">
+            Entendido
+          </button>
+        </div>
       </Modal>
 
       {/* Modal confirmar eliminación */}
