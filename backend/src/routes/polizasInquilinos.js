@@ -341,7 +341,7 @@ Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
         'anthropic-beta': 'pdfs-2024-09-25,web-search-2025-03-05',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
+        model: 'claude-sonnet-4-6',
         max_tokens: 2048,
         tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages: [{
