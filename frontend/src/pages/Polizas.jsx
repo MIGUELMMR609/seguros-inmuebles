@@ -828,7 +828,7 @@ export default function Polizas() {
                 )}
                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                   <button
-                    onClick={() => { imprimirInformePoliza(analisisActual, polizaAnalisis); setDialogoMasInformes(true); }}
+                    onClick={() => { imprimirInformePoliza(analisisActual, polizaAnalisis); setModalAnalisis(false); setDialogoMasInformes(true); }}
                     className="btn-secundario flex items-center gap-2"
                   >
                     <Download size={14} />
@@ -980,7 +980,6 @@ export default function Polizas() {
           <button
             onClick={() => {
               setDialogoMasInformes(false);
-              setModalAnalisis(false);
               setPolizaAnalisis(null);
               setAnalisisActual(null);
             }}
@@ -991,7 +990,6 @@ export default function Polizas() {
           <button
             onClick={() => {
               setDialogoMasInformes(false);
-              setModalAnalisis(false);
               setPolizaAnalisis(null);
               setAnalisisActual(null);
               navigate('/polizas');
