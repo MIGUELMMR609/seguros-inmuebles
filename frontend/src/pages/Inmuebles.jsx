@@ -211,6 +211,7 @@ export default function Inmuebles() {
           datos={inmuebles}
           cargando={cargando}
           mensajeVacio="No hay inmuebles registrados. Añade el primero."
+          filasPorPagina={9999}
         />
       </div>
 
