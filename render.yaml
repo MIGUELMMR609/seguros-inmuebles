@@ -5,6 +5,7 @@ services:
     runtime: node
     region: frankfurt
     plan: free
+    nodeVersion: 20.19.0
     buildCommand: cd backend && npm install
     startCommand: node backend/server.js
     envVars:
@@ -37,6 +38,7 @@ services:
     runtime: static
     region: frankfurt
     plan: free
+    nodeVersion: 20.19.0
     buildCommand: cd frontend && npm install && npm run build
     staticPublishPath: frontend/dist
     envVars:
