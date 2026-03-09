@@ -168,6 +168,7 @@ export default function Polizas() {
       analisis_fortalezas: poliza.analisis_fortalezas || '',
       analisis_carencias: poliza.analisis_carencias || '',
       como_complementar: poliza.como_complementar || '',
+      direccion_bien_asegurado: poliza.direccion_bien_asegurado || '',
     });
     setError('');
     setPasoModal('form');
