@@ -171,12 +171,18 @@ export default function Inquilinos() {
     const archivo = e.target.files?.[0];
     if (!archivo) return;
 
-    if (archivo.type !== 'application/pdf') {
+    // Validar: aceptar application/pdf, application/octet-stream o extensión .pdf
+    const esPdf = archivo.type === 'application/pdf'
+      || archivo.type === 'application/octet-stream'
+      || archivo.name?.toLowerCase().endsWith('.pdf');
+    if (!esPdf) {
       setErrorPdf('Solo se aceptan archivos PDF');
+      setPasoModal('error_pdf');
       return;
     }
     if (archivo.size > 10 * 1024 * 1024) {
       setErrorPdf('El archivo no puede superar 10 MB');
+      setPasoModal('error_pdf');
       return;
     }
 
@@ -207,7 +213,9 @@ export default function Inquilinos() {
       }));
       setPasoModal('form');
     } catch (err) {
-      setErrorPdf(err.response?.data?.error || err.message || 'Error al analizar el contrato');
+      const msg = err.response?.data?.error || err.message || 'Error al analizar el contrato';
+      console.error('Error al analizar contrato PDF:', err.response?.status, msg);
+      setErrorPdf(msg);
       setPasoModal('error_pdf');
     }
   }
@@ -662,7 +670,7 @@ export default function Inquilinos() {
             <input
               ref={inputPdfRef}
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,.pdf"
               onChange={handlePdfArchivo}
               className="hidden"
             />
@@ -703,7 +711,7 @@ export default function Inquilinos() {
             <input
               ref={inputPdfRef}
               type="file"
-              accept="application/pdf"
+              accept="application/pdf,.pdf"
               onChange={handlePdfArchivo}
               className="hidden"
             />
@@ -1080,7 +1088,7 @@ export default function Inquilinos() {
                     <span className="text-xs text-green-600 font-medium flex items-center gap-1"><CheckCircle size={12} /> PDF subido</span>
                   )}
                 </div>
-                <input ref={inputPdfRenovarRef} type="file" accept="application/pdf" onChange={handlePdfRenovacion} className="hidden" />
+                <input ref={inputPdfRenovarRef} type="file" accept="application/pdf,.pdf" onChange={handlePdfRenovacion} className="hidden" />
               </div>
             </div>
             {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}
@@ -1110,7 +1118,7 @@ export default function Inquilinos() {
               </button>
             </div>
             <button onClick={() => setPasoRenovar('eleccion')} className="text-xs text-gray-400 hover:text-gray-600 mt-4 block mx-auto">Atrás</button>
-            <input ref={inputPdfRenovarRef} type="file" accept="application/pdf" onChange={handlePdfNuevoContrato} className="hidden" />
+            <input ref={inputPdfRenovarRef} type="file" accept="application/pdf,.pdf" onChange={handlePdfNuevoContrato} className="hidden" />
           </div>
         )}
 
