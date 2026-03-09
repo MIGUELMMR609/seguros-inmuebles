@@ -180,8 +180,8 @@ export default function Inquilinos() {
       setPasoModal('error_pdf');
       return;
     }
-    if (archivo.size > 10 * 1024 * 1024) {
-      setErrorPdf('El archivo no puede superar 10 MB');
+    if (archivo.size > 50 * 1024 * 1024) {
+      setErrorPdf('El archivo no puede superar 50 MB');
       setPasoModal('error_pdf');
       return;
     }

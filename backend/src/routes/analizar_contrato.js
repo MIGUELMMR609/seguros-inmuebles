@@ -7,7 +7,7 @@ router.use(verificarToken);
 
 const TIMEOUT_MS = 115_000;
 
-// Multer en memoria — límite 10 MB (igual que el frontend)
+// Multer en memoria — límite 50 MB
 const filtroPDF = (req, file, cb) => {
   if (file.mimetype === 'application/pdf' || file.mimetype === 'application/octet-stream') {
     cb(null, true);
@@ -19,7 +19,7 @@ const filtroPDF = (req, file, cb) => {
 const uploadContrato = multer({
   storage: multer.memoryStorage(),
   fileFilter: filtroPDF,
-  limits: { fileSize: 10 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 },
 });
 
 function subirPdfACloudinary(buffer) {
