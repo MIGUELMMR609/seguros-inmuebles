@@ -2,21 +2,9 @@ const multer = require('multer');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const cloudinary = require('../config/cloudinary');
 
-// --- Almacenamiento Cloudinary para PDFs ---
-const storagePDF = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => ({
-    folder: 'polizas-seguros',
-    resource_type: 'raw',
-    type: 'upload',
-    access_mode: 'public',
-    format: 'pdf',
-    public_id: `doc_${Date.now()}`,
-  }),
-});
-
+// --- Almacenamiento en memoria para PDFs (compresión manual antes de Cloudinary) ---
 const filtroPDF = (req, file, cb) => {
-  if (file.mimetype === 'application/pdf') {
+  if (file.mimetype === 'application/pdf' || file.mimetype === 'application/octet-stream' || file.originalname?.toLowerCase().endsWith('.pdf')) {
     cb(null, true);
   } else {
     cb(new Error('Solo se permiten archivos PDF'), false);
@@ -24,9 +12,9 @@ const filtroPDF = (req, file, cb) => {
 };
 
 const upload = multer({
-  storage: storagePDF,
+  storage: multer.memoryStorage(),
   fileFilter: filtroPDF,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
 });
 
 // --- Almacenamiento Cloudinary para fotos de siniestros ---
@@ -56,7 +44,7 @@ const uploadFotos = multer({
 const uploadMemoria = multer({
   storage: multer.memoryStorage(),
   fileFilter: filtroPDF,
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
 });
 
 module.exports = { upload, uploadFotos, uploadMemoria };

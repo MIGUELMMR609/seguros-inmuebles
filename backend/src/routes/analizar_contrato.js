@@ -77,7 +77,7 @@ router.post('/', uploadContrato.single('documento'), async (req, res) => {
     console.log(`analizar-contrato — buffer original: ${req.file.buffer.length} bytes | para IA: ${bufferParaIA.length} bytes`);
     const base64 = bufferParaIA.toString('base64');
 
-    const promesaUrl = subirPdfACloudinary(req.file.buffer).catch((err) => {
+    const promesaUrl = subirPdfACloudinary(bufferParaIA).catch((err) => {
       console.warn('No se pudo subir contrato a Cloudinary:', err?.message);
       return null;
     });
