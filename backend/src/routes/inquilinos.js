@@ -263,32 +263,39 @@ router.post('/:id/renovar', async (req, res) => {
         [fecha_inicio || null, fecha_fin || null, importe || null, nuevo_documento_url || null, inquilinoId]
       );
     } else {
-      // Contrato nuevo: sustituir todos los campos del contrato
+      // Contrato nuevo: finalizar inquilino antiguo + crear nuevo registro activo
+      await pool.query(
+        `UPDATE inquilinos SET estado = 'finalizado', fecha_finalizacion = CURRENT_DATE WHERE id = $1`,
+        [inquilinoId]
+      );
+
       resultado = await pool.query(
-        `UPDATE inquilinos
-         SET fecha_inicio_contrato          = COALESCE($1::date, fecha_inicio_contrato),
-             fecha_fin_contrato             = COALESCE($2::date, fecha_fin_contrato),
-             importe_renta                  = COALESCE($3::numeric, importe_renta),
-             documento_url                  = $4::text,
-             notas                          = $5::text,
-             clausulas_principales          = $6::text,
-             clausulas_perjudiciales        = $7::text,
-             obligaciones_inquilino         = $8::text,
-             obligaciones_propietario       = $9::text,
-             analisis_juridico              = $10::text,
-             recomendaciones_contrato       = $11::text,
-             valoracion_contrato            = $12::numeric,
-             fecha_ultimo_analisis_contrato = CASE WHEN $12::numeric IS NOT NULL THEN NOW() ELSE NULL END
-         WHERE id = $13 RETURNING *`,
+        `INSERT INTO inquilinos (
+           inmueble_id, nombre, email, telefono,
+           fecha_inicio_contrato, fecha_fin_contrato, importe_renta,
+           documento_url, notas, estado, tomador_contrato,
+           clausulas_principales, clausulas_perjudiciales,
+           obligaciones_inquilino, obligaciones_propietario,
+           analisis_juridico, recomendaciones_contrato, valoracion_contrato,
+           fecha_ultimo_analisis_contrato
+         ) VALUES (
+           $1,$2,$3,$4,
+           $5::date,$6::date,$7::numeric,
+           $8::text,$9::text,'activo',$10::text,
+           $11::text,$12::text,
+           $13::text,$14::text,
+           $15::text,$16::text,$17::numeric,
+           CASE WHEN $17::numeric IS NOT NULL THEN NOW() ELSE NULL END
+         ) RETURNING *`,
         [
+          inq.inmueble_id, inq.nombre, inq.email, inq.telefono,
           fecha_inicio || null, fecha_fin || null, importe || null,
-          documento_url || null,
-          notas || null,
+          documento_url || null, notas || null,
+          inq.tomador_contrato || null,
           clausulas_principales || null, clausulas_perjudiciales || null,
           obligaciones_inquilino || null, obligaciones_propietario || null,
           analisis_juridico || null, recomendaciones_contrato || null,
           valoracion_contrato || null,
-          inquilinoId,
         ]
       );
     }

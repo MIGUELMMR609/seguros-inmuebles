@@ -362,8 +362,9 @@ export default function Inquilinos() {
             valoracion_contrato: formularioRenovacion.valoracion_contrato,
           };
 
-      await renovarContratoApi(modalRenovar.id, datos);
-      setIdRenovado(modalRenovar.id);
+      const res = await renovarContratoApi(modalRenovar.id, datos);
+      const nuevoId = res.data.inquilino?.id || modalRenovar.id;
+      setIdRenovado(nuevoId);
       const histRes = await obtenerRenovacionesApi(modalRenovar.id);
       setRenovacionHistorial(histRes.data);
       setRenovacionGuardada(true);
@@ -1167,8 +1168,14 @@ export default function Inquilinos() {
               <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
                 <CheckCircle size={28} className="text-green-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-1">Contrato renovado</h3>
-              <p className="text-sm text-gray-500 mb-5">Los datos han sido actualizados correctamente.</p>
+              <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                {formularioRenovacion.tipo === 'contrato_nuevo' ? 'Nuevo contrato creado' : 'Contrato renovado'}
+              </h3>
+              <p className="text-sm text-gray-500 mb-5">
+                {formularioRenovacion.tipo === 'contrato_nuevo'
+                  ? 'El inquilino anterior ha pasado al Histórico y se ha creado un nuevo registro activo.'
+                  : 'Los datos han sido actualizados correctamente.'}
+              </p>
               <div className="flex gap-3 justify-center">
                 <button onClick={cerrarRenovar} className="btn-secundario">Cerrar</button>
                 <button onClick={() => handleGenerarWord(idRenovado)} disabled={generandoWord} className="btn-primario">

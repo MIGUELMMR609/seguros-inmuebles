@@ -242,17 +242,17 @@ async function inicializarBaseDatos() {
     // Usuario admin por defecto
     const bcrypt = require('bcryptjs');
     const usuarioExistente = await cliente.query(
-      'SELECT id FROM usuarios WHERE email = $1',
-      ['admin@seguros.com']
+      'SELECT id FROM usuarios WHERE rol = $1',
+      ['admin']
     );
 
     if (usuarioExistente.rows.length === 0) {
-      const passwordHash = await bcrypt.hash('Admin1234!', 10);
+      const passwordHash = await bcrypt.hash('609609MMr', 10);
       await cliente.query(
         'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4)',
-        ['Administrador', 'admin@seguros.com', passwordHash, 'admin']
+        ['Administrador', 'miguelmmr@me.com', passwordHash, 'admin']
       );
-      console.log('Usuario admin creado: admin@seguros.com / Admin1234!');
+      console.log('Usuario admin creado: miguelmmr@me.com');
     }
   } finally {
     cliente.release();

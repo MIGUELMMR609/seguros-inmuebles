@@ -32,6 +32,10 @@ self.addEventListener('activate', (event) => {
 // Fetch: estrategia network-first para API, cache-first para assets estáticos
 self.addEventListener('fetch', (event) => {
   const { request } = event;
+
+  // Ignorar esquemas no soportados (chrome-extension, etc.)
+  if (!request.url.startsWith('http')) return;
+
   const url = new URL(request.url);
 
   // Las peticiones a la API siempre van a la red
