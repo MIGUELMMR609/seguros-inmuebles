@@ -137,6 +137,10 @@ export const analizarContratoApi = (archivo) => {
   });
 };
 
+// --- Comparador de pólizas con IA ---
+export const compararPolizasApi = (ids, tipo) =>
+  api.post('/comparador', { ids, tipo }, { timeout: 120_000 });
+
 // --- Backup ---
 export const obtenerBackupsApi = () => api.get('/backup');
 export const crearBackupApi = () => api.post('/backup', {}, { responseType: 'blob', timeout: 60_000 });

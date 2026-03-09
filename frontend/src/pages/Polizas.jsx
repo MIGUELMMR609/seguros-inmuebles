@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Printer } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Printer, Scale } from 'lucide-react';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
+import ModalComparador from '../components/ModalComparador.jsx';
 import UploadPDF from '../components/UploadPDF.jsx';
 import AnalizadorPDF from '../components/AnalizadorPDF.jsx';
 import Toast from '../components/Toast.jsx';
 import {
   obtenerPolizasApi, crearPolizaApi, actualizarPolizaApi, eliminarPolizaApi,
   obtenerInmueblesApi, renovarPolizaApi, obtenerHistorialApi, analizarExpertoPolizaApi,
+  compararPolizasApi,
 } from '../api/index.js';
 
 const TIPOS_POLIZA = [
@@ -98,6 +100,12 @@ export default function Polizas() {
 
   // Análisis experto IA (desde el formulario)
   const [analizandoForm, setAnalizandoForm] = useState(false);
+
+  // Comparador de pólizas con IA
+  const [modoComparar, setModoComparar] = useState(false);
+  const [seleccionadas, setSeleccionadas] = useState([]);
+  const [comparando, setComparando] = useState(false);
+  const [resultadoComparacion, setResultadoComparacion] = useState(null);
 
   // Historial
   const [modalHistorial, setModalHistorial] = useState(false);
@@ -355,6 +363,24 @@ export default function Polizas() {
     }
   }
 
+  async function handleComparar() {
+    setComparando(true);
+    try {
+      const res = await compararPolizasApi(seleccionadas, 'inmuebles');
+      setResultadoComparacion(res.data);
+    } catch (err) {
+      setToast({ mensaje: err.response?.data?.error || 'Error al comparar pólizas', tipo: 'error' });
+    } finally {
+      setComparando(false);
+    }
+  }
+
+  function toggleSeleccion(id) {
+    setSeleccionadas((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
+  }
+
   const columnas = [
     {
       clave: 'nombre_inmueble', titulo: 'Inmueble', sortable: true,
@@ -464,7 +490,63 @@ export default function Polizas() {
           <option value="">Todos los tipos</option>
           {TIPOS_POLIZA.map((t) => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
         </select>
+        <button
+          onClick={() => { setModoComparar((v) => !v); setSeleccionadas([]); }}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            modoComparar
+              ? 'bg-blue-600 text-white border-blue-600'
+              : 'bg-white text-blue-700 border-blue-300 hover:bg-blue-50'
+          }`}
+        >
+          <Scale size={15} />
+          Comparar pólizas
+        </button>
       </div>
+
+      {/* Panel de selección para comparar */}
+      {modoComparar && (
+        <div className="mb-5 bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-blue-800 mb-3">
+            Selecciona 2 o más pólizas para comparar ({seleccionadas.length} seleccionadas)
+          </p>
+          <div className="max-h-48 overflow-y-auto space-y-1 mb-4">
+            {polizas.map((p) => (
+              <label key={p.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-blue-100 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={seleccionadas.includes(p.id)}
+                  onChange={() => toggleSeleccion(p.id)}
+                  className="w-4 h-4 text-blue-600"
+                />
+                <span className="text-sm text-gray-700">
+                  <span className="font-medium">{p.compania_aseguradora || 'Sin compañía'}</span>
+                  {p.numero_poliza && <span className="text-gray-400 font-mono text-xs ml-2">· {p.numero_poliza}</span>}
+                  {p.nombre_inmueble && <span className="text-gray-500 ml-2">· {p.nombre_inmueble}</span>}
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleComparar}
+              disabled={seleccionadas.length < 2 || comparando}
+              className="btn-primario disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {comparando ? (
+                <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> Comparando...</>
+              ) : (
+                <><Scale size={15} /> Comparar seleccionadas ({seleccionadas.length})</>
+              )}
+            </button>
+            <button
+              onClick={() => { setModoComparar(false); setSeleccionadas([]); }}
+              className="btn-secundario"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="tarjeta">
         <Tabla columnas={columnas} datos={polizas} cargando={cargando} mensajeVacio="No hay pólizas registradas." filasPorPagina={9999} />
@@ -879,6 +961,14 @@ export default function Polizas() {
           <button onClick={() => handleEliminar(confirmandoEliminar.id)} className="btn-peligro flex-1 justify-center">Eliminar</button>
         </div>
       </Modal>
+
+      {/* Modal comparador de pólizas */}
+      <ModalComparador
+        abierto={!!resultadoComparacion}
+        onCerrar={() => setResultadoComparacion(null)}
+        datos={resultadoComparacion}
+        tipo="inmuebles"
+      />
 
       {toast && <Toast mensaje={toast.mensaje} tipo={toast.tipo} onCerrar={() => setToast(null)} />}
     </div>
