@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useEffect, useState, useCallback } from 'react';
 import {
   LayoutDashboard, Building2, FileText, Users, Shield,
-  Bell, UserCog, LogOut, ShieldCheck, AlertOctagon, Calculator, Mail, Archive,
+  Bell, UserCog, LogOut, ShieldCheck, AlertOctagon, Calculator, Mail, Archive, Database,
   Menu, X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -31,6 +31,7 @@ const elementosNav = [
   { ruta: '/contabilidad', etiqueta: 'Contabilidad', icono: Calculator },
   { ruta: '/alertas', etiqueta: 'Alertas', icono: Bell, esAlerta: true },
   { ruta: '/registro-emails', etiqueta: 'Emails enviados', icono: Mail },
+  { ruta: '/backup', etiqueta: 'Copias de seguridad', icono: Database },
 ];
 
 export default function Layout() {

@@ -13,6 +13,7 @@ import Siniestros from './pages/Siniestros.jsx';
 import Contabilidad from './pages/Contabilidad.jsx';
 import RegistroEmails from './pages/RegistroEmails.jsx';
 import HistoricoInquilinos from './pages/HistoricoInquilinos.jsx';
+import Backup from './pages/Backup.jsx';
 
 function RutaProtegida({ children, soloAdmin = false }) {
   const { usuario, cargando } = useAuth();
@@ -69,6 +70,7 @@ export default function App() {
             <Route path="contabilidad" element={<Contabilidad />} />
             <Route path="registro-emails" element={<RegistroEmails />} />
             <Route path="historico-inquilinos" element={<HistoricoInquilinos />} />
+            <Route path="backup" element={<Backup />} />
             <Route
               path="usuarios"
               element={<RutaProtegida soloAdmin><Usuarios /></RutaProtegida>}

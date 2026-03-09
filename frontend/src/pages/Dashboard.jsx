@@ -1,15 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, FileText, Bell, Users, TrendingUp, AlertTriangle, AlertOctagon, CalendarClock, Database, Download, HardDrive } from 'lucide-react';
+import { Building2, FileText, Bell, Users, TrendingUp, AlertTriangle, AlertOctagon, CalendarClock } from 'lucide-react';
 import {
   obtenerInmueblesApi,
   obtenerPolizasApi,
   obtenerInquilinosApi,
   obtenerAlertasApi,
   obtenerSiniestrosApi,
-  obtenerBackupsApi,
-  crearBackupApi,
-  descargarBackupApi,
 } from '../api/index.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -41,55 +38,6 @@ export default function Dashboard() {
     contratosVencidosList: [],
     cargando: true,
   });
-  const [backups, setBackups] = useState([]);
-  const [haciendoBackup, setHaciendoBackup] = useState(false);
-  const [errorBackup, setErrorBackup] = useState('');
-  const [descargando, setDescargando] = useState(null);
-
-  useEffect(() => {
-    obtenerBackupsApi().then((r) => setBackups(r.data)).catch(() => {});
-  }, []);
-
-  async function handleBackup() {
-    setHaciendoBackup(true);
-    setErrorBackup('');
-    try {
-      const res = await crearBackupApi();
-      // Descargar el archivo
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
-      const a = document.createElement('a');
-      a.href = url;
-      const cd = res.headers['content-disposition'] || '';
-      const match = cd.match(/filename="?([^"]+)"?/);
-      a.download = match ? match[1] : 'backup.json';
-      a.click();
-      window.URL.revokeObjectURL(url);
-      // Refrescar lista
-      const lista = await obtenerBackupsApi();
-      setBackups(lista.data);
-    } catch {
-      setErrorBackup('Error al crear la copia de seguridad');
-    } finally {
-      setHaciendoBackup(false);
-    }
-  }
-
-  async function handleDescargar(backup) {
-    setDescargando(backup.id);
-    try {
-      const res = await descargarBackupApi(backup.id);
-      const url = window.URL.createObjectURL(new Blob([res.data], { type: 'application/json' }));
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = backup.nombre_archivo;
-      a.click();
-      window.URL.revokeObjectURL(url);
-    } catch {
-      setErrorBackup('Error al descargar la copia');
-    } finally {
-      setDescargando(null);
-    }
-  }
 
   useEffect(() => {
     async function cargar() {
@@ -350,62 +298,6 @@ export default function Dashboard() {
             </div>
           </div>
         )}
-
-        {/* Copias de seguridad */}
-        <div className="tarjeta">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-              <Database size={16} className="text-[#1e3a5f]" />
-              Copias de seguridad
-            </h2>
-            <button
-              onClick={handleBackup}
-              disabled={haciendoBackup}
-              className="flex items-center gap-1.5 text-xs font-medium bg-[#1e3a5f] hover:bg-[#152740] text-white px-3 py-1.5 rounded-lg disabled:opacity-60 transition-colors"
-            >
-              {haciendoBackup
-                ? <><div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white" /> Creando...</>
-                : <><HardDrive size={13} /> Hacer copia ahora</>}
-            </button>
-          </div>
-          {errorBackup && (
-            <p className="text-xs text-red-600 mb-3">{errorBackup}</p>
-          )}
-          {backups.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">No hay copias guardadas</p>
-          ) : (
-            <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
-              {backups.map((b) => {
-                const conteo = b.conteo_registros || {};
-                const total = Object.values(conteo).reduce((s, v) => s + (v || 0), 0);
-                return (
-                  <div key={b.id} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-lg">
-                    <div className="min-w-0">
-                      <p className="text-xs font-medium text-gray-800 truncate">
-                        {new Date(b.fecha).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' })}
-                      </p>
-                      <p className="text-[11px] text-gray-400 mt-0.5">
-                        {total} registros · {b.tamanyo ? `${Math.round(b.tamanyo / 1024)} KB` : '—'}
-                        {conteo.inmuebles != null && ` · ${conteo.inmuebles} inm. · ${conteo.polizas} pól. · ${conteo.inquilinos} inq.`}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDescargar(b)}
-                      disabled={descargando === b.id}
-                      className="ml-2 flex-shrink-0 flex items-center gap-1 text-xs text-[#1e3a5f] hover:underline disabled:opacity-50"
-                    >
-                      {descargando === b.id
-                        ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#1e3a5f]" />
-                        : <Download size={13} />}
-                      Descargar
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-          <p className="text-[10px] text-gray-300 mt-3">Backup automático cada lunes a las 8:00 AM · Se conservan los últimos 10</p>
-        </div>
 
         {/* Últimas pólizas */}
         <div className="tarjeta">
