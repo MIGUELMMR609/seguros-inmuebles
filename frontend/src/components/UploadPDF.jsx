@@ -23,8 +23,8 @@ export default function UploadPDF({ urlActual, onSubida }) {
       return;
     }
 
-    if (archivo.size > 10 * 1024 * 1024) {
-      setError('El archivo no puede superar los 10 MB');
+    if (archivo.size > 50 * 1024 * 1024) {
+      setError('El archivo no puede superar los 50 MB');
       return;
     }
 
@@ -90,7 +90,7 @@ export default function UploadPDF({ urlActual, onSubida }) {
           ) : (
             <>
               <Upload size={16} />
-              <span>Subir documento PDF (máx. 10 MB)</span>
+              <span>Subir documento PDF (máx. 50 MB)</span>
             </>
           )}
         </button>
