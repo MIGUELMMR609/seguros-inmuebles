@@ -250,6 +250,7 @@ async function inicializarBaseDatos() {
       ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS analisis_juridico TEXT;
       ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS recomendaciones_contrato TEXT;
       ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS valoracion_contrato NUMERIC(3,1);
+      ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS motivo VARCHAR(50) DEFAULT 'renovado';
     `);
 
     // Usuario admin por defecto

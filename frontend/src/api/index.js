@@ -58,6 +58,8 @@ export const finalizarInquilinoApi = (id, datos) => api.put(`/inquilinos/${id}/f
 export const reactivarInquilinoApi = (id) => api.put(`/inquilinos/${id}/reactivar`);
 export const renovarContratoApi = (id, datos) => api.post(`/inquilinos/${id}/renovar`, datos);
 export const obtenerRenovacionesApi = (id) => api.get(`/inquilinos/${id}/renovaciones`);
+export const actualizarMotivoRenovacionApi = (inquilinoId, renovId, motivo) =>
+  api.patch(`/inquilinos/${inquilinoId}/renovaciones/${renovId}`, { motivo });
 export const obtenerHistoricoInquilinosApi = () => api.get('/inquilinos', { params: { historico: 'true' } });
 export const generarContratoWordApi = (id) => api.get(`/inquilinos/${id}/contrato-word`, { responseType: 'blob' });
 export const analizarContratoExpertoApi = (id) =>

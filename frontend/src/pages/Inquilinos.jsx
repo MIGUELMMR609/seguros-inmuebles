@@ -13,6 +13,7 @@ import {
   finalizarInquilinoApi, renovarContratoApi, obtenerRenovacionesApi,
   generarContratoWordApi, analizarContratoExpertoApi,
   subirDocumentoApi, analizarContratoApi,
+  actualizarMotivoRenovacionApi,
 } from '../api/index.js';
 
 const formularioVacio = {
@@ -1247,6 +1248,7 @@ export default function Inquilinos() {
           <div className="space-y-3">
             {historialRenovaciones.map((r) => (
               <div key={r.id} className="bg-gray-50 rounded-xl p-4 text-sm">
+                {/* Cabecera: fechas + importe + PDF */}
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-semibold text-gray-900">
                     {r.fecha_inicio ? new Date(r.fecha_inicio).toLocaleDateString('es-ES') : '—'}
@@ -1256,21 +1258,55 @@ export default function Inquilinos() {
                   <div className="flex items-center gap-2">
                     {r.importe && <span className="font-medium text-gray-700">{parseFloat(r.importe).toFixed(0)} €/mes</span>}
                     {r.documento_url && (
-                      <a href={r.documento_url} target="_blank" rel="noopener noreferrer" className="text-[#1e3a5f] hover:underline font-medium text-xs">PDF</a>
+                      <a
+                        href={r.documento_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Ver contrato PDF"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-[#1e3a5f] bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+                      >
+                        <FileText size={13} /> PDF
+                      </a>
                     )}
                   </div>
                 </div>
+
                 {r.clausulas_adicionales && (
-                  <p className="text-xs text-gray-500 mb-1">
+                  <p className="text-xs text-gray-500 mb-2">
                     <span className="font-semibold text-gray-600">Cláusula adicional:</span> {r.clausulas_adicionales}
                   </p>
                 )}
-                <div className="flex items-center justify-between mt-1">
-                  {r.tipo_renovacion === 'contrato_nuevo' ? (
-                    <span className="inline-block text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Contrato nuevo</span>
-                  ) : (
-                    <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Mismas cláusulas</span>
-                  )}
+
+                {/* Pie: tipo + motivo + fecha */}
+                <div className="flex items-center justify-between gap-3 mt-2 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    {r.tipo_renovacion === 'contrato_nuevo' ? (
+                      <span className="inline-block text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">Contrato nuevo</span>
+                    ) : (
+                      <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">Mismas cláusulas</span>
+                    )}
+
+                    {/* Desplegable motivo */}
+                    <select
+                      value={r.motivo || 'renovado'}
+                      onChange={async (e) => {
+                        const nuevoMotivo = e.target.value;
+                        try {
+                          await actualizarMotivoRenovacionApi(historialInquilino.id, r.id, nuevoMotivo);
+                          setHistorialRenovaciones((prev) =>
+                            prev.map((x) => x.id === r.id ? { ...x, motivo: nuevoMotivo } : x)
+                          );
+                        } catch {
+                          setError('Error al actualizar el motivo. Inténtalo de nuevo.');
+                        }
+                      }}
+                      className="text-xs border border-gray-200 rounded-lg px-2 py-0.5 bg-white text-gray-700 focus:outline-none focus:ring-1 focus:ring-[#1e3a5f]"
+                    >
+                      <option value="renovado">Renovado</option>
+                      <option value="finalizado">Finalizado</option>
+                      <option value="resuelto_anticipadamente">Resuelto anticipadamente</option>
+                    </select>
+                  </div>
                   <span className="text-xs text-gray-400">Archivado el {new Date(r.fecha_renovacion).toLocaleDateString('es-ES')}</span>
                 </div>
               </div>

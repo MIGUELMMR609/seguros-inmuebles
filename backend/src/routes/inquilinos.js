@@ -325,6 +325,28 @@ router.get('/:id/renovaciones', async (req, res) => {
   }
 });
 
+// PATCH /api/inquilinos/:id/renovaciones/:renovId — Actualizar motivo de una renovación
+router.patch('/:id/renovaciones/:renovId', async (req, res) => {
+  const MOTIVOS_VALIDOS = ['renovado', 'finalizado', 'resuelto_anticipadamente'];
+  const { motivo } = req.body;
+  if (!motivo || !MOTIVOS_VALIDOS.includes(motivo)) {
+    return res.status(400).json({ error: 'Motivo no válido' });
+  }
+  try {
+    const resultado = await pool.query(
+      `UPDATE contrato_renovaciones SET motivo = $1 WHERE id = $2 AND inquilino_id = $3 RETURNING id`,
+      [motivo, req.params.renovId, req.params.id]
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Renovación no encontrada' });
+    }
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error al actualizar motivo de renovación:', error);
+    res.status(500).json({ error: 'Error al actualizar el motivo' });
+  }
+});
+
 // POST /api/inquilinos/:id/analizar-contrato — Análisis jurídico experto del contrato
 router.post('/:id/analizar-contrato', async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) {
