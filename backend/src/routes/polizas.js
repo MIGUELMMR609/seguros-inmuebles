@@ -1,8 +1,27 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
+const { PDFDocument } = require('pdf-lib');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
+
+const MAX_BYTES_PDF = 5 * 1024 * 1024; // 5 MB límite Anthropic
+const MAX_PAGINAS_PDF = 10;
+
+async function reducirPdf(buffer) {
+  if (buffer.length <= MAX_BYTES_PDF) return buffer;
+  try {
+    const pdfOrig = await PDFDocument.load(buffer, { ignoreEncryption: true });
+    const total = pdfOrig.getPageCount();
+    const paginas = Math.min(total, MAX_PAGINAS_PDF);
+    const pdfNuevo = await PDFDocument.create();
+    const copiadas = await pdfNuevo.copyPages(pdfOrig, Array.from({ length: paginas }, (_, i) => i));
+    copiadas.forEach((p) => pdfNuevo.addPage(p));
+    return Buffer.from(await pdfNuevo.save());
+  } catch {
+    return buffer.slice(0, MAX_BYTES_PDF);
+  }
+}
 
 const router = express.Router();
 router.use(verificarToken);
@@ -238,7 +257,8 @@ router.post('/:id/analizar-experto', async (req, res) => {
     try {
       const rutaArchivo = path.join(__dirname, '../../uploads', path.basename(poliza.documento_url));
       if (fs.existsSync(rutaArchivo)) {
-        base64 = fs.readFileSync(rutaArchivo).toString('base64');
+        const buf = fs.readFileSync(rutaArchivo);
+        base64 = (await reducirPdf(buf)).toString('base64');
       } else {
         // Fallback: leer el PDF via HTTP (necesario en Render donde el FS es efímero)
         const urlPdf = poliza.documento_url.startsWith('http')
@@ -246,8 +266,8 @@ router.post('/:id/analizar-experto', async (req, res) => {
           : `${req.protocol}://${req.get('host')}${poliza.documento_url}`;
         const resPdf = await fetch(urlPdf);
         if (!resPdf.ok) throw new Error('No accesible');
-        const buf = await resPdf.arrayBuffer();
-        base64 = Buffer.from(buf).toString('base64');
+        const buf = Buffer.from(await resPdf.arrayBuffer());
+        base64 = (await reducirPdf(buf)).toString('base64');
       }
     } catch {
       return res.status(404).json({ archivo_disponible: false, error: 'PDF no disponible en servidor' });
@@ -302,8 +322,10 @@ La valoración es un número del 1 al 10 (puede tener un decimal). Todos los cam
 
     if (!respuesta.ok) {
       const cuerpo = await respuesta.text();
-      console.error(`Error Anthropic analizar-experto [${respuesta.status}]:`, cuerpo.slice(0, 300));
-      return res.status(502).json({ error: 'Error al comunicarse con la IA. Inténtalo de nuevo.' });
+      console.error(`Error Anthropic analizar-experto [${respuesta.status}]:`, cuerpo.slice(0, 500));
+      let detalle = '';
+      try { detalle = JSON.parse(cuerpo)?.error?.message || cuerpo.slice(0, 120); } catch { detalle = cuerpo.slice(0, 120); }
+      return res.status(502).json({ error: `IA [${respuesta.status}]: ${detalle}` });
     }
 
     const iaResult = await respuesta.json();
