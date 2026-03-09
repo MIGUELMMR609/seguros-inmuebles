@@ -101,8 +101,8 @@ export default function Polizas() {
   // Análisis experto IA (desde el formulario)
   const [analizandoForm, setAnalizandoForm] = useState(false);
 
-  // Diálogo post-descarga informe
-  const [dialogoMasInformes, setDialogoMasInformes] = useState(false);
+  // Confirmación post-descarga (dentro del modal de análisis)
+  const [informeDescargado, setInformeDescargado] = useState(false);
 
   // Comparador de pólizas con IA
   const [modoComparar, setModoComparar] = useState(false);
@@ -739,11 +739,33 @@ export default function Polizas() {
       {/* Modal análisis experto IA */}
       <Modal
         abierto={modalAnalisis}
-        onCerrar={() => { setModalAnalisis(false); setPolizaAnalisis(null); setAnalisisActual(null); }}
+        onCerrar={() => { setModalAnalisis(false); setPolizaAnalisis(null); setAnalisisActual(null); setInformeDescargado(false); }}
         titulo={`Análisis experto IA — ${polizaAnalisis?.numero_poliza || polizaAnalisis?.compania_aseguradora || ''}`}
         ancho="max-w-2xl"
       >
-        {polizaAnalisis && (
+        {polizaAnalisis && informeDescargado ? (
+          <div className="flex flex-col items-center justify-center py-10 text-center gap-4">
+            <div className="w-14 h-14 bg-green-50 rounded-2xl flex items-center justify-center">
+              <Download size={28} className="text-green-500" />
+            </div>
+            <p className="text-gray-800 font-semibold text-lg">Informe descargado</p>
+            <p className="text-gray-500 text-sm">¿Quieres generar más informes?</p>
+            <div className="flex gap-3 w-full mt-2">
+              <button
+                onClick={() => { setInformeDescargado(false); setModalAnalisis(false); setPolizaAnalisis(null); setAnalisisActual(null); }}
+                className="btn-primario flex-1 justify-center"
+              >
+                Sí, seleccionar póliza
+              </button>
+              <button
+                onClick={() => { setInformeDescargado(false); setModalAnalisis(false); setPolizaAnalisis(null); setAnalisisActual(null); navigate('/polizas'); }}
+                className="btn-secundario flex-1 justify-center"
+              >
+                No, volver a pólizas
+              </button>
+            </div>
+          </div>
+        ) : polizaAnalisis && (
           <div className="space-y-4">
             {!polizaAnalisis.documento_url ? (
               <div className="flex flex-col items-center justify-center py-10 text-center">
@@ -828,7 +850,7 @@ export default function Polizas() {
                 )}
                 <div className="flex justify-between items-center pt-2 border-t border-gray-100">
                   <button
-                    onClick={() => { imprimirInformePoliza(analisisActual, polizaAnalisis); setModalAnalisis(false); setDialogoMasInformes(true); }}
+                    onClick={() => { imprimirInformePoliza(analisisActual, polizaAnalisis); setInformeDescargado(true); }}
                     className="btn-secundario flex items-center gap-2"
                   >
                     <Download size={14} />
@@ -973,33 +995,6 @@ export default function Polizas() {
         tipo="inmuebles"
       />
 
-      {/* Diálogo post-descarga informe */}
-      <Modal abierto={dialogoMasInformes} onCerrar={() => setDialogoMasInformes(false)} titulo="Informe descargado" ancho="max-w-sm">
-        <p className="text-gray-600 text-sm mb-6">¿Quieres generar más informes?</p>
-        <div className="flex gap-3">
-          <button
-            onClick={() => {
-              setDialogoMasInformes(false);
-              setPolizaAnalisis(null);
-              setAnalisisActual(null);
-            }}
-            className="btn-primario flex-1 justify-center"
-          >
-            Sí, seleccionar póliza
-          </button>
-          <button
-            onClick={() => {
-              setDialogoMasInformes(false);
-              setPolizaAnalisis(null);
-              setAnalisisActual(null);
-              navigate('/polizas');
-            }}
-            className="btn-secundario flex-1 justify-center"
-          >
-            No, volver a pólizas
-          </button>
-        </div>
-      </Modal>
 
       {toast && <Toast mensaje={toast.mensaje} tipo={toast.tipo} onCerrar={() => setToast(null)} />}
     </div>
