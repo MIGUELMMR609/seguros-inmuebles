@@ -262,8 +262,6 @@ Datos conocidos de la póliza:
 - Importe anual: ${poliza.importe_anual ? poliza.importe_anual + ' €/año' : 'No especificado'}
 - Inmueble: ${poliza.nombre_inmueble || 'No especificado'}${poliza.direccion_inmueble ? ' (' + poliza.direccion_inmueble + ')' : ''}
 
-Usa la búsqueda web para consultar precios actuales del mercado de seguros de hogar en España si lo necesitas para el comparador.
-
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown) con esta estructura exacta:
 {
   "valoracion": 7.5,
@@ -287,12 +285,11 @@ La valoración es un número del 1 al 10 (puede tener un decimal). Todos los cam
         'Content-Type': 'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'pdfs-2024-09-25,web-search-2025-03-05',
+        'anthropic-beta': 'pdfs-2024-09-25',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 2048,
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages: [{
           role: 'user',
           content: [

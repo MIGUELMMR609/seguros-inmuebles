@@ -338,12 +338,11 @@ Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
         'Content-Type': 'application/json',
         'x-api-key': process.env.ANTHROPIC_API_KEY,
         'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'pdfs-2024-09-25,web-search-2025-03-05',
+        'anthropic-beta': 'pdfs-2024-09-25',
       },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
+        model: 'claude-sonnet-4-5-20250929',
         max_tokens: 2048,
-        tools: [{ type: 'web_search_20250305', name: 'web_search', max_uses: 2 }],
         messages: [{
           role: 'user',
           content: [
