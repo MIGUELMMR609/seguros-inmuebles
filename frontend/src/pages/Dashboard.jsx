@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Building2, FileText, Bell, Users, TrendingUp, AlertTriangle, AlertOctagon, CalendarClock } from 'lucide-react';
+import { Building2, FileText, Bell, Users, AlertTriangle, AlertOctagon, CalendarClock } from 'lucide-react';
 import {
   obtenerInmueblesApi,
   obtenerPolizasApi,
@@ -57,6 +57,13 @@ export default function Dashboard() {
           return dias >= 0 && dias <= 30;
         });
 
+        // Contratos vencidos + próximos (<30 días), ordenados por urgencia
+        const contratosAlerta = resInquilinos.data
+          .filter((inq) => inq.fecha_fin_contrato)
+          .map((inq) => ({ ...inq, dias: calcularDiasRestantes(inq.fecha_fin_contrato) }))
+          .filter((inq) => inq.dias <= 30)
+          .sort((a, b) => a.dias - b.dias);
+
         setDatos({
           inmuebles: resInmuebles.data,
           polizas: resPolizas.data,
@@ -68,6 +75,7 @@ export default function Dashboard() {
           hayUrgentes: resAlertas.data.hay_urgentes || false,
           siniestrosAbiertos: resSiniestros.data.length,
           contratosProximos,
+          contratosAlerta,
           cargando: false,
         });
       } catch {
@@ -77,7 +85,7 @@ export default function Dashboard() {
     cargar();
   }, []);
 
-  const { inmuebles, polizas, inquilinos, alertas, polizasVencidas, contratosVencidos, totalAlertas, hayUrgentes, siniestrosAbiertos, contratosProximos, cargando } = datos;
+  const { inmuebles, polizas, inquilinos, alertas, polizasVencidas, contratosVencidos, totalAlertas, hayUrgentes, siniestrosAbiertos, contratosProximos, contratosAlerta = [], cargando } = datos;
 
   const tarjetasResumen = [
     {
@@ -299,49 +307,59 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Últimas pólizas */}
+        {/* Contratos vencidos y próximos */}
         <div className="tarjeta">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-              <TrendingUp size={16} className="text-[#1e3a5f]" />
-              Últimas pólizas registradas
+              <CalendarClock size={16} className="text-orange-500" />
+              Contratos — vencidos y próximos
             </h2>
-            <Link to="/polizas" className="text-sm text-[#1e3a5f] font-medium hover:underline">
-              Ver todas →
+            <Link to="/inquilinos" className="text-sm text-[#1e3a5f] font-medium hover:underline">
+              Ver todos →
             </Link>
           </div>
           <div className="space-y-3">
-            {polizas.slice(0, 5).map((poliza) => {
-              const estado = calcularEstadoPoliza(poliza.fecha_vencimiento);
+            {contratosAlerta.slice(0, 5).map((inq) => {
+              const vencido = inq.dias < 0;
+              const esUrgente = inq.dias <= 7;
               return (
                 <div
-                  key={poliza.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  key={inq.id}
+                  className={`flex items-center justify-between p-3 rounded-lg ${
+                    vencido
+                      ? 'bg-red-50 border border-red-200'
+                      : esUrgente
+                      ? 'bg-red-50 border border-red-100'
+                      : 'bg-orange-50 border border-orange-100'
+                  }`}
                 >
                   <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {poliza.nombre_inmueble || 'Sin inmueble'}
+                    <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">
+                      <span className="flex-shrink-0 text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 uppercase tracking-wide">
+                        {inq.nombre_inmueble || 'Sin inmueble'}
+                      </span>
+                      {inq.nombre}
                     </p>
-                    <p className="text-xs text-gray-500 capitalize">
-                      {poliza.tipo} · {poliza.compania_aseguradora || '—'}
+                    <p className="text-xs text-gray-500">
+                      Fin contrato: {new Date(inq.fecha_fin_contrato).toLocaleDateString('es-ES')}
                     </p>
                   </div>
-                  <span
-                    className={`ml-3 flex-shrink-0 text-xs font-semibold px-2 py-1 rounded-full ${
-                      estado.color === 'red'
-                        ? 'bg-red-100 text-red-700'
-                        : estado.color === 'orange'
-                        ? 'bg-orange-100 text-orange-700'
-                        : 'bg-green-100 text-green-700'
-                    }`}
-                  >
-                    {estado.etiqueta}
-                  </span>
+                  {vencido ? (
+                    <span className="ml-3 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full bg-red-600 text-white">
+                      VENCIDO
+                    </span>
+                  ) : (
+                    <span className={`ml-3 flex-shrink-0 text-xs font-bold px-2 py-1 rounded-full ${
+                      esUrgente ? 'bg-red-600 text-white' : 'bg-orange-500 text-white'
+                    }`}>
+                      {inq.dias === 0 ? 'HOY' : `VENCE EN ${inq.dias}d`}
+                    </span>
+                  )}
                 </div>
               );
             })}
-            {polizas.length === 0 && (
-              <p className="text-sm text-gray-400 text-center py-4">No hay pólizas registradas</p>
+            {contratosAlerta.length === 0 && (
+              <p className="text-sm text-gray-400 text-center py-4">No hay contratos vencidos ni próximos a vencer</p>
             )}
           </div>
         </div>
