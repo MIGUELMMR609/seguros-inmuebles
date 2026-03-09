@@ -467,7 +467,7 @@ export default function Polizas() {
       </div>
 
       <div className="tarjeta">
-        <Tabla columnas={columnas} datos={polizas} cargando={cargando} mensajeVacio="No hay pólizas registradas." />
+        <Tabla columnas={columnas} datos={polizas} cargando={cargando} mensajeVacio="No hay pólizas registradas." filasPorPagina={9999} />
       </div>
 
       {/* Modal alta/edición */}

@@ -183,7 +183,7 @@ export default function Usuarios() {
       </div>
 
       <div className="tarjeta">
-        <Tabla columnas={columnas} datos={usuarios} cargando={cargando} mensajeVacio="No hay usuarios registrados." />
+        <Tabla columnas={columnas} datos={usuarios} cargando={cargando} mensajeVacio="No hay usuarios registrados." filasPorPagina={9999} />
       </div>
 
       {/* Modal alta/edición */}

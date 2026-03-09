@@ -374,7 +374,7 @@ export default function PolizasInquilinos() {
       </div>
 
       <div className="tarjeta">
-        <Tabla columnas={columnas} datos={polizas} cargando={cargando} mensajeVacio="No hay pólizas de inquilinos registradas." />
+        <Tabla columnas={columnas} datos={polizas} cargando={cargando} mensajeVacio="No hay pólizas de inquilinos registradas." filasPorPagina={9999} />
       </div>
 
       {/* Modal alta/edición */}

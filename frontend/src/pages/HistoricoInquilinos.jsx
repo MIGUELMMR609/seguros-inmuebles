@@ -121,6 +121,7 @@ export default function HistoricoInquilinos() {
           datos={inquilinos}
           cargando={cargando}
           mensajeVacio="No hay contratos finalizados. Cuando uses el botón 'Finalizar contrato' en un inquilino activo, aparecerá aquí."
+          filasPorPagina={9999}
         />
       </div>
 

@@ -610,7 +610,7 @@ export default function Inquilinos() {
       </div>
 
       <div className="tarjeta">
-        <Tabla columnas={columnas} datos={inquilinos} cargando={cargando} mensajeVacio="No hay inquilinos activos." />
+        <Tabla columnas={columnas} datos={inquilinos} cargando={cargando} mensajeVacio="No hay inquilinos activos." filasPorPagina={9999} />
       </div>
 
       {/* Modal crear/editar */}

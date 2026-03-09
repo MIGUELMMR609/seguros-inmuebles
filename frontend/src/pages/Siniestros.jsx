@@ -373,7 +373,7 @@ export default function Siniestros() {
       </div>
 
       <div className="tarjeta">
-        <Tabla columnas={columnas} datos={siniestros} cargando={cargando} mensajeVacio="No hay siniestros registrados." />
+        <Tabla columnas={columnas} datos={siniestros} cargando={cargando} mensajeVacio="No hay siniestros registrados." filasPorPagina={9999} />
       </div>
 
       {/* Modal alta/edición */}
