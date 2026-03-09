@@ -124,6 +124,7 @@ export default function Inquilinos() {
     setPasoModal('pdf');
     setErrorPdf('');
     setError('');
+    setAvisoSinInmueble(false);
     setModalAbierto(true);
   }
 

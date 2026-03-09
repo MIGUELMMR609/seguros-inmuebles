@@ -1,49 +1,46 @@
 const express = require('express');
-const { PDFDocument } = require('pdf-lib');
-const { uploadMemoria } = require('../middleware/upload');
 const { verificarToken } = require('../middleware/auth');
-const cloudinary = require('../config/cloudinary');
+const multer = require('multer');
 
 const router = express.Router();
 router.use(verificarToken);
 
 const TIMEOUT_MS = 115_000;
-const MAX_BYTES_ANTHROPIC = 5 * 1024 * 1024;
-const MAX_PAGINAS = 10;
 
-async function reducirPdf(buffer) {
-  if (buffer.length <= MAX_BYTES_ANTHROPIC) return buffer;
+// Multer en memoria — límite 10 MB (igual que el frontend)
+const filtroPDF = (req, file, cb) => {
+  if (file.mimetype === 'application/pdf' || file.mimetype === 'application/octet-stream') {
+    cb(null, true);
+  } else {
+    cb(new Error('Solo se permiten archivos PDF'), false);
+  }
+};
+
+const uploadContrato = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: filtroPDF,
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
+
+function subirPdfACloudinary(buffer) {
   try {
-    const pdfOrig = await PDFDocument.load(buffer, { ignoreEncryption: true });
-    const total = pdfOrig.getPageCount();
-    if (total <= MAX_PAGINAS) return buffer;
-    const pdfNuevo = await PDFDocument.create();
-    const indices = Array.from({ length: MAX_PAGINAS }, (_, i) => i);
-    const paginas = await pdfNuevo.copyPages(pdfOrig, indices);
-    paginas.forEach((p) => pdfNuevo.addPage(p));
-    const bytes = await pdfNuevo.save();
-    console.log(`Contrato reducido: ${total} → ${MAX_PAGINAS} páginas (${buffer.length} → ${bytes.length} bytes)`);
-    return Buffer.from(bytes);
+    const cloudinary = require('../config/cloudinary');
+    return new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        { folder: 'polizas-seguros', resource_type: 'raw', type: 'upload', access_mode: 'public', format: 'pdf' },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result.secure_url);
+        }
+      ).end(buffer);
+    });
   } catch (err) {
-    console.warn('No se pudo reducir el contrato PDF, se envía completo:', err.message);
-    return buffer;
+    return Promise.reject(err);
   }
 }
 
-function subirPdfACloudinary(buffer) {
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      { folder: 'polizas-seguros', resource_type: 'raw', type: 'upload', access_mode: 'public', format: 'pdf' },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result.secure_url);
-      }
-    ).end(buffer);
-  });
-}
-
 // POST /api/analizar-contrato
-router.post('/', uploadMemoria.single('documento'), async (req, res) => {
+router.post('/', uploadContrato.single('documento'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se recibió ningún archivo PDF' });
   }
@@ -56,7 +53,11 @@ router.post('/', uploadMemoria.single('documento'), async (req, res) => {
   const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
 
   try {
-    const bufferParaIA = await reducirPdf(req.file.buffer);
+    // Limitar a 5 MB para Anthropic (sin necesidad de pdf-lib)
+    const MAX_BYTES = 5 * 1024 * 1024;
+    const bufferParaIA = req.file.buffer.length > MAX_BYTES
+      ? req.file.buffer.slice(0, MAX_BYTES)
+      : req.file.buffer;
     const base64 = bufferParaIA.toString('base64');
 
     const promesaUrl = subirPdfACloudinary(req.file.buffer).catch((err) => {
@@ -114,8 +115,10 @@ IMPORTANTE: Si el contrato tiene varios arrendatarios, el campo "nombre_inquilin
 
     if (!respuesta.ok) {
       const cuerpo = await respuesta.text();
-      console.error(`Error Anthropic analizar-contrato [${respuesta.status}]:`, cuerpo.slice(0, 300));
-      return res.status(502).json({ error: 'Error al comunicarse con la IA. Inténtalo de nuevo.' });
+      let detalle = '';
+      try { detalle = JSON.parse(cuerpo)?.error?.message || ''; } catch { detalle = cuerpo.slice(0, 200); }
+      console.error(`Error Anthropic analizar-contrato [${respuesta.status}]:`, detalle || cuerpo.slice(0, 300));
+      return res.status(502).json({ error: `Error al comunicarse con la IA: ${detalle || respuesta.status}` });
     }
 
     const resultado = await respuesta.json();

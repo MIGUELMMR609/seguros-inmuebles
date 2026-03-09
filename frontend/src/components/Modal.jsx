@@ -25,7 +25,7 @@ export default function Modal({ abierto, onCerrar, titulo, children, ancho = 'ma
 
       {/* Panel del modal: en móvil ocupa todo el ancho y se ancla abajo */}
       <div
-        className={`relative bg-white w-full sm:${ancho} sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col`}
+        className={`relative z-10 bg-white w-full sm:${ancho} sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col`}
       >
         {/* Barra de arrastre visible en móvil */}
         <div className="sm:hidden flex justify-center pt-3 pb-1">
