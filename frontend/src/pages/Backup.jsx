@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Database, Download, HardDrive } from 'lucide-react';
-import { obtenerBackupsApi, crearBackupApi, descargarBackupApi } from '../api/index.js';
+import { Database, Download, HardDrive, Trash2 } from 'lucide-react';
+import { obtenerBackupsApi, crearBackupApi, descargarBackupApi, eliminarBackupApi } from '../api/index.js';
 
 export default function Backup() {
   const [backups, setBackups] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [haciendoBackup, setHaciendoBackup] = useState(false);
   const [descargando, setDescargando] = useState(null);
+  const [eliminando, setEliminando] = useState(null);
   const [error, setError] = useState('');
   const [exito, setExito] = useState('');
 
@@ -46,6 +47,21 @@ export default function Backup() {
     }
   }
 
+  async function handleEliminar(backup) {
+    if (!window.confirm(`¿Eliminar la copia del ${new Date(backup.fecha).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}?`)) return;
+    setEliminando(backup.id);
+    setError('');
+    try {
+      await eliminarBackupApi(backup.id);
+      setExito('Copia eliminada correctamente.');
+      await cargar();
+    } catch {
+      setError('Error al eliminar la copia');
+    } finally {
+      setEliminando(null);
+    }
+  }
+
   async function handleDescargar(backup) {
     setDescargando(backup.id);
     setError('');
@@ -73,6 +89,14 @@ export default function Backup() {
             Copias de seguridad
           </h1>
           <p className="text-gray-500 text-sm mt-1">Backup automático cada lunes a las 8:00 AM · Se conservan los últimos 10</p>
+          {backups.length > 0 && (
+            <p className="text-xs text-gray-400 mt-1">
+              Último backup en Render:{' '}
+              <span className="font-medium text-gray-600">
+                {new Date(backups[0].fecha).toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' })}
+              </span>
+            </p>
+          )}
         </div>
         <button
           onClick={handleBackup}
@@ -121,16 +145,28 @@ export default function Backup() {
                       {b.tamanyo ? ` · ${Math.round(b.tamanyo / 1024)} KB` : ''}
                     </p>
                   </div>
-                  <button
-                    onClick={() => handleDescargar(b)}
-                    disabled={descargando === b.id}
-                    className="ml-4 flex-shrink-0 flex items-center gap-1.5 text-xs font-medium text-[#1e3a5f] hover:underline disabled:opacity-50"
-                  >
-                    {descargando === b.id
-                      ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#1e3a5f]" />
-                      : <Download size={14} />}
-                    Descargar
-                  </button>
+                  <div className="ml-4 flex-shrink-0 flex items-center gap-3">
+                    <button
+                      onClick={() => handleDescargar(b)}
+                      disabled={descargando === b.id}
+                      className="flex items-center gap-1.5 text-xs font-medium text-[#1e3a5f] hover:underline disabled:opacity-50"
+                    >
+                      {descargando === b.id
+                        ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#1e3a5f]" />
+                        : <Download size={14} />}
+                      Descargar
+                    </button>
+                    <button
+                      onClick={() => handleEliminar(b)}
+                      disabled={eliminando === b.id}
+                      className="flex items-center gap-1 text-xs font-medium text-red-400 hover:text-red-600 disabled:opacity-50"
+                      title="Eliminar esta copia"
+                    >
+                      {eliminando === b.id
+                        ? <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-red-400" />
+                        : <Trash2 size={14} />}
+                    </button>
+                  </div>
                 </div>
               );
             })}

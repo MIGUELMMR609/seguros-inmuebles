@@ -111,4 +111,21 @@ router.get('/:id/download', async (req, res) => {
   }
 });
 
+// DELETE /api/backup/:id — Eliminar copia específica
+router.delete('/:id', async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      'DELETE FROM backups WHERE id = $1 RETURNING id',
+      [req.params.id]
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Copia de seguridad no encontrada' });
+    }
+    res.json({ mensaje: 'Copia eliminada correctamente' });
+  } catch (error) {
+    console.error('Error al eliminar backup:', error);
+    res.status(500).json({ error: 'Error al eliminar la copia de seguridad' });
+  }
+});
+
 module.exports = { router, crearBackup };
