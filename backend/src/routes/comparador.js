@@ -181,7 +181,9 @@ IMPORTANTE:
     if (!respuesta.ok) {
       const cuerpo = await respuesta.text();
       console.error(`Error Anthropic comparador [${respuesta.status}]:`, cuerpo.slice(0, 500));
-      return res.status(502).json({ error: 'Error al comunicarse con la IA. Inténtalo de nuevo.' });
+      let detalle = '';
+      try { detalle = JSON.parse(cuerpo)?.error?.message || cuerpo.slice(0, 200); } catch { detalle = cuerpo.slice(0, 200); }
+      return res.status(502).json({ error: `IA [${respuesta.status}]: ${detalle}` });
     }
 
     const resultado = await respuesta.json();
