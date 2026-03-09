@@ -185,8 +185,8 @@ IMPORTANTE:
     }
 
     const resultado = await respuesta.json();
-    const texto = resultado.content?.[0]?.text;
-    if (!texto) return res.status(422).json({ error: 'La IA no devolvió ninguna respuesta' });
+    const texto = (resultado.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+    if (!texto) return res.status(422).json({ error: 'La IA no devolvió ninguna respuesta de texto' });
 
     let datos;
     try {
