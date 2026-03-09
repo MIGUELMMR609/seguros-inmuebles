@@ -34,7 +34,7 @@ router.get('/', async (req, res) => {
   try {
     const { inmueble_id, tipo } = req.query;
     let consulta = `
-      SELECT p.*, i.nombre AS nombre_inmueble, i.direccion AS direccion_inmueble
+      SELECT p.*, i.nombre AS nombre_inmueble, i.direccion AS direccion_inmueble, i.tipo AS tipo_inmueble
       FROM polizas p
       LEFT JOIN inmuebles i ON p.inmueble_id = i.id
       WHERE 1=1

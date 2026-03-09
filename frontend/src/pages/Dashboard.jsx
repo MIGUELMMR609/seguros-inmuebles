@@ -50,18 +50,22 @@ export default function Dashboard() {
           obtenerSiniestrosApi({ estado: 'abierto' }),
         ]);
 
-        // Inquilinos con contrato próximo a vencer (≤30 días)
+        // Inquilinos con contrato próximo a vencer (≤30 días o ≤150 para pisos)
         const contratosProximos = resInquilinos.data.filter((inq) => {
           if (!inq.fecha_fin_contrato) return false;
           const dias = calcularDiasRestantes(inq.fecha_fin_contrato);
-          return dias >= 0 && dias <= 30;
+          const umbral = inq.tipo_inmueble && inq.tipo_inmueble.toLowerCase() === 'piso' ? 150 : 30;
+          return dias >= 0 && dias <= umbral;
         });
 
-        // Contratos vencidos + próximos (<30 días), ordenados por urgencia
+        // Contratos vencidos + próximos, ordenados por urgencia
         const contratosAlerta = resInquilinos.data
           .filter((inq) => inq.fecha_fin_contrato)
           .map((inq) => ({ ...inq, dias: calcularDiasRestantes(inq.fecha_fin_contrato) }))
-          .filter((inq) => inq.dias <= 30)
+          .filter((inq) => {
+            const umbral = inq.tipo_inmueble && inq.tipo_inmueble.toLowerCase() === 'piso' ? 150 : 30;
+            return inq.dias <= umbral;
+          })
           .sort((a, b) => a.dias - b.dias);
 
         setDatos({

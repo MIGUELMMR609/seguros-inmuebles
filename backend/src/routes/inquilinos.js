@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
     const estadoFiltro = historico === 'true' ? 'finalizado' : 'activo';
 
     let consulta = `
-      SELECT inq.*, i.nombre AS nombre_inmueble, i.direccion AS direccion_inmueble
+      SELECT inq.*, i.nombre AS nombre_inmueble, i.direccion AS direccion_inmueble, i.tipo AS tipo_inmueble
       FROM inquilinos inq
       LEFT JOIN inmuebles i ON inq.inmueble_id = i.id
       WHERE (inq.estado = $1 OR (inq.estado IS NULL AND $1 = 'activo'))

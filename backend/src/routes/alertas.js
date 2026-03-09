@@ -10,12 +10,14 @@ router.get('/resumen', async (req, res) => {
   try {
     const [contratosPronto, inquilinosSinSeguro, inmueblesSinPoliza] = await Promise.all([
       pool.query(
-        `SELECT COUNT(*)::int FROM inquilinos
-         WHERE (estado = 'activo' OR estado IS NULL)
-           AND fecha_fin_contrato IS NOT NULL
+        `SELECT COUNT(*)::int FROM inquilinos inq
+         LEFT JOIN inmuebles inm ON inq.inmueble_id = inm.id
+         WHERE (inq.estado = 'activo' OR inq.estado IS NULL)
+           AND inq.fecha_fin_contrato IS NOT NULL
            AND (
-             fecha_fin_contrato < CURRENT_DATE
-             OR (fecha_fin_contrato - CURRENT_DATE) <= 30
+             inq.fecha_fin_contrato < CURRENT_DATE
+             OR (LOWER(inm.tipo) = 'piso' AND (inq.fecha_fin_contrato - CURRENT_DATE) <= 150)
+             OR ((inm.tipo IS NULL OR LOWER(inm.tipo) != 'piso') AND (inq.fecha_fin_contrato - CURRENT_DATE) <= 30)
            )`
       ),
       pool.query(
@@ -62,7 +64,7 @@ router.get('/', async (req, res) => {
       contratosVencidos,
     ] = await Promise.all([
 
-      // Pólizas de inmuebles próximas a vencer
+      // Pólizas de inmuebles próximas a vencer (150 días para pisos, 30 para el resto)
       pool.query(
         `SELECT
            p.id,
@@ -75,14 +77,17 @@ router.get('/', async (req, res) => {
            i.nombre AS nombre_inmueble,
            i.nombre AS nombre_referencia,
            i.direccion AS direccion_referencia,
+           i.tipo AS tipo_inmueble,
            (p.fecha_vencimiento - CURRENT_DATE)::int AS dias_restantes
          FROM polizas p
          LEFT JOIN inmuebles i ON p.inmueble_id = i.id
          WHERE p.fecha_vencimiento IS NOT NULL
            AND p.fecha_vencimiento >= CURRENT_DATE
-           AND (p.fecha_vencimiento - CURRENT_DATE) <= $1
-         ORDER BY p.fecha_vencimiento ASC`,
-        [diasLimite]
+           AND (
+             (LOWER(i.tipo) = 'piso' AND (p.fecha_vencimiento - CURRENT_DATE) <= 150)
+             OR ((i.tipo IS NULL OR LOWER(i.tipo) != 'piso') AND (p.fecha_vencimiento - CURRENT_DATE) <= 30)
+           )
+         ORDER BY p.fecha_vencimiento ASC`
       ),
 
       // Pólizas de inquilinos próximas a vencer
@@ -110,7 +115,7 @@ router.get('/', async (req, res) => {
         [diasLimite]
       ),
 
-      // Contratos de alquiler próximos a vencer
+      // Contratos de alquiler próximos a vencer (150 días para pisos, 30 para el resto)
       pool.query(
         `SELECT
            inq.id,
@@ -118,6 +123,7 @@ router.get('/', async (req, res) => {
            inq.nombre AS nombre_inquilino,
            inq.nombre AS nombre_referencia,
            inm.nombre AS nombre_inmueble,
+           inm.tipo AS tipo_inmueble,
            inq.fecha_fin_contrato,
            (inq.fecha_fin_contrato - CURRENT_DATE)::int AS dias_restantes
          FROM inquilinos inq
@@ -125,9 +131,11 @@ router.get('/', async (req, res) => {
          WHERE (inq.estado = 'activo' OR inq.estado IS NULL)
            AND inq.fecha_fin_contrato IS NOT NULL
            AND inq.fecha_fin_contrato >= CURRENT_DATE
-           AND (inq.fecha_fin_contrato - CURRENT_DATE) <= $1
-         ORDER BY inq.fecha_fin_contrato ASC`,
-        [diasLimite]
+           AND (
+             (LOWER(inm.tipo) = 'piso' AND (inq.fecha_fin_contrato - CURRENT_DATE) <= 150)
+             OR ((inm.tipo IS NULL OR LOWER(inm.tipo) != 'piso') AND (inq.fecha_fin_contrato - CURRENT_DATE) <= 30)
+           )
+         ORDER BY inq.fecha_fin_contrato ASC`
       ),
 
       // Inmuebles sin ninguna póliza vigente asignada
