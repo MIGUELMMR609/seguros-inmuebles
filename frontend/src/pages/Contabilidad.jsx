@@ -77,15 +77,15 @@ export default function Contabilidad() {
             Pagos previstos por pólizas activas
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Selector de año */}
-          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-2 py-1.5">
-            <button onClick={() => setAnio((a) => a - 1)} className="p-1 text-gray-400 hover:text-gray-700 rounded">
-              <ChevronLeft size={16} />
+          <div className="flex items-center gap-1 bg-white border border-gray-200 rounded-xl px-3 py-2">
+            <button onClick={() => setAnio((a) => a - 1)} className="p-1.5 text-gray-400 hover:text-gray-700 rounded touch-target">
+              <ChevronLeft size={18} />
             </button>
             <span className="font-semibold text-gray-800 w-12 text-center">{anio}</span>
-            <button onClick={() => setAnio((a) => a + 1)} className="p-1 text-gray-400 hover:text-gray-700 rounded">
-              <ChevronRight size={16} />
+            <button onClick={() => setAnio((a) => a + 1)} className="p-1.5 text-gray-400 hover:text-gray-700 rounded touch-target">
+              <ChevronRight size={18} />
             </button>
           </div>
           {/* Exportar */}
@@ -95,11 +95,11 @@ export default function Contabilidad() {
                 onClick={() => exportarCSV(datos.meses, anio, totalAnual)}
                 className="btn-secundario text-sm"
               >
-                <Download size={15} /> Excel/CSV
+                <Download size={15} /> <span className="hidden sm:inline">Excel/</span>CSV
               </button>
               <button
                 onClick={() => window.print()}
-                className="btn-secundario text-sm"
+                className="btn-secundario text-sm hidden sm:flex"
               >
                 <Printer size={15} /> Imprimir
               </button>
@@ -150,8 +150,8 @@ export default function Contabilidad() {
         </div>
       ) : (
         <div className="space-y-4 print-container">
-          {/* Tabla anual completa */}
-          <div className="tarjeta overflow-x-auto">
+          {/* Tabla anual completa - desktop */}
+          <div className="tarjeta hidden md:block overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b-2 border-gray-200">
@@ -205,6 +205,38 @@ export default function Contabilidad() {
                 </tr>
               </tbody>
             </table>
+          </div>
+
+          {/* Tarjetas móvil - contabilidad */}
+          <div className="md:hidden space-y-4">
+            {datos.meses.map((mes) => (
+              mes.pagos.length === 0 ? null : (
+                <div key={mes.mes} className="tarjeta">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-[#1e3a5f] text-lg">{mes.nombre}</h3>
+                    <span className="text-sm font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-full">
+                      {formatearEuro(mes.total)}
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {mes.pagos.map((pago, iPago) => (
+                      <div key={iPago} className="flex justify-between items-start gap-3 py-2 border-t border-gray-100 first:border-0 first:pt-0">
+                        <div className="min-w-0">
+                          <p className="font-medium text-gray-800 text-sm">{pago.nombre_inmueble}</p>
+                          <p className="text-xs text-gray-500">{pago.compania_aseguradora} · {pago.tipo?.replace(/_/g, ' ')}</p>
+                        </div>
+                        <span className="font-semibold text-gray-800 text-sm flex-shrink-0">{formatearEuro(pago.importe)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )
+            ))}
+            {/* Total anual móvil */}
+            <div className="bg-[#1e3a5f] text-white rounded-xl p-4 flex items-center justify-between">
+              <span className="font-bold text-sm uppercase tracking-wider">Total anual {anio}</span>
+              <span className="font-black text-xl">{formatearEuro(totalAnual)}</span>
+            </div>
           </div>
         </div>
       )}

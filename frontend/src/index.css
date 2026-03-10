@@ -5,6 +5,11 @@
 @layer base {
   * {
     font-family: 'Outfit', sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
@@ -14,27 +19,27 @@
 
 @layer components {
   .btn-primario {
-    @apply bg-[#1e3a5f] hover:bg-[#152740] text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2;
+    @apply bg-[#1e3a5f] hover:bg-[#152740] text-white font-medium px-4 py-2.5 rounded-lg transition-colors duration-200 flex items-center gap-2 text-sm;
   }
 
   .btn-secundario {
-    @apply bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded-lg border border-gray-300 transition-colors duration-200 flex items-center gap-2;
+    @apply bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2.5 rounded-lg border border-gray-300 transition-colors duration-200 flex items-center gap-2 text-sm;
   }
 
   .btn-peligro {
-    @apply bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2 rounded-lg transition-colors duration-200 flex items-center gap-2;
+    @apply bg-red-600 hover:bg-red-700 text-white font-medium px-4 py-2.5 rounded-lg transition-colors duration-200 flex items-center gap-2 text-sm;
   }
 
   .campo-formulario {
-    @apply w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] focus:border-transparent transition-all;
+    @apply w-full border border-gray-300 rounded-lg px-3 py-2.5 text-base sm:text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f] focus:border-transparent transition-all;
   }
 
   .etiqueta-formulario {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    @apply block text-sm font-medium text-gray-700 mb-1.5;
   }
 
   .tarjeta {
-    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-4 sm:p-6;
   }
 }
 
@@ -48,21 +53,37 @@
 }
 
 /* Botones con touch target adecuado en móvil */
-@media (max-width: 768px) {
+@media (max-width: 640px) {
   .btn-primario,
   .btn-secundario,
   .btn-peligro {
-    min-height: 44px;
-    @apply px-4 py-2.5;
+    min-height: 48px;
+    @apply px-5 py-3 text-base justify-center;
   }
 
   .campo-formulario {
-    min-height: 44px;
-    @apply py-2.5;
+    min-height: 48px;
+    @apply py-3 text-base;
+  }
+
+  /* Formularios: más espacio entre campos */
+  form .space-y-4 {
+    @apply space-y-5;
+  }
+
+  /* Mejorar legibilidad de select en móvil */
+  select.campo-formulario {
+    @apply text-base;
+    background-size: 16px;
+  }
+
+  /* Textarea más alto en móvil */
+  textarea.campo-formulario {
+    min-height: 100px;
   }
 }
 
-/* Evitar zoom en inputs en iOS */
+/* Evitar zoom en inputs en iOS (16px mínimo) */
 @media screen and (-webkit-min-device-pixel-ratio: 0) {
   input[type='text'],
   input[type='email'],
@@ -85,18 +106,36 @@
   padding-top: env(safe-area-inset-top, 0);
 }
 
-/* Scroll personalizado */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+/* Scroll personalizado (solo desktop) */
+@media (min-width: 640px) {
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #f1f5f9;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
 }
-::-webkit-scrollbar-track {
-  background: #f1f5f9;
+
+/* Animación entrada para toasts y modales */
+@keyframes animate-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
-::-webkit-scrollbar-thumb {
-  background: #94a3b8;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #64748b;
+
+.animate-in {
+  animation: animate-in 0.2s ease-out;
 }

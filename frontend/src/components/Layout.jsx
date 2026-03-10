@@ -97,7 +97,7 @@ export default function Layout() {
       </div>
 
       {/* Navegación */}
-      <nav className="flex-1 p-4 space-y-0.5 overflow-y-auto">
+      <nav className="flex-1 p-3 sm:p-4 space-y-0.5 overflow-y-auto">
         {elementosNav.map(({ ruta, etiqueta, icono: Icono, esAlerta, badgeClave, badgeTooltip }) => {
           const badgeValor = badgeClave ? (resumen[badgeClave] || 0) : 0;
           return (
@@ -106,7 +106,7 @@ export default function Layout() {
               to={ruta}
               onClick={handleNavClick}
               className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+                `flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                   isActive
                     ? 'bg-white/20 text-white'
                     : 'text-white/70 hover:bg-white/10 hover:text-white'
@@ -140,7 +140,7 @@ export default function Layout() {
             to="/usuarios"
             onClick={handleNavClick}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+              `flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                 isActive
                   ? 'bg-white/20 text-white'
                   : 'text-white/70 hover:bg-white/10 hover:text-white'
@@ -156,7 +156,7 @@ export default function Layout() {
             to="/actividad"
             onClick={handleNavClick}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
+              `flex items-center gap-3 px-3 py-3 md:py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                 isActive
                   ? 'bg-white/20 text-white'
                   : 'text-white/70 hover:bg-white/10 hover:text-white'
@@ -184,7 +184,7 @@ export default function Layout() {
         </div>
         <button
           onClick={handleCerrarSesion}
-          className="flex items-center gap-2 w-full px-3 py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors"
+          className="flex items-center gap-2 w-full px-3 py-3 md:py-2 text-white/70 hover:text-white hover:bg-white/10 rounded-lg text-sm transition-colors"
         >
           <LogOut size={16} />
           <span>Cerrar sesión</span>
@@ -194,7 +194,7 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-dvh bg-gray-50 overflow-hidden">
       {/* Sidebar desktop (siempre visible en md+) */}
       <aside className="hidden md:flex w-64 bg-[#1e3a5f] flex-col flex-shrink-0">
         {contenidoSidebar}
@@ -210,7 +210,7 @@ export default function Layout() {
 
       {/* Sidebar móvil (drawer) */}
       <aside
-        className={`fixed inset-y-0 left-0 z-50 w-72 bg-[#1e3a5f] flex flex-col flex-shrink-0 transform transition-transform duration-300 ease-in-out md:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 w-[280px] bg-[#1e3a5f] flex flex-col flex-shrink-0 transform transition-transform duration-300 ease-in-out md:hidden safe-top safe-bottom ${
           menuAbierto ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -220,17 +220,18 @@ export default function Layout() {
       {/* Contenido principal */}
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Header móvil */}
-        <header className="md:hidden bg-[#1e3a5f] px-4 py-3 flex items-center gap-3 flex-shrink-0">
+        <header className="md:hidden bg-[#1e3a5f] px-4 py-3 flex items-center gap-3 flex-shrink-0 safe-top">
           <button
             onClick={() => setMenuAbierto(true)}
-            className="text-white p-1.5 rounded-lg hover:bg-white/10 touch-target"
+            className="text-white p-2 -ml-1 rounded-lg hover:bg-white/10 touch-target"
+            aria-label="Abrir menú"
           >
-            <Menu size={22} />
+            <Menu size={24} />
           </button>
           <ShieldCheck className="text-orange-400" size={22} />
-          <span className="text-white font-bold text-base">Gestión de Seguros</span>
+          <span className="text-white font-bold text-base truncate">Gestión de Seguros</span>
           {totalAlertas > 0 && (
-            <span className={`ml-auto bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full${hayUrgentes ? ' animate-pulse' : ''}`}>
+            <span className={`ml-auto bg-orange-500 text-white text-xs font-bold px-2.5 py-1 rounded-full${hayUrgentes ? ' animate-pulse' : ''}`}>
               {totalAlertas > 99 ? '99+' : totalAlertas}
             </span>
           )}

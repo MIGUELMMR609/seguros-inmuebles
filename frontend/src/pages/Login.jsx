@@ -38,7 +38,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#1e3a5f] to-[#152740] flex items-center justify-center p-4">
+    <div className="min-h-dvh bg-gradient-to-br from-[#1e3a5f] to-[#152740] flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -50,7 +50,7 @@ export default function Login() {
         </div>
 
         {/* Formulario */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
           <h2 className="text-xl font-semibold text-gray-800 mb-6">Iniciar sesión</h2>
 
           <form onSubmit={handleSubmit} className="space-y-5">
@@ -88,9 +88,9 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setMostrarPassword((v) => !v)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-2 touch-target"
                 >
-                  {mostrarPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {mostrarPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>

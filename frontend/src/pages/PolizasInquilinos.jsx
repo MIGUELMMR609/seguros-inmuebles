@@ -397,7 +397,7 @@ export default function PolizasInquilinos() {
 
       {/* Filtros */}
       <div className="flex flex-wrap gap-3 mb-5">
-        <select value={filtroInquilino} onChange={(e) => setFiltroInquilino(e.target.value)} className="campo-formulario w-auto min-w-[200px]">
+        <select value={filtroInquilino} onChange={(e) => setFiltroInquilino(e.target.value)} className="campo-formulario w-full sm:w-auto sm:min-w-[200px]">
           <option value="">Todos los inquilinos</option>
           {inquilinos.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
         </select>

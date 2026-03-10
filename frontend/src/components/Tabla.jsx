@@ -57,9 +57,14 @@ export default function Tabla({
     );
   }
 
+  // Separar columnas normales de acciones para las tarjetas móvil
+  const colAcciones = columnas.find((c) => c.clave === 'acciones');
+  const colDatos = columnas.filter((c) => c.clave !== 'acciones');
+
   return (
     <div>
-      <div className="overflow-x-auto rounded-xl border border-gray-200">
+      {/* Vista tabla para desktop (md+) */}
+      <div className="hidden md:block overflow-x-auto rounded-xl border border-gray-200">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
@@ -108,19 +113,60 @@ export default function Tabla({
         </table>
       </div>
 
+      {/* Vista tarjetas para móvil (<md) */}
+      <div className="md:hidden space-y-3">
+        {datosPagina.length === 0 ? (
+          <div className="text-center text-gray-400 text-sm py-12">{mensajeVacio}</div>
+        ) : (
+          datosPagina.map((fila, indice) => (
+            <div key={fila.id ?? indice} className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+              {/* Primera columna como título de tarjeta */}
+              {colDatos.length > 0 && (
+                <div className="font-semibold text-gray-900 text-base">
+                  {colDatos[0].render ? colDatos[0].render(fila) : fila[colDatos[0].clave] ?? '—'}
+                </div>
+              )}
+              {/* Resto de columnas de datos como pares etiqueta-valor */}
+              <div className="space-y-1.5">
+                {colDatos.slice(1).map((col) => {
+                  const valor = col.render ? col.render(fila) : fila[col.clave] ?? '—';
+                  return (
+                    <div key={col.clave} className="flex justify-between items-start gap-3">
+                      <span className="text-xs font-medium text-gray-400 uppercase tracking-wide flex-shrink-0 pt-0.5">
+                        {col.titulo}
+                      </span>
+                      <span className="text-sm text-gray-700 text-right">
+                        {valor}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {/* Botones de acción */}
+              {colAcciones && (
+                <div className="pt-2 border-t border-gray-100 flex items-center gap-1">
+                  {colAcciones.render(fila)}
+                </div>
+              )}
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Paginación */}
       {totalPaginas > 1 && (
-        <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
-          <span>
+        <div className="flex flex-col sm:flex-row items-center justify-between mt-4 gap-3 text-sm text-gray-600">
+          <span className="text-xs sm:text-sm">
             Mostrando {inicio + 1}–{Math.min(inicio + filasPorPagina, datosOrdenados.length)} de{' '}
-            {datosOrdenados.length} registros
+            {datosOrdenados.length}
           </span>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2">
             <button
               onClick={() => irAPagina(paginaActual - 1)}
               disabled={paginaActual === 1}
-              className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed touch-target"
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={18} />
             </button>
             {Array.from({ length: totalPaginas }, (_, i) => i + 1)
               .filter((p) => p === 1 || p === totalPaginas || Math.abs(p - paginaActual) <= 1)
@@ -131,12 +177,12 @@ export default function Tabla({
               }, [])
               .map((item, i) =>
                 item === '...' ? (
-                  <span key={`sep-${i}`} className="px-2">…</span>
+                  <span key={`sep-${i}`} className="px-1 sm:px-2">…</span>
                 ) : (
                   <button
                     key={item}
                     onClick={() => irAPagina(item)}
-                    className={`px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                    className={`min-w-[36px] min-h-[36px] sm:min-w-0 sm:min-h-0 px-3 py-1.5 rounded-lg font-medium transition-colors ${
                       paginaActual === item ? 'bg-[#1e3a5f] text-white' : 'hover:bg-gray-100'
                     }`}
                   >
@@ -147,9 +193,9 @@ export default function Tabla({
             <button
               onClick={() => irAPagina(paginaActual + 1)}
               disabled={paginaActual === totalPaginas}
-              className="p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed"
+              className="p-2 sm:p-1.5 rounded-lg hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed touch-target"
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>

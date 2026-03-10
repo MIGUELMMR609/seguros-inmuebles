@@ -76,7 +76,7 @@ export default function RegistroEmails() {
           <Filter size={15} className="text-gray-400" />
           <span className="text-sm font-medium text-gray-600">Filtros</span>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <select name="tipo" value={filtros.tipo} onChange={handleFiltro} className="campo-formulario">
             {TIPOS.map((t) => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
           </select>
@@ -109,81 +109,128 @@ export default function RegistroEmails() {
         </div>
       </div>
 
-      {/* Tabla */}
-      <div className="tarjeta overflow-x-auto">
-        {cargando ? (
-          <div className="flex items-center justify-center py-16">
-            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1e3a5f]" />
-          </div>
-        ) : emails.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16">
-            <Mail size={48} className="text-gray-300 mb-4" />
-            <p className="text-gray-500 font-medium">No hay emails registrados</p>
-            <p className="text-gray-400 text-sm mt-1">Los emails se registran automáticamente cuando el cron los envía.</p>
-          </div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b-2 border-gray-200">
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tipo</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Destinatario</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Error</th>
-              </tr>
-            </thead>
-            <tbody>
-              {emails.map((email) => (
-                <tr key={email.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
-                    {new Date(email.fecha_envio).toLocaleString('es-ES', {
-                      day: '2-digit', month: '2-digit', year: 'numeric',
-                      hour: '2-digit', minute: '2-digit',
-                    })}
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-1 rounded">
-                      {etiquetaTipo(email.tipo)}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    <div>
-                      <span className={`text-xs px-1.5 py-0.5 rounded ${
-                        email.destinatario_tipo === 'admin'
-                          ? 'bg-indigo-50 text-indigo-700'
-                          : 'bg-green-50 text-green-700'
-                      }`}>
-                        {email.destinatario_tipo === 'admin' ? 'Admin' : 'Inquilino'}
-                      </span>
-                      {email.nombre_inquilino && (
-                        <span className="ml-2 text-gray-700">{email.nombre_inquilino}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 text-xs font-mono">
-                    {email.destinatario_email || '—'}
-                  </td>
-                  <td className="px-4 py-3">
-                    {email.estado === 'enviado' ? (
-                      <span className="flex items-center gap-1 text-green-700 text-xs font-medium">
-                        <CheckCircle size={14} /> Enviado
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 text-red-700 text-xs font-medium">
-                        <XCircle size={14} /> Error
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-red-600 text-xs max-w-xs truncate">
-                    {email.mensaje_error || '—'}
-                  </td>
+      {/* Contenido */}
+      {cargando ? (
+        <div className="flex items-center justify-center py-16">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#1e3a5f]" />
+        </div>
+      ) : emails.length === 0 ? (
+        <div className="tarjeta flex flex-col items-center justify-center py-16">
+          <Mail size={48} className="text-gray-300 mb-4" />
+          <p className="text-gray-500 font-medium">No hay emails registrados</p>
+          <p className="text-gray-400 text-sm mt-1">Los emails se registran automáticamente cuando el cron los envía.</p>
+        </div>
+      ) : (
+        <>
+          {/* Tabla desktop */}
+          <div className="tarjeta hidden md:block overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b-2 border-gray-200">
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Fecha</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Tipo</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Destinatario</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Email</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Estado</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Error</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </div>
+              </thead>
+              <tbody>
+                {emails.map((email) => (
+                  <tr key={email.id} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
+                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                      {new Date(email.fecha_envio).toLocaleString('es-ES', {
+                        day: '2-digit', month: '2-digit', year: 'numeric',
+                        hour: '2-digit', minute: '2-digit',
+                      })}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                        {etiquetaTipo(email.tipo)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">
+                      <div>
+                        <span className={`text-xs px-1.5 py-0.5 rounded ${
+                          email.destinatario_tipo === 'admin'
+                            ? 'bg-indigo-50 text-indigo-700'
+                            : 'bg-green-50 text-green-700'
+                        }`}>
+                          {email.destinatario_tipo === 'admin' ? 'Admin' : 'Inquilino'}
+                        </span>
+                        {email.nombre_inquilino && (
+                          <span className="ml-2 text-gray-700">{email.nombre_inquilino}</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-gray-500 text-xs font-mono">
+                      {email.destinatario_email || '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      {email.estado === 'enviado' ? (
+                        <span className="flex items-center gap-1 text-green-700 text-xs font-medium">
+                          <CheckCircle size={14} /> Enviado
+                        </span>
+                      ) : (
+                        <span className="flex items-center gap-1 text-red-700 text-xs font-medium">
+                          <XCircle size={14} /> Error
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-red-600 text-xs max-w-xs truncate">
+                      {email.mensaje_error || '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Tarjetas móvil */}
+          <div className="md:hidden space-y-3">
+            {emails.map((email) => (
+              <div key={email.id} className="bg-white rounded-xl border border-gray-200 p-4 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-medium bg-blue-50 text-blue-700 px-2 py-1 rounded">
+                    {etiquetaTipo(email.tipo)}
+                  </span>
+                  {email.estado === 'enviado' ? (
+                    <span className="flex items-center gap-1 text-green-700 text-xs font-medium">
+                      <CheckCircle size={14} /> Enviado
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 text-red-700 text-xs font-medium">
+                      <XCircle size={14} /> Error
+                    </span>
+                  )}
+                </div>
+                <div className="text-sm text-gray-700">
+                  <span className={`text-xs px-1.5 py-0.5 rounded ${
+                    email.destinatario_tipo === 'admin'
+                      ? 'bg-indigo-50 text-indigo-700'
+                      : 'bg-green-50 text-green-700'
+                  }`}>
+                    {email.destinatario_tipo === 'admin' ? 'Admin' : 'Inquilino'}
+                  </span>
+                  {email.nombre_inquilino && (
+                    <span className="ml-2">{email.nombre_inquilino}</span>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 font-mono">{email.destinatario_email || '—'}</p>
+                <p className="text-xs text-gray-400">
+                  {new Date(email.fecha_envio).toLocaleString('es-ES', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit',
+                  })}
+                </p>
+                {email.mensaje_error && (
+                  <p className="text-xs text-red-600">{email.mensaje_error}</p>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

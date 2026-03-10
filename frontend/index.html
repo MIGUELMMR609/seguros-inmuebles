@@ -2,7 +2,7 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <title>Gestión de Seguros</title>
 
     <!-- PWA Manifest -->
@@ -10,11 +10,15 @@
 
     <!-- PWA compatible -->
     <meta name="mobile-web-app-capable" content="yes" />
+
     <!-- iOS PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Seguros" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.svg" />
+
+    <!-- Splash screens iOS -->
+    <meta name="apple-mobile-web-app-orientations" content="portrait" />
 
     <!-- Theme color para Android y navegadores -->
     <meta name="theme-color" content="#1e3a5f" />
@@ -30,6 +34,35 @@
       href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
+
+    <!-- Prevenir auto-zoom en inputs iOS -->
+    <style>
+      /* Pantalla de carga mientras se carga la app */
+      #root:empty {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        height: 100dvh;
+        background: #1e3a5f;
+      }
+      #root:empty::after {
+        content: '';
+        width: 32px;
+        height: 32px;
+        border: 3px solid rgba(255,255,255,0.2);
+        border-top-color: #f97316;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Usar dvh para altura completa en iOS Safari */
+      html, body, #root {
+        height: 100%;
+        height: 100dvh;
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

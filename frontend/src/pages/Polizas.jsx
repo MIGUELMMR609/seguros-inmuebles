@@ -490,11 +490,11 @@ export default function Polizas() {
       </div>
 
       <div className="flex flex-wrap gap-3 mb-5">
-        <select value={filtroInmueble} onChange={(e) => setFiltroInmueble(e.target.value)} className="campo-formulario w-auto min-w-[180px]">
+        <select value={filtroInmueble} onChange={(e) => setFiltroInmueble(e.target.value)} className="campo-formulario w-full sm:w-auto sm:min-w-[180px]">
           <option value="">Todos los inmuebles</option>
           {inmuebles.map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
         </select>
-        <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="campo-formulario w-auto min-w-[160px]">
+        <select value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)} className="campo-formulario w-full sm:w-auto sm:min-w-[160px]">
           <option value="">Todos los tipos</option>
           {TIPOS_POLIZA.map((t) => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
         </select>

@@ -17,34 +17,31 @@ export default function Modal({ abierto, onCerrar, titulo, children, ancho = 'ma
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center"
+      className="fixed inset-0 z-50 flex items-center justify-center"
       onClick={(e) => e.target === e.currentTarget && onCerrar()}
     >
       {/* Fondo oscuro */}
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onCerrar} />
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm hidden sm:block" onClick={onCerrar} />
 
-      {/* Panel del modal: en móvil ocupa todo el ancho y se ancla abajo */}
+      {/* Panel: pantalla completa en móvil, centrado en desktop */}
       <div
-        className={`relative z-10 bg-white w-full sm:${ancho} sm:rounded-2xl rounded-t-2xl shadow-2xl max-h-[92vh] sm:max-h-[90vh] flex flex-col`}
+        className={`relative z-10 bg-white flex flex-col
+          fixed inset-0 sm:static sm:inset-auto
+          sm:${ancho} sm:rounded-2xl sm:shadow-2xl sm:max-h-[90vh] sm:w-full`}
       >
-        {/* Barra de arrastre visible en móvil */}
-        <div className="sm:hidden flex justify-center pt-3 pb-1">
-          <div className="w-10 h-1 bg-gray-300 rounded-full" />
-        </div>
-
         {/* Cabecera */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100">
-          <h2 className="text-base sm:text-lg font-semibold text-gray-900">{titulo}</h2>
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-100 safe-top flex-shrink-0">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 truncate pr-2">{titulo}</h2>
           <button
             onClick={onCerrar}
-            className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-lg hover:bg-gray-100 touch-target"
+            className="text-gray-400 hover:text-gray-600 transition-colors p-2 rounded-lg hover:bg-gray-100 touch-target flex-shrink-0"
           >
             <X size={20} />
           </button>
         </div>
 
         {/* Cuerpo */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">{children}</div>
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 safe-bottom">{children}</div>
       </div>
     </div>
   );

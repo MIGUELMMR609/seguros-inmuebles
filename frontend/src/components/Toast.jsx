@@ -18,15 +18,16 @@ export default function Toast({ mensaje, tipo = 'info', onCerrar }) {
 
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 flex items-start gap-3 max-w-sm px-4 py-3 rounded-xl border shadow-xl animate-in ${clases}`}
+      className={`fixed z-50 flex items-start gap-3 px-4 py-3 rounded-xl border shadow-xl animate-in ${clases}
+        bottom-4 left-4 right-4 sm:bottom-6 sm:right-6 sm:left-auto sm:max-w-sm`}
     >
       <Icono size={18} className="flex-shrink-0 mt-0.5" />
       <p className="text-sm flex-1 leading-snug">{mensaje}</p>
       <button
         onClick={onCerrar}
-        className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity ml-1"
+        className="flex-shrink-0 opacity-50 hover:opacity-100 transition-opacity ml-1 p-1 touch-target"
       >
-        <X size={14} />
+        <X size={16} />
       </button>
     </div>
   );

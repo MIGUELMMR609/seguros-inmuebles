@@ -116,7 +116,7 @@ export default function Alertas() {
         </div>
         <div className="flex items-center gap-2">
           <label className="text-sm text-gray-600 font-medium">Mostrar los próximos:</label>
-          <select value={dias} onChange={(e) => setDias(parseInt(e.target.value))} className="campo-formulario w-auto">
+          <select value={dias} onChange={(e) => setDias(parseInt(e.target.value))} className="campo-formulario w-full sm:w-auto">
             <option value={7}>7 días</option>
             <option value={15}>15 días</option>
             <option value={30}>30 días</option>

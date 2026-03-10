@@ -359,13 +359,13 @@ export default function Siniestros() {
       </div>
 
       <div className="flex flex-wrap gap-3 mb-5">
-        <select value={filtroPol} onChange={(e) => setFiltroPol(e.target.value)} className="campo-formulario w-auto min-w-[200px]">
+        <select value={filtroPol} onChange={(e) => setFiltroPol(e.target.value)} className="campo-formulario w-full sm:w-auto sm:min-w-[200px]">
           <option value="">Todas las pólizas</option>
           {polizas.map((p) => (
             <option key={p.id} value={p.id}>{p.nombre_inmueble} — {p.numero_poliza || `#${p.id}`}</option>
           ))}
         </select>
-        <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} className="campo-formulario w-auto">
+        <select value={filtroEstado} onChange={(e) => setFiltroEstado(e.target.value)} className="campo-formulario w-full sm:w-auto">
           <option value="">Todos los estados</option>
           <option value="abierto">Abiertos</option>
           <option value="cerrado">Cerrados</option>
