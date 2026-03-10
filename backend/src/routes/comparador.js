@@ -2,6 +2,7 @@ const express = require('express');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
 const { llamarAnthropicApi } = require('../utils/anthropic');
+const { upload } = require('../middleware/upload');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -221,6 +222,189 @@ IMPORTANTE:
     }
     console.error('Error comparador:', error.message);
     res.status(500).json({ error: 'Error interno al comparar las pólizas' });
+  }
+});
+
+// POST /api/comparador/renovacion
+router.post('/renovacion', upload.single('documento'), async (req, res) => {
+  const { poliza_id } = req.body;
+
+  if (!poliza_id) {
+    return res.status(400).json({ error: 'Se necesita el ID de la póliza actual' });
+  }
+  if (!req.file) {
+    return res.status(400).json({ error: 'Se necesita el PDF de la nueva póliza (renovación)' });
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'La clave de API de IA no está configurada' });
+  }
+
+  // Cargar póliza actual de BD
+  let poliza;
+  try {
+    const resultado = await pool.query(
+      `SELECT p.*, i.nombre AS nombre_inmueble FROM polizas p LEFT JOIN inmuebles i ON p.inmueble_id = i.id WHERE p.id = $1`,
+      [poliza_id]
+    );
+    if (resultado.rows.length === 0) {
+      return res.status(404).json({ error: 'Póliza no encontrada' });
+    }
+    poliza = resultado.rows[0];
+  } catch (err) {
+    console.error('Error al cargar póliza para renovación:', err.message);
+    return res.status(500).json({ error: 'Error al cargar la póliza de la base de datos' });
+  }
+
+  // Preparar PDF de la póliza actual
+  const contenido = [];
+  const etiquetaActual = `${poliza.compania_aseguradora || 'Sin compañía'} · ${poliza.numero_poliza || `ID ${poliza.id}`}`;
+
+  contenido.push({ type: 'text', text: `PÓLIZA ACTUAL: ${etiquetaActual} (ID: actual)` });
+
+  if (poliza.documento_url) {
+    try {
+      const base64 = await descargarPdfBase64(poliza.documento_url);
+      contenido.push({
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: base64 },
+      });
+      console.log(`PDF descargado para póliza actual ${poliza.id}: ${poliza.documento_url}`);
+    } catch (err) {
+      console.warn(`No se pudo descargar PDF de póliza ${poliza.id}: ${err.message}. Usando texto de BD.`);
+      contenido.push({ type: 'text', text: construirTextoFallback(poliza, etiquetaActual) });
+    }
+  } else {
+    contenido.push({ type: 'text', text: construirTextoFallback(poliza, etiquetaActual) });
+  }
+
+  // Preparar PDF de la nueva póliza (subido)
+  contenido.push({ type: 'text', text: 'NUEVA PÓLIZA (RENOVACIÓN) (ID: nueva)' });
+  const bufferNueva = req.file.buffer;
+  const limitado = bufferNueva.length > MAX_BYTES ? bufferNueva.slice(0, MAX_BYTES) : bufferNueva;
+  contenido.push({
+    type: 'document',
+    source: { type: 'base64', media_type: 'application/pdf', data: limitado.toString('base64') },
+  });
+
+  const prompt = `Analiza y compara en profundidad las 2 pólizas de seguro indicadas arriba: la PÓLIZA ACTUAL y la NUEVA PÓLIZA (RENOVACIÓN).
+
+Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
+
+{
+  "resumen": "párrafo ejecutivo de 2-3 frases resumiendo las diferencias principales entre la póliza actual y la renovación",
+  "polizas": [
+    {
+      "id": "actual",
+      "etiqueta": "Póliza actual · Compañía · Nº",
+      "compania": "nombre compañía",
+      "prima_anual": número_decimal_o_null,
+      "capital_asegurado": "descripción del capital o null",
+      "franquicia": "descripción de la franquicia o null",
+      "riesgos_cubiertos": ["cobertura 1", "cobertura 2"],
+      "riesgos_no_cubiertos": ["exclusión 1", "exclusión 2"],
+      "exclusiones": "descripción general de exclusiones",
+      "fortalezas": "puntos fuertes de esta póliza",
+      "valoracion": número_del_1_al_10
+    },
+    {
+      "id": "nueva",
+      "etiqueta": "Renovación · Compañía · Nº",
+      "compania": "nombre compañía",
+      "prima_anual": número_decimal_o_null,
+      "capital_asegurado": "descripción del capital o null",
+      "franquicia": "descripción de la franquicia o null",
+      "riesgos_cubiertos": ["cobertura 1", "cobertura 2"],
+      "riesgos_no_cubiertos": ["exclusión 1", "exclusión 2"],
+      "exclusiones": "descripción general de exclusiones",
+      "fortalezas": "puntos fuertes de esta póliza",
+      "valoracion": número_del_1_al_10
+    }
+  ],
+  "tabla_coberturas": [
+    { "cobertura": "nombre de la cobertura", "valores": ["✅", "❌"] }
+  ],
+  "recomendacion": {
+    "mejor_id": "actual" o "nueva",
+    "texto": "explicación detallada de si conviene renovar o no, destacando mejoras y empeoramientos de la nueva póliza respecto a la actual"
+  }
+}
+
+IMPORTANTE:
+- El array "polizas" debe tener exactamente 2 elementos: primero la póliza actual (id: "actual"), luego la nueva (id: "nueva")
+- El array "valores" en tabla_coberturas debe tener exactamente 2 elementos (uno por póliza, mismo orden)
+- Usa ✅ si la cobertura está completamente incluida, ❌ si no está incluida, ⚠️ si está incluida con limitaciones
+- Destaca especialmente qué coberturas MEJORAN en la renovación y cuáles EMPEORAN
+- Si no puedes determinar un dato, usa null para números o "No disponible" para texto
+- Todo el texto debe estar en español`;
+
+  contenido.push({ type: 'text', text: prompt });
+
+  const controlador = new AbortController();
+  const temporizador = setTimeout(() => controlador.abort(), TIMEOUT_MS);
+
+  try {
+    const respuesta = await llamarAnthropicApi({
+      method: 'POST',
+      signal: controlador.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'pdfs-2024-09-25',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 4096,
+        messages: [{ role: 'user', content: contenido }],
+      }),
+    });
+
+    clearTimeout(temporizador);
+
+    if (!respuesta.ok) {
+      const cuerpo = await respuesta.text();
+      console.error(`Error Anthropic renovación [${respuesta.status}]:`, cuerpo.slice(0, 500));
+      let detalle = '';
+      try { detalle = JSON.parse(cuerpo)?.error?.message || cuerpo.slice(0, 200); } catch { detalle = cuerpo.slice(0, 200); }
+      return res.status(502).json({ error: `IA [${respuesta.status}]: ${detalle}` });
+    }
+
+    const resultado = await respuesta.json();
+    const texto = (resultado.content || []).filter((b) => b.type === 'text').map((b) => b.text).join('');
+    if (!texto) return res.status(422).json({ error: 'La IA no devolvió ninguna respuesta de texto' });
+
+    let datos;
+    try {
+      datos = JSON.parse(texto);
+    } catch {
+      const m = texto.match(/\{[\s\S]*\}/);
+      if (!m) return res.status(422).json({ error: 'No se pudo extraer la comparación estructurada' });
+      try {
+        datos = JSON.parse(m[0]);
+      } catch {
+        return res.status(422).json({ error: 'La respuesta de la IA no tiene el formato esperado' });
+      }
+    }
+
+    // Enriquecer con nombre_inmueble
+    if (Array.isArray(datos.polizas)) {
+      datos.polizas = datos.polizas.map((p) => {
+        if (p.id === 'actual' || String(p.id) === String(poliza.id)) {
+          return { ...p, id: 'actual', nombre_inmueble: poliza.nombre_inmueble || null };
+        }
+        return { ...p, nombre_inmueble: poliza.nombre_inmueble || null };
+      });
+    }
+
+    res.json(datos);
+  } catch (error) {
+    clearTimeout(temporizador);
+    if (error.name === 'AbortError') {
+      console.error('Timeout renovación (>120s)');
+      return res.status(504).json({ error: 'La IA tardó demasiado. Inténtalo de nuevo.' });
+    }
+    console.error('Error renovación:', error.message);
+    res.status(500).json({ error: 'Error interno al comparar la renovación' });
   }
 });
 

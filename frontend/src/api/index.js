@@ -143,6 +143,16 @@ export const analizarContratoApi = (archivo) => {
 export const compararPolizasApi = (ids, tipo) =>
   api.post('/comparador', { ids, tipo }, { timeout: 120_000 });
 
+export const compararRenovacionApi = (polizaId, archivo) => {
+  const formData = new FormData();
+  formData.append('poliza_id', polizaId);
+  formData.append('documento', archivo);
+  return api.post('/comparador/renovacion', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120_000,
+  });
+};
+
 // --- Backup ---
 export const obtenerBackupsApi = () => api.get('/backup');
 export const crearBackupApi = () => api.post('/backup', {}, { responseType: 'blob', timeout: 60_000 });

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Download, Scale } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Download, Scale, ArrowLeftRight } from 'lucide-react';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
@@ -11,7 +11,7 @@ import Toast from '../components/Toast.jsx';
 import {
   obtenerPolizasApi, crearPolizaApi, actualizarPolizaApi, eliminarPolizaApi,
   obtenerInmueblesApi, renovarPolizaApi, obtenerHistorialApi, analizarExpertoPolizaApi,
-  compararPolizasApi,
+  compararPolizasApi, compararRenovacionApi,
 } from '../api/index.js';
 
 const TIPOS_POLIZA = [
@@ -112,6 +112,13 @@ export default function Polizas() {
   const [seleccionadas, setSeleccionadas] = useState([]);
   const [comparando, setComparando] = useState(false);
   const [resultadoComparacion, setResultadoComparacion] = useState(null);
+
+  // Comparador de renovación
+  const [modoRenovacion, setModoRenovacion] = useState(false);
+  const [renovacionPolizaId, setRenovacionPolizaId] = useState(null);
+  const [renovacionArchivo, setRenovacionArchivo] = useState(null);
+  const [comparandoRenovacion, setComparandoRenovacion] = useState(false);
+  const [resultadoRenovacion, setResultadoRenovacion] = useState(null);
 
   // Historial
   const [modalHistorial, setModalHistorial] = useState(false);
@@ -389,6 +396,19 @@ export default function Polizas() {
     );
   }
 
+  async function handleCompararRenovacion() {
+    if (!renovacionPolizaId || !renovacionArchivo) return;
+    setComparandoRenovacion(true);
+    try {
+      const res = await compararRenovacionApi(renovacionPolizaId, renovacionArchivo);
+      setResultadoRenovacion(res.data);
+    } catch (err) {
+      setToast({ mensaje: err.response?.data?.error || 'Error al comparar la renovación', tipo: 'error' });
+    } finally {
+      setComparandoRenovacion(false);
+    }
+  }
+
   const columnas = [
     {
       clave: 'nombre_inmueble', titulo: 'Inmueble', sortable: true,
@@ -499,7 +519,7 @@ export default function Polizas() {
           {TIPOS_POLIZA.map((t) => <option key={t.valor} value={t.valor}>{t.etiqueta}</option>)}
         </select>
         <button
-          onClick={() => { setModoComparar((v) => !v); setSeleccionadas([]); }}
+          onClick={() => { setModoComparar((v) => !v); setSeleccionadas([]); setModoRenovacion(false); }}
           className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
             modoComparar
               ? 'bg-blue-600 text-white border-blue-600'
@@ -508,6 +528,17 @@ export default function Polizas() {
         >
           <Scale size={15} />
           Comparar pólizas
+        </button>
+        <button
+          onClick={() => { setModoRenovacion((v) => !v); setRenovacionPolizaId(null); setRenovacionArchivo(null); setModoComparar(false); setSeleccionadas([]); }}
+          className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium border transition-colors ${
+            modoRenovacion
+              ? 'bg-amber-600 text-white border-amber-600'
+              : 'bg-white text-amber-700 border-amber-300 hover:bg-amber-50'
+          }`}
+        >
+          <ArrowLeftRight size={15} />
+          Comparar renovación
         </button>
       </div>
 
@@ -548,6 +579,64 @@ export default function Polizas() {
             </button>
             <button
               onClick={() => { setModoComparar(false); setSeleccionadas([]); }}
+              className="btn-secundario"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Panel de selección para comparar renovación */}
+      {modoRenovacion && (
+        <div className="mb-5 bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <p className="text-sm font-semibold text-amber-800 mb-3">
+            Selecciona 1 póliza actual y sube el PDF de la renovación para comparar
+          </p>
+          <div className="max-h-48 overflow-y-auto space-y-1 mb-4">
+            {polizas.map((p) => (
+              <label key={p.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-amber-100 cursor-pointer">
+                <input
+                  type="radio"
+                  name="renovacion_poliza"
+                  checked={renovacionPolizaId === p.id}
+                  onChange={() => setRenovacionPolizaId(p.id)}
+                  className="w-4 h-4 text-amber-600"
+                />
+                <span className="text-sm text-gray-700">
+                  <span className="font-medium">{p.compania_aseguradora || 'Sin compañía'}</span>
+                  {p.numero_poliza && <span className="text-gray-400 font-mono text-xs ml-2">· {p.numero_poliza}</span>}
+                  {p.nombre_inmueble && <span className="text-gray-500 ml-2">· {p.nombre_inmueble}</span>}
+                </span>
+              </label>
+            ))}
+          </div>
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-amber-800 mb-1">PDF de la nueva póliza (renovación)</label>
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={(e) => setRenovacionArchivo(e.target.files[0] || null)}
+              className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-amber-100 file:text-amber-700 hover:file:bg-amber-200"
+            />
+            {renovacionArchivo && (
+              <p className="text-xs text-amber-600 mt-1">{renovacionArchivo.name}</p>
+            )}
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleCompararRenovacion}
+              disabled={!renovacionPolizaId || !renovacionArchivo || comparandoRenovacion}
+              className="btn-primario disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {comparandoRenovacion ? (
+                <><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> Comparando...</>
+              ) : (
+                <><ArrowLeftRight size={15} /> Comparar con renovación</>
+              )}
+            </button>
+            <button
+              onClick={() => { setModoRenovacion(false); setRenovacionPolizaId(null); setRenovacionArchivo(null); }}
               className="btn-secundario"
             >
               Cancelar
@@ -1003,6 +1092,16 @@ export default function Polizas() {
         onDescargar={() => { setResultadoComparacion(null); setModoComparar(false); setSeleccionadas([]); }}
         datos={resultadoComparacion}
         tipo="inmuebles"
+      />
+
+      {/* Modal comparador de renovación */}
+      <ModalComparador
+        abierto={!!resultadoRenovacion}
+        onCerrar={() => setResultadoRenovacion(null)}
+        onDescargar={() => { setResultadoRenovacion(null); setModoRenovacion(false); setRenovacionPolizaId(null); setRenovacionArchivo(null); }}
+        datos={resultadoRenovacion}
+        tipo="inmuebles"
+        tituloOverride="Comparador de renovación"
       />
 
 

@@ -17,7 +17,7 @@ function colorCelda(valor) {
   return 'bg-gray-50 text-gray-600';
 }
 
-export default function ModalComparador({ abierto, onCerrar, onDescargar, datos, tipo }) {
+export default function ModalComparador({ abierto, onCerrar, onDescargar, datos, tipo, tituloOverride }) {
   const navigate = useNavigate();
   if (!datos) return null;
 
@@ -28,7 +28,7 @@ export default function ModalComparador({ abierto, onCerrar, onDescargar, datos,
     <Modal
       abierto={abierto}
       onCerrar={onCerrar}
-      titulo={`Comparador de pólizas${tipo === 'inquilinos' ? ' de inquilinos' : ''}`}
+      titulo={tituloOverride || `Comparador de pólizas${tipo === 'inquilinos' ? ' de inquilinos' : ''}`}
       ancho="max-w-5xl"
     >
       <div className="space-y-6 print:space-y-4">
