@@ -83,10 +83,7 @@ router.get('/', async (req, res) => {
          LEFT JOIN inmuebles i ON p.inmueble_id = i.id
          WHERE p.fecha_vencimiento IS NOT NULL
            AND p.fecha_vencimiento >= CURRENT_DATE
-           AND (
-             (LOWER(i.tipo) = 'piso' AND (p.fecha_vencimiento - CURRENT_DATE) <= 150)
-             OR ((i.tipo IS NULL OR LOWER(i.tipo) != 'piso') AND (p.fecha_vencimiento - CURRENT_DATE) <= 30)
-           )
+           AND (p.fecha_vencimiento - CURRENT_DATE) <= 30
          ORDER BY p.fecha_vencimiento ASC`
       ),
 

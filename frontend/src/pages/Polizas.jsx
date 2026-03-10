@@ -59,7 +59,7 @@ const renovarVacio = {
 function calcularEstado(fechaVencimiento, tipoInmueble) {
   if (!fechaVencimiento) return { etiqueta: 'Sin fecha', clase: 'bg-gray-100 text-gray-600' };
   const dias = Math.ceil((new Date(fechaVencimiento) - new Date()) / 86400000);
-  const umbral = tipoInmueble && tipoInmueble.toLowerCase() === 'piso' ? 150 : 30;
+  const umbral = 30;
   if (dias < 0) return { etiqueta: 'Vencida', clase: 'bg-red-100 text-red-700' };
   if (dias <= umbral) return { etiqueta: `Vence en ${dias}d`, clase: 'bg-orange-100 text-orange-700' };
   return { etiqueta: 'Vigente', clase: 'bg-green-100 text-green-700' };
