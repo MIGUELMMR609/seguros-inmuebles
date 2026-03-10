@@ -16,8 +16,7 @@ router.get('/resumen', async (req, res) => {
            AND inq.fecha_fin_contrato IS NOT NULL
            AND (
              inq.fecha_fin_contrato < CURRENT_DATE
-             OR (LOWER(inm.tipo) = 'piso' AND (inq.fecha_fin_contrato - CURRENT_DATE) <= 150)
-             OR ((inm.tipo IS NULL OR LOWER(inm.tipo) != 'piso') AND (inq.fecha_fin_contrato - CURRENT_DATE) <= 30)
+             OR (inq.fecha_fin_contrato - CURRENT_DATE) <= 150
            )`
       ),
       pool.query(
@@ -112,7 +111,7 @@ router.get('/', async (req, res) => {
         [diasLimite]
       ),
 
-      // Contratos de alquiler próximos a vencer (150 días para pisos, 30 para el resto)
+      // Contratos de alquiler próximos a vencer (todos: 150 días)
       pool.query(
         `SELECT
            inq.id,
@@ -128,10 +127,7 @@ router.get('/', async (req, res) => {
          WHERE (inq.estado = 'activo' OR inq.estado IS NULL)
            AND inq.fecha_fin_contrato IS NOT NULL
            AND inq.fecha_fin_contrato >= CURRENT_DATE
-           AND (
-             (LOWER(inm.tipo) = 'piso' AND (inq.fecha_fin_contrato - CURRENT_DATE) <= 150)
-             OR ((inm.tipo IS NULL OR LOWER(inm.tipo) != 'piso') AND (inq.fecha_fin_contrato - CURRENT_DATE) <= 30)
-           )
+           AND (inq.fecha_fin_contrato - CURRENT_DATE) <= 150
          ORDER BY inq.fecha_fin_contrato ASC`
       ),
 

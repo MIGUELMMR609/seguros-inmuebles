@@ -540,25 +540,27 @@ export default function Inquilinos() {
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
         const dias = Math.ceil((fecha - hoy) / (1000 * 60 * 60 * 24));
-        const umbral = f.tipo_inmueble && f.tipo_inmueble.toLowerCase() === 'piso' ? 150 : 30;
+        let badgeClase = 'bg-green-600 text-white';
+        let badgeTexto = 'VIGENTE';
+        if (dias < 0) {
+          badgeClase = 'bg-red-600 text-white';
+          badgeTexto = 'VENCIDO';
+        } else if (dias <= 60) {
+          badgeClase = 'bg-red-500 text-white';
+          badgeTexto = `VENCE EN ${dias}D`;
+        } else if (dias <= 90) {
+          badgeClase = 'bg-orange-500 text-white';
+          badgeTexto = `VENCE EN ${dias}D`;
+        } else if (dias <= 150) {
+          badgeClase = 'bg-yellow-500 text-white';
+          badgeTexto = `VENCE EN ${dias}D`;
+        }
         return (
           <div className="flex flex-col gap-1">
             <span className="text-sm text-gray-600">{fecha.toLocaleDateString('es-ES')}</span>
-            {dias < 0 && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-red-600 text-white w-fit">
-                VENCIDO
-              </span>
-            )}
-            {dias >= 0 && dias <= umbral && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-orange-500 text-white w-fit">
-                VENCE EN {dias}D
-              </span>
-            )}
-            {dias > umbral && (
-              <span className="inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full bg-green-600 text-white w-fit">
-                VIGENTE
-              </span>
-            )}
+            <span className={`inline-flex items-center gap-1 text-xs font-bold px-2 py-0.5 rounded-full ${badgeClase} w-fit`}>
+              {badgeTexto}
+            </span>
           </div>
         );
       },

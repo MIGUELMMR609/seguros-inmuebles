@@ -54,10 +54,7 @@ export default function Dashboard() {
         const contratosAlerta = resInquilinos.data
           .filter((inq) => inq.fecha_fin_contrato)
           .map((inq) => ({ ...inq, dias: calcularDiasRestantes(inq.fecha_fin_contrato) }))
-          .filter((inq) => {
-            const umbral = inq.tipo_inmueble && inq.tipo_inmueble.toLowerCase() === 'piso' ? 150 : 30;
-            return inq.dias <= umbral;
-          })
+          .filter((inq) => inq.dias <= 150)
           .sort((a, b) => a.dias - b.dias);
 
         setDatos({
