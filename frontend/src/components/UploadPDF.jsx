@@ -12,6 +12,7 @@ export default function UploadPDF({ urlActual, onSubida }) {
   const [subiendo, setSubiendo] = useState(false);
   const [error, setError] = useState('');
   const [nombreArchivo, setNombreArchivo] = useState('');
+  const [urlSubida, setUrlSubida] = useState('');
   const inputRef = useRef(null);
 
   async function handleSeleccion(e) {
@@ -34,6 +35,7 @@ export default function UploadPDF({ urlActual, onSubida }) {
     try {
       const respuesta = await subirDocumentoApi(archivo);
       setNombreArchivo(archivo.name);
+      setUrlSubida(respuesta.data.url);
       onSubida(respuesta.data.url);
     } catch (err) {
       setError(err.response?.data?.error || 'Error al subir el documento');
@@ -45,10 +47,11 @@ export default function UploadPDF({ urlActual, onSubida }) {
 
   function limpiar() {
     setNombreArchivo('');
+    setUrlSubida('');
     onSubida('');
   }
 
-  const urlMostrar = nombreArchivo ? null : urlActual;
+  const urlMostrar = nombreArchivo ? urlSubida : urlActual;
   const nombreMostrar = nombreArchivo || (urlActual ? urlActual.split('/').pop() : '');
 
   return (
