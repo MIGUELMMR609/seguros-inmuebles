@@ -1474,6 +1474,7 @@ export default function PolizasInquilinos() {
                         {subKey && optimaDatos[key] && (
                           <input placeholder={subPlaceholder} value={optimaDatos[subKey] || ''}
                             onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                             className="w-full mt-1 px-3 py-1.5 rounded-lg text-xs text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
                         )}
@@ -1483,6 +1484,7 @@ export default function PolizasInquilinos() {
                       <span className="text-xs text-white/60">Personas</span>
                       <input type="number" min="1" max="20" value={optimaDatos.num_personas} placeholder="N"
                         onChange={(e) => setOptimaDatos((p) => ({ ...p, num_personas: e.target.value }))}
+                        onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                         className="w-16 px-2 py-1 rounded-lg text-xs text-center text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
                     </div>
@@ -1547,6 +1549,7 @@ export default function PolizasInquilinos() {
                         {subKey && optimaDatos[key] && (
                           <input type={subType || 'text'} min={subType === 'number' ? '1' : undefined} placeholder={subPlaceholder} value={optimaDatos[subKey] || ''}
                             onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: e.target.value }))}
+                            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                             className="w-full mt-1 px-3 py-1.5 rounded-lg text-xs text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-amber-500/40"
                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
                         )}
