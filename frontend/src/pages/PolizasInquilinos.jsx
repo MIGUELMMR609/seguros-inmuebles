@@ -1335,6 +1335,7 @@ export default function PolizasInquilinos() {
         <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.target === e.currentTarget && setModalOptima(false)}>
           <div className="absolute inset-0 bg-[#0D1B2A]/80 backdrop-blur-md" onClick={() => setModalOptima(false)} />
           <div className={`relative z-10 flex flex-col fixed inset-0 sm:static sm:inset-auto ${optimaPaso === 5 ? 'sm:max-w-[640px]' : 'sm:max-w-[520px]'} sm:w-full sm:rounded-2xl sm:max-h-[90vh] overflow-hidden transition-all duration-300`}
+            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
             style={{ background: 'rgba(15,25,45,0.92)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
 
             {/* Header: título + progreso en la misma línea */}
@@ -1353,7 +1354,7 @@ export default function PolizasInquilinos() {
                       style={{ background: optimaPaso >= s ? 'linear-gradient(90deg, #6366f1, #a78bfa)' : 'rgba(255,255,255,0.12)' }} />
                   </div>
                 ))}
-                <button onClick={() => setModalOptima(false)} className="ml-2 p-1.5 rounded-lg transition-colors hover:bg-white/10 text-white/30 hover:text-white/60">
+                <button type="button" onClick={() => setModalOptima(false)} className="ml-2 p-1.5 rounded-lg transition-colors hover:bg-white/10 text-white/30 hover:text-white/60">
                   <X size={16} />
                 </button>
               </div>
@@ -1405,8 +1406,8 @@ export default function PolizasInquilinos() {
                     </div>
                   )}
                   <div className="flex gap-2 pt-2">
-                    <button onClick={() => setModalOptima(false)} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 transition-colors hover:text-white/60 hover:bg-white/5" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancelar</button>
-                    <button onClick={() => setOptimaPaso(2)} disabled={!optimaPolizaId}
+                    <button type="button" onClick={() => setModalOptima(false)} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 transition-colors hover:text-white/60 hover:bg-white/5" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancelar</button>
+                    <button type="button" onClick={() => setOptimaPaso(2)} disabled={!optimaPolizaId}
                       className="flex-1 px-4 py-2 rounded-full text-xs font-bold text-white transition-all disabled:opacity-30"
                       style={{ background: optimaPolizaId ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.05)' }}>
                       Siguiente
@@ -1442,8 +1443,8 @@ export default function PolizasInquilinos() {
                     </button>
                   </div>
                   <div className="flex gap-2 pt-1">
-                    <button onClick={() => setOptimaPaso(1)} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
-                    <button onClick={() => setOptimaPaso(3)} disabled={!optimaDatos.tipo_inmueble}
+                    <button type="button" onClick={() => setOptimaPaso(1)} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
+                    <button type="button" onClick={() => setOptimaPaso(3)} disabled={!optimaDatos.tipo_inmueble}
                       className="flex-1 px-4 py-2 rounded-full text-xs font-bold text-white transition-all disabled:opacity-30"
                       style={{ background: optimaDatos.tipo_inmueble ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.05)' }}>
                       Siguiente
@@ -1494,8 +1495,8 @@ export default function PolizasInquilinos() {
                     </div>
                   </div>
                   <div className="flex gap-2 pt-1">
-                    <button onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
-                    <button onClick={handleGenerarInforme}
+                    <button type="button" onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
+                    <button type="button" onClick={handleGenerarInforme}
                       className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white transition-all hover:shadow-lg hover:shadow-indigo-500/20"
                       style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
                       <Sparkles size={13} /> Generar informe
@@ -1563,8 +1564,8 @@ export default function PolizasInquilinos() {
                     ))}
                   </div>
                   <div className="flex gap-2 pt-1">
-                    <button onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
-                    <button onClick={handleGenerarInforme}
+                    <button type="button" onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
+                    <button type="button" onClick={handleGenerarInforme}
                       className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white transition-all hover:shadow-lg hover:shadow-amber-500/20"
                       style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
                       <Sparkles size={13} /> Generar informe
@@ -1694,7 +1695,7 @@ export default function PolizasInquilinos() {
                           <option value="" className="bg-[#0f192d]">Inquilino (opcional)</option>
                           {inquilinos.filter((i) => i.estado === 'activo').map((i) => <option key={i.id} value={i.id} className="bg-[#0f192d]">{i.nombre}</option>)}
                         </select>
-                        <button disabled={guardandoPropuesta}
+                        <button type="button" disabled={guardandoPropuesta}
                           onClick={async () => {
                             setGuardandoPropuesta(true);
                             try {
@@ -1725,11 +1726,11 @@ export default function PolizasInquilinos() {
 
                   {/* Acciones finales */}
                   <div className="flex gap-2 pt-1">
-                    <button onClick={() => generarPdfInforme(inf, optimaInforme.poliza_inmueble?.nombre_inmueble, optimaInforme.poliza_inmueble?.compania)}
+                    <button type="button" onClick={() => generarPdfInforme(inf, optimaInforme.poliza_inmueble?.nombre_inmueble, optimaInforme.poliza_inmueble?.compania)}
                       className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-white/50 hover:text-white/70 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
                       <Download size={12} /> PDF
                     </button>
-                    <button onClick={() => setModalOptima(false)}
+                    <button type="button" onClick={() => setModalOptima(false)}
                       className="flex-1 px-4 py-2 rounded-full text-xs font-bold text-white transition-all"
                       style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
                       Cerrar
