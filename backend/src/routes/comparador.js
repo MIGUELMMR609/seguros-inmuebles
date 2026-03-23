@@ -118,7 +118,7 @@ router.post('/', async (req, res) => {
     }
   }
 
-  const prompt = `Analiza y compara en profundidad las ${polizas.length} pólizas de seguro indicadas arriba.
+  const prompt = `Eres un experto comparador de pólizas de seguros inmobiliarios. Analiza en profundidad las ${polizas.length} pólizas indicadas arriba.
 
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
 
@@ -130,8 +130,12 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
       "etiqueta": "Compañía · Nº póliza",
       "compania": "nombre compañía",
       "prima_anual": número_decimal_o_null,
-      "capital_asegurado": "descripción del capital o null",
-      "franquicia": "descripción de la franquicia o null",
+      "capitales": {
+        "continente": número_o_null,
+        "contenido": número_o_null,
+        "responsabilidad_civil": número_o_null
+      },
+      "franquicia": "150 € por siniestro o null",
       "riesgos_cubiertos": ["cobertura 1", "cobertura 2"],
       "riesgos_no_cubiertos": ["exclusión 1", "exclusión 2"],
       "exclusiones": "descripción general de exclusiones",
@@ -140,8 +144,16 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
     }
   ],
   "tabla_coberturas": [
-    { "cobertura": "nombre de la cobertura", "valores": ["✅", "❌", "⚠️"] }
+    {
+      "cobertura": "Incendio",
+      "valores": ["✅ 150.000 €", "❌", "⚠️ Sublímite 30.000 €"]
+    }
   ],
+  "analisis_propietario_inquilino": {
+    "cubre_propietario": ["Incendio continente: 150.000 €", "RC propietario: 300.000 €"],
+    "debe_cubrir_inquilino": ["Contenido personal", "RC inquilino", "Robo efectos personales"],
+    "gaps_cobertura": ["Sin cobertura de RC inquilino", "Contenido personal no asegurado"]
+  },
   "recomendacion": {
     "mejor_id": id_de_la_mejor_poliza,
     "texto": "explicación detallada de por qué esta póliza es la mejor opción"
@@ -150,9 +162,11 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
 
 IMPORTANTE:
 - El array "polizas" debe tener exactamente ${polizas.length} elementos, uno por cada póliza analizada, en el mismo orden
-- El array "valores" en tabla_coberturas debe tener exactamente ${polizas.length} elementos (uno por póliza, en el mismo orden)
-- Usa ✅ si la cobertura está completamente incluida, ❌ si no está incluida, ⚠️ si está incluida con limitaciones
-- Los IDs deben ser los IDs numéricos exactos de cada póliza: ${polizas.map((p) => p.id).join(', ')}
+- En "capitales", extrae los importes numéricos (sin símbolo €). Si no están disponibles, usa null
+- En tabla_coberturas, INCLUYE el IMPORTE contratado junto al icono cuando esté disponible (ej: "✅ 150.000 €", "⚠️ Sublímite 30.000 €"). El array "valores" debe tener exactamente ${polizas.length} elementos
+- Usa ✅ si la cobertura está incluida, ❌ si no está incluida, ⚠️ si tiene limitaciones
+- Los IDs deben ser los IDs numéricos exactos: ${polizas.map((p) => p.id).join(', ')}
+- En "analisis_propietario_inquilino": analiza qué riesgos cubre la póliza del propietario del inmueble y qué debería cubrir por separado el inquilino con su propia póliza. Los gaps son riesgos importantes que ninguna póliza cubre
 - Si no puedes determinar un dato, usa null para números o "No disponible" para texto
 - Todo el texto debe estar en español`;
 
@@ -173,7 +187,7 @@ IMPORTANTE:
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{ role: 'user', content: contenido }],
       }),
     });
@@ -205,11 +219,14 @@ IMPORTANTE:
       }
     }
 
-    // Enriquecer con nombre_inmueble de la BD (la IA no lo sabe)
+    // Enriquecer con nombre_inmueble / nombre_inquilino de la BD (la IA no lo sabe)
     if (Array.isArray(datos.polizas)) {
       datos.polizas = datos.polizas.map((p) => {
         const bdPoliza = polizas.find((bp) => bp.id === p.id || String(bp.id) === String(p.id));
-        return bdPoliza ? { ...p, nombre_inmueble: bdPoliza.nombre_inmueble || null } : p;
+        if (!bdPoliza) return p;
+        const extra = { nombre_inmueble: bdPoliza.nombre_inmueble || null };
+        if (bdPoliza.nombre_inquilino) extra.nombre_inquilino = bdPoliza.nombre_inquilino;
+        return { ...p, ...extra };
       });
     }
 
@@ -286,7 +303,7 @@ router.post('/renovacion', upload.single('documento'), async (req, res) => {
     source: { type: 'base64', media_type: 'application/pdf', data: limitado.toString('base64') },
   });
 
-  const prompt = `Analiza y compara en profundidad las 2 pólizas de seguro indicadas arriba: la PÓLIZA ACTUAL y la NUEVA PÓLIZA (RENOVACIÓN).
+  const prompt = `Eres un experto comparador de pólizas de seguros inmobiliarios. Analiza en profundidad las 2 pólizas indicadas arriba: la PÓLIZA ACTUAL y la NUEVA PÓLIZA (RENOVACIÓN).
 
 Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, sin explicaciones) con esta estructura exacta:
 
@@ -298,8 +315,12 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
       "etiqueta": "Póliza actual · Compañía · Nº",
       "compania": "nombre compañía",
       "prima_anual": número_decimal_o_null,
-      "capital_asegurado": "descripción del capital o null",
-      "franquicia": "descripción de la franquicia o null",
+      "capitales": {
+        "continente": número_o_null,
+        "contenido": número_o_null,
+        "responsabilidad_civil": número_o_null
+      },
+      "franquicia": "150 € por siniestro o null",
       "riesgos_cubiertos": ["cobertura 1", "cobertura 2"],
       "riesgos_no_cubiertos": ["exclusión 1", "exclusión 2"],
       "exclusiones": "descripción general de exclusiones",
@@ -311,8 +332,12 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
       "etiqueta": "Renovación · Compañía · Nº",
       "compania": "nombre compañía",
       "prima_anual": número_decimal_o_null,
-      "capital_asegurado": "descripción del capital o null",
-      "franquicia": "descripción de la franquicia o null",
+      "capitales": {
+        "continente": número_o_null,
+        "contenido": número_o_null,
+        "responsabilidad_civil": número_o_null
+      },
+      "franquicia": "150 € por siniestro o null",
       "riesgos_cubiertos": ["cobertura 1", "cobertura 2"],
       "riesgos_no_cubiertos": ["exclusión 1", "exclusión 2"],
       "exclusiones": "descripción general de exclusiones",
@@ -321,19 +346,29 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
     }
   ],
   "tabla_coberturas": [
-    { "cobertura": "nombre de la cobertura", "valores": ["✅", "❌"] }
+    {
+      "cobertura": "Incendio",
+      "valores": ["✅ 150.000 €", "⚠️ Sublímite 100.000 €"]
+    }
   ],
+  "analisis_propietario_inquilino": {
+    "cubre_propietario": ["Incendio continente: 150.000 €"],
+    "debe_cubrir_inquilino": ["Contenido personal", "RC inquilino"],
+    "gaps_cobertura": ["Sin cobertura de RC inquilino"]
+  },
   "recomendacion": {
     "mejor_id": "actual" o "nueva",
-    "texto": "explicación detallada de si conviene renovar o no, destacando mejoras y empeoramientos de la nueva póliza respecto a la actual"
+    "texto": "explicación detallada de si conviene renovar o no, destacando mejoras y empeoramientos"
   }
 }
 
 IMPORTANTE:
 - El array "polizas" debe tener exactamente 2 elementos: primero la póliza actual (id: "actual"), luego la nueva (id: "nueva")
-- El array "valores" en tabla_coberturas debe tener exactamente 2 elementos (uno por póliza, mismo orden)
-- Usa ✅ si la cobertura está completamente incluida, ❌ si no está incluida, ⚠️ si está incluida con limitaciones
+- En "capitales", extrae los importes numéricos (sin símbolo €). Si no están disponibles, usa null
+- En tabla_coberturas, INCLUYE el IMPORTE contratado junto al icono cuando esté disponible (ej: "✅ 150.000 €"). El array "valores" debe tener exactamente 2 elementos
+- Usa ✅ si la cobertura está incluida, ❌ si no está incluida, ⚠️ si tiene limitaciones
 - Destaca especialmente qué coberturas MEJORAN en la renovación y cuáles EMPEORAN
+- En "analisis_propietario_inquilino": analiza qué cubre el propietario y qué debería cubrir el inquilino por separado
 - Si no puedes determinar un dato, usa null para números o "No disponible" para texto
 - Todo el texto debe estar en español`;
 
@@ -354,7 +389,7 @@ IMPORTANTE:
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 4096,
+        max_tokens: 8192,
         messages: [{ role: 'user', content: contenido }],
       }),
     });

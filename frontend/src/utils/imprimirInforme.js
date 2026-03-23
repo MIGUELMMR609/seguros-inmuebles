@@ -176,112 +176,191 @@ export function imprimirInformePoliza(analisis, poliza) {
 }
 
 export function imprimirComparador(datos, tipo) {
-  const { resumen, polizas = [], tabla_coberturas = [], recomendacion } = datos;
+  const { resumen, polizas = [], tabla_coberturas = [], analisis_propietario_inquilino: api, recomendacion } = datos;
   const fechaHoy = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
   const mejorId = recomendacion?.mejor_id;
   const titulo = tipo === 'inquilinos' ? 'Comparador de pólizas de inquilinos' : 'Comparador de pólizas de inmuebles';
+  const tieneCapitales = polizas.some((p) => p.capitales);
 
   const css = `
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif; font-size: 12px; color: #1f2937; background: #fff; padding: 28px 36px; }
-.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #1e3a5f; padding-bottom: 14px; margin-bottom: 20px; }
+.header { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 3px solid #1e3a5f; padding-bottom: 14px; margin-bottom: 20px; }
 .logo { font-size: 18px; font-weight: 800; color: #1e3a5f; }
 .logo small { display: block; font-size: 11px; font-weight: 400; color: #6b7280; margin-top: 2px; }
 .fecha { font-size: 11px; color: #9ca3af; text-align: right; line-height: 1.6; }
 .resumen { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px 16px; margin-bottom: 18px; font-size: 12px; color: #374151; line-height: 1.6; }
 .resumen strong { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 6px; }
-h3.seccion-titulo { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 8px; margin-top: 18px; }
-table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 11px; }
-th { background: #f3f4f6; color: #4b5563; font-weight: 600; padding: 7px 10px; text-align: center; border: 1px solid #e5e7eb; }
-th.campo { text-align: left; }
-td { padding: 6px 10px; border: 1px solid #e5e7eb; vertical-align: top; color: #374151; }
-td.campo { background: #f9fafb; font-weight: 500; color: #6b7280; }
+h3.st { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #9ca3af; margin-bottom: 8px; margin-top: 20px; }
+table { width: 100%; border-collapse: collapse; margin-bottom: 18px; font-size: 11px; border-radius: 8px; overflow: hidden; }
+th.dark { background: #1e3a5f; color: #fff; font-weight: 600; padding: 10px 10px; text-align: center; border: none; }
+th.dark-left { background: #1e3a5f; color: rgba(255,255,255,0.5); font-weight: 600; padding: 10px 10px; text-align: left; border: none; }
+td { padding: 6px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: top; color: #374151; }
+td.campo { background: #f9fafb; font-weight: 600; color: #6b7280; font-size: 11px; }
 td.centro { text-align: center; }
-.mejor { background: #f0fdf4 !important; color: #166534 !important; border-bottom: 2px solid #4ade80 !important; }
-.badge-mejor { font-size: 9px; background: #16a34a; color: #fff; padding: 1px 6px; border-radius: 10px; margin-left: 4px; }
-.val-badge { font-weight: 700; padding: 2px 7px; border-radius: 10px; font-size: 11px; }
-.val-verde { background: #dcfce7; color: #15803d; }
-.val-amarillo { background: #fef9c3; color: #a16207; }
-.val-rojo { background: #fee2e2; color: #b91c1c; }
-.val-gris { background: #f3f4f6; color: #6b7280; }
-.green-cell { background: #f0fdf4; color: #15803d; }
-.red-cell { background: #fef2f2; color: #b91c1c; }
-.yellow-cell { background: #fefce8; color: #a16207; }
+tr.sep td { background: #f1f5f9; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; padding: 4px 10px; }
+tr.stripe { background: #fafbfc; }
+.mejor-th { background: rgba(16,185,129,0.15) !important; }
+.badge-mejor { display: inline-block; font-size: 9px; background: #10b981; color: #fff; padding: 2px 7px; border-radius: 10px; margin-top: 3px; }
+.sem-verde { color: #059669; font-weight: 700; }
+.sem-rojo { color: #dc2626; font-weight: 700; }
+.sem-amarillo { color: #d97706; font-weight: 700; }
+.green-cell { background: #ecfdf5; color: #065f46; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; }
+.red-cell { background: #fef2f2; color: #991b1b; padding: 2px 4px; border-radius: 3px; margin-bottom: 2px; }
+.yellow-cell { background: #fffbeb; color: #92400e; }
 ul { list-style: none; padding: 0; }
 li { margin-bottom: 3px; }
-.recomendacion { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 14px 16px; margin-top: 4px; }
-.recomendacion strong { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #16a34a; margin-bottom: 6px; }
-.recomendacion p { font-size: 12px; color: #14532d; line-height: 1.6; }
+.reco { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border: 2px solid #6ee7b7; border-radius: 10px; padding: 16px 18px; margin-top: 6px; }
+.reco strong { display: block; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #059669; margin-bottom: 6px; }
+.reco p { font-size: 12px; color: #064e3b; line-height: 1.6; }
+.api-grid { display: flex; gap: 10px; margin-bottom: 18px; }
+.api-card { flex: 1; border-radius: 8px; padding: 12px 14px; font-size: 11px; line-height: 1.5; }
+.api-blue { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+.api-amber { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+.api-red { background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; }
+.api-card h4 { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
 .footer { border-top: 1px solid #e5e7eb; margin-top: 24px; padding-top: 8px; font-size: 10px; color: #9ca3af; text-align: center; }
 @media print { body { padding: 0; } @page { margin: 1.5cm; size: A4 landscape; } }
 `;
 
-  function valBadge(v) {
-    if (v == null) return '<span class="val-badge val-gris">—</span>';
+  function fmtEur(v) {
+    if (v == null) return '—';
     const n = parseFloat(v);
-    const cls = n >= 7 ? 'val-verde' : n >= 5 ? 'val-amarillo' : 'val-rojo';
-    return `<span class="val-badge ${cls}">${n.toFixed(1)}/10</span>`;
+    if (isNaN(n)) return '—';
+    return n.toLocaleString('es-ES', { maximumFractionDigits: 0 }) + ' €';
+  }
+
+  function stars(v) {
+    if (v == null) return '—';
+    const n = Math.min(5, Math.max(0, Math.round(parseFloat(v) / 2)));
+    return '⭐'.repeat(n) + '☆'.repeat(5 - n) + ` <span style="font-size:10px;color:#6b7280">(${parseFloat(v).toFixed(0)}/10)</span>`;
   }
 
   function cellColor(v) {
-    if (v === '✅') return 'green-cell';
-    if (v === '❌') return 'red-cell';
-    if (v === '⚠️') return 'yellow-cell';
+    if (!v) return '';
+    const s = String(v);
+    if (s.includes('✅')) return 'green-cell';
+    if (s.includes('❌')) return 'red-cell';
+    if (s.includes('⚠️')) return 'yellow-cell';
     return '';
   }
 
-  // Cabeceras de pólizas
-  const thPolizas = polizas.map((p) => {
-    const esMejor = p.id === mejorId;
-    return `<th class="${esMejor ? 'mejor' : ''}">${esc(p.etiqueta || p.compania || `Póliza ${p.id}`)}${esMejor ? '<span class="badge-mejor">⭐ Mejor</span>' : ''}</th>`;
-  }).join('');
-
-  function filaTabla(campo, fn) {
-    const celdas = polizas.map((p) => `<td class="centro">${fn(p)}</td>`).join('');
-    return `<tr><td class="campo">${campo}</td>${celdas}</tr>`;
+  // Semaphore for numeric comparison
+  function sem(polizas, fn, mejorEs) {
+    const vals = polizas.map(fn);
+    const validos = vals.filter((v) => v !== null && !isNaN(v));
+    if (validos.length < 2) return polizas.map(() => '');
+    const mejor = mejorEs === 'alto' ? Math.max(...validos) : Math.min(...validos);
+    const peor = mejorEs === 'alto' ? Math.min(...validos) : Math.max(...validos);
+    if (mejor === peor) return polizas.map(() => '');
+    return vals.map((v) => {
+      if (v === null || isNaN(v)) return '';
+      if (v === mejor) return 'sem-verde';
+      if (v === peor) return 'sem-rojo';
+      return 'sem-amarillo';
+    });
   }
 
+  const semPrima = sem(polizas, (p) => p.prima_anual != null ? parseFloat(p.prima_anual) : null, 'bajo');
+  const semVal = sem(polizas, (p) => p.valoracion != null ? parseFloat(p.valoracion) : null, 'alto');
+  const semCont = tieneCapitales ? sem(polizas, (p) => p.capitales?.continente != null ? parseFloat(p.capitales.continente) : null, 'alto') : [];
+  const semCndo = tieneCapitales ? sem(polizas, (p) => p.capitales?.contenido != null ? parseFloat(p.capitales.contenido) : null, 'alto') : [];
+  const semRC = tieneCapitales ? sem(polizas, (p) => p.capitales?.responsabilidad_civil != null ? parseFloat(p.capitales.responsabilidad_civil) : null, 'alto') : [];
+
+  // Header
+  const thPolizas = polizas.map((p) => {
+    const esMejor = p.id === mejorId;
+    let label = esc(p.etiqueta || p.compania || `Póliza ${p.id}`);
+    if (p.nombre_inmueble) label += `<br><span style="font-weight:400;opacity:0.5;font-size:10px">${esc(p.nombre_inmueble)}</span>`;
+    if (esMejor) label += `<br><span class="badge-mejor">🏆 Mejor</span>`;
+    return `<th class="dark ${esMejor ? 'mejor-th' : ''}">${label}</th>`;
+  }).join('');
+
+  function filaTabla(emoji, campo, fn, semArr, stripe) {
+    const celdas = polizas.map((p, i) => {
+      const cls = semArr && semArr[i] ? semArr[i] : '';
+      return `<td class="centro ${cls}">${fn(p)}</td>`;
+    }).join('');
+    return `<tr${stripe ? ' class="stripe"' : ''}><td class="campo">${emoji} ${campo}</td>${celdas}</tr>`;
+  }
+
+  // Main table
+  let tablaRows = '';
+  tablaRows += filaTabla('💰', 'Prima anual', (p) => `<strong>${fmtEur(p.prima_anual)}</strong>`, semPrima, false);
+
+  if (tieneCapitales) {
+    tablaRows += `<tr class="sep"><td colspan="${polizas.length + 1}">Capitales asegurados</td></tr>`;
+    tablaRows += filaTabla('🏠', 'Continente', (p) => `<strong>${fmtEur(p.capitales?.continente)}</strong>`, semCont, false);
+    tablaRows += filaTabla('📦', 'Contenido', (p) => `<strong>${fmtEur(p.capitales?.contenido)}</strong>`, semCndo, true);
+    tablaRows += filaTabla('⚖️', 'Responsabilidad Civil', (p) => `<strong>${fmtEur(p.capitales?.responsabilidad_civil)}</strong>`, semRC, false);
+  } else {
+    tablaRows += filaTabla('🏗️', 'Capital asegurado', (p) => esc(p.capital_asegurado || '—'), null, true);
+  }
+
+  tablaRows += filaTabla('🔒', 'Franquicia', (p) => esc(p.franquicia || '—'), null, true);
+
+  tablaRows += `<tr class="sep"><td colspan="${polizas.length + 1}">Análisis de riesgos</td></tr>`;
+
+  // Riesgos cubiertos
+  tablaRows += `<tr><td class="campo">✅ Riesgos cubiertos</td>${polizas.map((p) =>
+    `<td>${Array.isArray(p.riesgos_cubiertos) && p.riesgos_cubiertos.length
+      ? `<ul>${p.riesgos_cubiertos.map((r) => `<li class="green-cell">✅ ${esc(r)}</li>`).join('')}</ul>`
+      : '—'}</td>`
+  ).join('')}</tr>`;
+
+  // Riesgos NO cubiertos
+  tablaRows += `<tr class="stripe"><td class="campo">❌ No cubiertos</td>${polizas.map((p) =>
+    `<td>${Array.isArray(p.riesgos_no_cubiertos) && p.riesgos_no_cubiertos.length
+      ? `<ul>${p.riesgos_no_cubiertos.map((r) => `<li class="red-cell">❌ ${esc(r)}</li>`).join('')}</ul>`
+      : '—'}</td>`
+  ).join('')}</tr>`;
+
+  tablaRows += filaTabla('⛔', 'Exclusiones', (p) => esc(p.exclusiones || '—'), null, false);
+  tablaRows += filaTabla('💪', 'Fortalezas', (p) => esc(p.fortalezas || '—'), null, true);
+  tablaRows += filaTabla('⭐', 'Valoración', (p) => stars(p.valoracion), semVal, false);
+
   const tablaComparativa = `
-<h3 class="seccion-titulo">Tabla comparativa</h3>
+<h3 class="st">Tabla comparativa</h3>
 <table>
-  <thead><tr><th class="campo">Campo</th>${thPolizas}</tr></thead>
-  <tbody>
-    ${filaTabla('Compañía', (p) => esc(p.compania || '—'))}
-    ${filaTabla('Prima anual', (p) => p.prima_anual != null ? `${parseFloat(p.prima_anual).toFixed(2)} €` : '—')}
-    ${filaTabla('Capital asegurado', (p) => esc(p.capital_asegurado || '—'))}
-    ${filaTabla('Franquicia', (p) => esc(p.franquicia || '—'))}
-    <tr>
-      <td class="campo">Riesgos cubiertos</td>
-      ${polizas.map((p) => `<td>${Array.isArray(p.riesgos_cubiertos) && p.riesgos_cubiertos.length ? `<ul>${p.riesgos_cubiertos.map((r) => `<li class="green-cell" style="padding:1px 3px;border-radius:3px;margin-bottom:2px;">✅ ${esc(r)}</li>`).join('')}</ul>` : '—'}</td>`).join('')}
-    </tr>
-    <tr>
-      <td class="campo">Riesgos NO cubiertos</td>
-      ${polizas.map((p) => `<td>${Array.isArray(p.riesgos_no_cubiertos) && p.riesgos_no_cubiertos.length ? `<ul>${p.riesgos_no_cubiertos.map((r) => `<li class="red-cell" style="padding:1px 3px;border-radius:3px;margin-bottom:2px;">❌ ${esc(r)}</li>`).join('')}</ul>` : '—'}</td>`).join('')}
-    </tr>
-    ${filaTabla('Exclusiones', (p) => esc(p.exclusiones || '—'))}
-    ${filaTabla('Fortalezas', (p) => esc(p.fortalezas || '—'))}
-    ${filaTabla('Valoración', (p) => valBadge(p.valoracion))}
-  </tbody>
+  <thead><tr><th class="dark-left" style="width:180px"></th>${thPolizas}</tr></thead>
+  <tbody>${tablaRows}</tbody>
 </table>`;
 
+  // Coverage table
   const tablaCoberturas = tabla_coberturas.length > 0 ? `
-<h3 class="seccion-titulo">Coberturas por póliza</h3>
+<h3 class="st">Detalle de coberturas</h3>
 <table>
-  <thead><tr><th class="campo">Cobertura</th>${polizas.map((p) => `<th>${esc(p.compania || `Póliza ${p.id}`)}</th>`).join('')}</tr></thead>
+  <thead><tr><th class="dark-left">Cobertura</th>${polizas.map((p) => `<th class="dark">${esc(p.compania || `Póliza ${p.id}`)}</th>`).join('')}</tr></thead>
   <tbody>
-    ${tabla_coberturas.map((fila) => `<tr>
-      <td class="campo">${esc(fila.cobertura)}</td>
-      ${(fila.valores || []).map((v) => `<td class="centro ${cellColor(v)}">${v || '—'}</td>`).join('')}
+    ${tabla_coberturas.map((f, i) => `<tr${i % 2 ? ' class="stripe"' : ''}>
+      <td class="campo">${esc(f.cobertura)}</td>
+      ${(f.valores || []).map((v) => `<td class="centro ${cellColor(v)}" style="font-weight:600">${v || '—'}</td>`).join('')}
     </tr>`).join('')}
   </tbody>
 </table>` : '';
 
+  // Propietario vs Inquilino
+  let htmlApi = '';
+  if (api && (api.cubre_propietario?.length || api.debe_cubrir_inquilino?.length || api.gaps_cobertura?.length)) {
+    htmlApi = `<h3 class="st">🏠 Propietario vs 👤 Inquilino</h3><div class="api-grid">`;
+    if (api.cubre_propietario?.length) {
+      htmlApi += `<div class="api-card api-blue"><h4>🏠 Cubre el propietario</h4><ul>${api.cubre_propietario.map((x) => `<li>✅ ${esc(x)}</li>`).join('')}</ul></div>`;
+    }
+    if (api.debe_cubrir_inquilino?.length) {
+      htmlApi += `<div class="api-card api-amber"><h4>👤 Debe cubrir el inquilino</h4><ul>${api.debe_cubrir_inquilino.map((x) => `<li>⚠️ ${esc(x)}</li>`).join('')}</ul></div>`;
+    }
+    if (api.gaps_cobertura?.length) {
+      htmlApi += `<div class="api-card api-red"><h4>🚨 Gaps de cobertura</h4><ul>${api.gaps_cobertura.map((x) => `<li>❌ ${esc(x)}</li>`).join('')}</ul></div>`;
+    }
+    htmlApi += '</div>';
+  }
+
   const htmlResumen = resumen ? `<div class="resumen"><strong>Resumen ejecutivo</strong>${esc(resumen)}</div>` : '';
 
   const htmlRecomendacion = recomendacion ? `
-<div class="recomendacion">
-  <strong>Recomendación IA</strong>
-  ${mejorId ? `<p style="font-weight:600;margin-bottom:6px;">⭐ Mejor opción: ${esc(polizas.find((p) => p.id === mejorId)?.etiqueta || `Póliza ID ${mejorId}`)}</p>` : ''}
+<div class="reco">
+  <strong>🏆 Recomendación</strong>
+  ${mejorId ? `<p style="font-weight:700;margin-bottom:6px;">🏆 Mejor opción: ${esc(polizas.find((p) => p.id === mejorId)?.etiqueta || `Póliza ID ${mejorId}`)}</p>` : ''}
   <p>${esc(recomendacion.texto)}</p>
 </div>` : '';
 
@@ -295,6 +374,7 @@ li { margin-bottom: 3px; }
 ${htmlResumen}
 ${tablaComparativa}
 ${tablaCoberturas}
+${htmlApi}
 ${htmlRecomendacion}
 <div class="footer">Informe generado el ${fechaHoy} · Gestión de Seguros</div>`;
 
