@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale, Home, Store, Eye, ClipboardCheck, Euro, Target, Save, CheckCircle } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
@@ -397,43 +399,174 @@ export default function PolizasInquilinos() {
     }
   }
 
+  function generarPdfInforme(inf, nombreInmueble, compania, nombreInquilino, fechaStr) {
+    if (!inf) return;
+    const doc = new jsPDF();
+    const fecha = fechaStr || new Date().toLocaleDateString('es-ES');
+    const slugInmueble = (nombreInmueble || 'inmueble').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '_').replace(/_+/g, '_').substring(0, 40);
+    const fechaArchivo = new Date().toISOString().split('T')[0];
+    const nombreArchivo = `propuesta_poliza_${slugInmueble}_${fechaArchivo}.pdf`;
+
+    // Header
+    doc.setFillColor(30, 58, 95);
+    doc.rect(0, 0, 210, 28, 'F');
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text('Informe Poliza Optima Inquilino', 14, 18);
+
+    let y = 38;
+    doc.setFontSize(10);
+    doc.setTextColor(80, 80, 80);
+    if (nombreInmueble) { doc.text(`Inmueble: ${nombreInmueble}${compania ? ' — ' + compania : ''}`, 14, y); y += 6; }
+    if (nombreInquilino) { doc.text(`Inquilino: ${nombreInquilino}`, 14, y); y += 6; }
+    doc.text(`Fecha: ${fecha}`, 14, y); y += 10;
+
+    // New table format
+    if (inf.tabla_coberturas && inf.tabla_coberturas.length > 0) {
+      autoTable(doc, {
+        startY: y,
+        head: [['Cobertura / Riesgo', 'Cubierto propietario', 'Contratar inquilino']],
+        body: inf.tabla_coberturas.map((r) => [
+          r.concepto || '',
+          r.propietario ? 'SI' : '—',
+          r.inquilino ? 'SI' : '—',
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [30, 58, 95], fontSize: 9, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 8.5 },
+        columnStyles: {
+          0: { cellWidth: 100 },
+          1: { cellWidth: 40, halign: 'center' },
+          2: { cellWidth: 40, halign: 'center' },
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body') {
+            if (data.column.index === 1 && data.cell.raw === 'SI') {
+              data.cell.styles.textColor = [22, 101, 52];
+              data.cell.styles.fontStyle = 'bold';
+            }
+            if (data.column.index === 2 && data.cell.raw === 'SI') {
+              data.cell.styles.textColor = [29, 78, 216];
+              data.cell.styles.fontStyle = 'bold';
+            }
+          }
+        },
+      });
+      y = doc.lastAutoTable.finalY + 10;
+    }
+
+    // Old format fallback
+    if (!inf.tabla_coberturas) {
+      const secciones = [
+        { titulo: 'Cubierto por el propietario', texto: inf.resumen_poliza_propietario },
+        { titulo: 'Huecos de cobertura', texto: inf.huecos_cobertura },
+        { titulo: 'Coberturas imprescindibles', texto: inf.poliza_optima?.coberturas_imprescindibles },
+        { titulo: 'Coberturas recomendables', texto: inf.poliza_optima?.coberturas_recomendables },
+        { titulo: 'Riesgos sin cubrir', texto: inf.riesgos_sin_cubrir },
+        { titulo: 'Consejos adicionales', texto: inf.consejos_adicionales },
+      ];
+      for (const s of secciones) {
+        if (!s.texto) continue;
+        if (y > 260) { doc.addPage(); y = 20; }
+        doc.setFontSize(11);
+        doc.setTextColor(30, 58, 95);
+        doc.text(s.titulo, 14, y); y += 6;
+        doc.setFontSize(9);
+        doc.setTextColor(60, 60, 60);
+        const lines = doc.splitTextToSize(s.texto, 180);
+        doc.text(lines, 14, y); y += lines.length * 4.5 + 6;
+      }
+    }
+
+    // Tipo recomendado
+    const tipoRec = inf.tipo_recomendado || inf.poliza_optima?.tipo_recomendado;
+    if (tipoRec) {
+      if (y > 265) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setTextColor(30, 58, 95);
+      doc.text('Tipo de seguro recomendado', 14, y); y += 6;
+      doc.setFontSize(10);
+      doc.setTextColor(60);
+      doc.text(tipoRec, 14, y); y += 8;
+    }
+
+    // Resumen
+    const resumen = inf.resumen || inf.consejos_adicionales;
+    if (inf.resumen) {
+      if (y > 250) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setTextColor(30, 58, 95);
+      doc.text('Resumen y recomendacion', 14, y); y += 6;
+      doc.setFontSize(9);
+      doc.setTextColor(60);
+      const lines = doc.splitTextToSize(inf.resumen, 180);
+      doc.text(lines, 14, y); y += lines.length * 4.5 + 6;
+    }
+
+    // Precio
+    const precio = inf.precio_orientativo || inf.poliza_optima?.precio_orientativo;
+    if (precio) {
+      if (y > 270) { doc.addPage(); y = 20; }
+      doc.setFillColor(240, 253, 244);
+      doc.roundedRect(14, y - 4, 180, 12, 2, 2, 'F');
+      doc.setFontSize(11);
+      doc.setTextColor(22, 101, 52);
+      doc.text(`Precio orientativo: ${precio}`, 18, y + 4);
+      y += 16;
+    }
+
+    // Compañías
+    const companias = inf.companias_recomendadas || (inf.poliza_optima?.companias_sugeridas ? [inf.poliza_optima.companias_sugeridas] : null);
+    if (companias && companias.length > 0) {
+      if (y > 260) { doc.addPage(); y = 20; }
+      doc.setFontSize(11);
+      doc.setTextColor(30, 58, 95);
+      doc.text('Companias recomendadas', 14, y); y += 6;
+      doc.setFontSize(9);
+      doc.setTextColor(60);
+      companias.forEach((c) => {
+        const lines = doc.splitTextToSize(`- ${c}`, 176);
+        doc.text(lines, 18, y);
+        y += lines.length * 4.5 + 2;
+      });
+    }
+
+    // Footer
+    doc.setFontSize(7);
+    doc.setTextColor(170);
+    doc.text('Generado automaticamente - Solo orientativo, consulte con su corredor de seguros', 14, 288);
+
+    doc.save(nombreArchivo);
+  }
+
   function descargarPdfPropuesta(prop) {
     const inf = prop.informe;
     if (!inf) return;
-    const win = window.open('', '_blank');
-    win.document.write(`<html><head><title>Informe Póliza Óptima</title><style>body{font-family:system-ui,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;color:#333}h2{color:#1e3a5f}h3{color:#555;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;margin-top:24px}p{line-height:1.6}.seccion{background:#f8f9fa;border-radius:8px;padding:16px;margin:12px 0}</style></head><body>`);
-    win.document.write(`<h2>Informe Póliza Óptima Inquilino</h2>`);
-    if (prop.poliza_inmueble_info) win.document.write(`<p><strong>Base:</strong> ${prop.poliza_inmueble_info.nombre_inmueble || ''} — ${prop.poliza_inmueble_info.compania || 'Sin compañía'}</p>`);
-    if (prop.nombre_inquilino) win.document.write(`<p><strong>Inquilino:</strong> ${prop.nombre_inquilino}</p>`);
-    if (inf.resumen_poliza_propietario) win.document.write(`<h3>Tu póliza cubre al inquilino</h3><div class="seccion"><p>${inf.resumen_poliza_propietario}</p></div>`);
-    if (inf.huecos_cobertura) win.document.write(`<h3>Huecos de cobertura</h3><div class="seccion"><p>${inf.huecos_cobertura}</p></div>`);
-    if (inf.poliza_optima) {
-      win.document.write(`<h3>Póliza óptima recomendada</h3><div class="seccion">`);
-      if (inf.poliza_optima.tipo_recomendado) win.document.write(`<p><strong>Tipo:</strong> ${inf.poliza_optima.tipo_recomendado}</p>`);
-      if (inf.poliza_optima.coberturas_imprescindibles) win.document.write(`<p><strong>Imprescindibles:</strong> ${inf.poliza_optima.coberturas_imprescindibles}</p>`);
-      if (inf.poliza_optima.coberturas_recomendables) win.document.write(`<p><strong>Recomendables:</strong> ${inf.poliza_optima.coberturas_recomendables}</p>`);
-      if (inf.poliza_optima.precio_orientativo) win.document.write(`<p><strong>Precio orientativo:</strong> ${inf.poliza_optima.precio_orientativo}</p>`);
-      if (inf.poliza_optima.companias_sugeridas) win.document.write(`<p><strong>Compañías:</strong> ${inf.poliza_optima.companias_sugeridas}</p>`);
-      win.document.write(`</div>`);
-    }
-    if (inf.riesgos_sin_cubrir) win.document.write(`<h3>Riesgos sin cubrir</h3><div class="seccion"><p>${inf.riesgos_sin_cubrir}</p></div>`);
-    if (inf.consejos_adicionales) win.document.write(`<h3>Consejos</h3><div class="seccion"><p>${inf.consejos_adicionales}</p></div>`);
-    win.document.write(`<p style="color:#999;font-size:12px;margin-top:30px">Generado el ${new Date(prop.created_at).toLocaleDateString('es-ES')}</p></body></html>`);
-    win.document.close();
-    win.print();
+    generarPdfInforme(
+      inf,
+      prop.poliza_inmueble_info?.nombre_inmueble,
+      prop.poliza_inmueble_info?.compania,
+      prop.nombre_inquilino,
+      new Date(prop.created_at).toLocaleDateString('es-ES')
+    );
   }
 
   function contratarDesdePropuesta(prop) {
     const inf = prop.informe;
+    const tipoRec = inf?.tipo_recomendado || inf?.poliza_optima?.tipo_recomendado || '';
+    const precio = inf?.precio_orientativo || inf?.poliza_optima?.precio_orientativo || '';
+    const coberturas = inf?.tabla_coberturas
+      ? inf.tabla_coberturas.filter((r) => r.inquilino).map((r) => r.concepto).join(', ')
+      : inf?.poliza_optima?.coberturas_imprescindibles || '';
     setEditando(null);
     setFormulario({
       ...formularioVacio,
       inquilino_id: prop.inquilino_id || '',
-      tipo: inf?.poliza_optima?.tipo_recomendado?.toLowerCase().includes('local') ? 'local_negocio'
-           : inf?.poliza_optima?.tipo_recomendado?.toLowerCase().includes('vida') ? 'vida'
-           : inf?.poliza_optima?.tipo_recomendado?.toLowerCase().includes('rc') ? 'responsabilidad_civil'
+      tipo: tipoRec.toLowerCase().includes('local') ? 'local_negocio'
+           : tipoRec.toLowerCase().includes('vida') ? 'vida'
+           : tipoRec.toLowerCase().includes('rc') ? 'responsabilidad_civil'
            : 'hogar',
-      notas: `Propuesta IA: ${inf?.poliza_optima?.tipo_recomendado || ''}\nCoberturas: ${inf?.poliza_optima?.coberturas_imprescindibles || ''}\nPrecio orientativo: ${inf?.poliza_optima?.precio_orientativo || ''}`,
+      notas: `Propuesta IA: ${tipoRec}\nCoberturas: ${coberturas}\nPrecio orientativo: ${precio}`,
       datos_inmueble: prop.datos_inmueble || null,
     });
     setError('');
@@ -623,19 +756,23 @@ export default function PolizasInquilinos() {
                   </div>
                   <span className="text-xs text-gray-400">{new Date(prop.created_at).toLocaleDateString('es-ES')}</span>
                 </div>
-                {prop.informe?.poliza_optima?.tipo_recomendado && (
+                {(prop.informe?.tipo_recomendado || prop.informe?.poliza_optima?.tipo_recomendado) && (
                   <p className="text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md mb-2 inline-block font-medium">
-                    {prop.informe.poliza_optima.tipo_recomendado}
+                    {prop.informe.tipo_recomendado || prop.informe.poliza_optima.tipo_recomendado}
                   </p>
                 )}
-                {prop.informe?.poliza_optima?.precio_orientativo && (
+                {(prop.informe?.precio_orientativo || prop.informe?.poliza_optima?.precio_orientativo) && (
                   <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
-                    <Euro size={12} /> {prop.informe.poliza_optima.precio_orientativo}
+                    <Euro size={12} /> {prop.informe.precio_orientativo || prop.informe.poliza_optima.precio_orientativo}
                   </div>
                 )}
-                {prop.informe?.poliza_optima?.coberturas_imprescindibles && (
+                {prop.informe?.tabla_coberturas ? (
+                  <p className="text-xs text-gray-500 mb-3 line-clamp-2">
+                    {prop.informe.tabla_coberturas.filter((r) => r.inquilino).map((r) => r.concepto).join(', ')}
+                  </p>
+                ) : prop.informe?.poliza_optima?.coberturas_imprescindibles ? (
                   <p className="text-xs text-gray-500 mb-3 line-clamp-2">{prop.informe.poliza_optima.coberturas_imprescindibles}</p>
-                )}
+                ) : null}
                 <div className="flex gap-2">
                   <button onClick={() => setPropuestaVer(prop)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
                     <Eye size={13} /> Ver informe
@@ -1475,52 +1612,102 @@ export default function PolizasInquilinos() {
                   Base: <strong>{optimaInforme.poliza_inmueble.nombre_inmueble}</strong> — {optimaInforme.poliza_inmueble.compania || 'Sin compañía'}
                 </div>
               )}
-              {optimaInforme.informe?.resumen_poliza_propietario && (
+
+              {/* New table format */}
+              {optimaInforme.informe?.tabla_coberturas && (
+                <div className="overflow-x-auto rounded-xl border border-gray-200">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr>
+                        <th className="text-left px-3 py-2.5 bg-gray-100 text-gray-600 font-semibold text-xs uppercase tracking-wider">Cobertura / Riesgo</th>
+                        <th className="text-center px-3 py-2.5 bg-green-50 text-green-700 font-semibold text-xs uppercase tracking-wider w-36">Cubierto propietario</th>
+                        <th className="text-center px-3 py-2.5 bg-blue-50 text-blue-700 font-semibold text-xs uppercase tracking-wider w-36">Contratar inquilino</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {optimaInforme.informe.tabla_coberturas.map((row, i) => (
+                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                          <td className="px-3 py-2 text-gray-700 text-sm">{row.concepto}</td>
+                          <td className="text-center px-3 py-2">{row.propietario ? <span className="text-green-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}</td>
+                          <td className="text-center px-3 py-2">{row.inquilino ? <span className="text-blue-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Old format fallback */}
+              {!optimaInforme.informe?.tabla_coberturas && optimaInforme.informe?.resumen_poliza_propietario && (
                 <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
                   <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Tu póliza cubre al inquilino</h4>
                   <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.resumen_poliza_propietario}</p>
                 </div>
               )}
-              {optimaInforme.informe?.huecos_cobertura && (
+              {!optimaInforme.informe?.tabla_coberturas && optimaInforme.informe?.huecos_cobertura && (
                 <div className="bg-red-50 border border-red-100 rounded-lg p-4">
                   <h4 className="text-xs font-semibold text-red-700 uppercase tracking-wider mb-2">Huecos de cobertura</h4>
                   <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.huecos_cobertura}</p>
                 </div>
               )}
-              {optimaInforme.informe?.poliza_optima && (
+              {!optimaInforme.informe?.tabla_coberturas && optimaInforme.informe?.poliza_optima && (
                 <div className="bg-green-50 border border-green-100 rounded-lg p-4 space-y-3">
                   <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-2">Póliza óptima recomendada</h4>
-                  {optimaInforme.informe.poliza_optima.tipo_recomendado && (
-                    <div><span className="text-xs font-medium text-gray-500">Tipo:</span> <span className="text-sm font-semibold text-gray-800">{optimaInforme.informe.poliza_optima.tipo_recomendado}</span></div>
-                  )}
                   {optimaInforme.informe.poliza_optima.coberturas_imprescindibles && (
                     <div><span className="text-xs font-medium text-gray-500">Coberturas imprescindibles:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{optimaInforme.informe.poliza_optima.coberturas_imprescindibles}</p></div>
                   )}
                   {optimaInforme.informe.poliza_optima.coberturas_recomendables && (
                     <div><span className="text-xs font-medium text-gray-500">Coberturas recomendables:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{optimaInforme.informe.poliza_optima.coberturas_recomendables}</p></div>
                   )}
-                  {optimaInforme.informe.poliza_optima.precio_orientativo && (
-                    <div className="flex items-center gap-2 bg-white border border-green-200 rounded-lg px-3 py-2">
-                      <Euro size={16} className="text-green-600" />
-                      <span className="text-sm font-bold text-green-700">{optimaInforme.informe.poliza_optima.precio_orientativo}</span>
-                    </div>
-                  )}
-                  {optimaInforme.informe.poliza_optima.companias_sugeridas && (
-                    <div><span className="text-xs font-medium text-gray-500">Compañías sugeridas:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{optimaInforme.informe.poliza_optima.companias_sugeridas}</p></div>
-                  )}
                 </div>
               )}
-              {optimaInforme.informe?.riesgos_sin_cubrir && (
+              {!optimaInforme.informe?.tabla_coberturas && optimaInforme.informe?.riesgos_sin_cubrir && (
                 <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
-                  <h4 className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2">Riesgos que quedarían sin cubrir</h4>
+                  <h4 className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2">Riesgos sin cubrir</h4>
                   <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.riesgos_sin_cubrir}</p>
                 </div>
               )}
-              {optimaInforme.informe?.consejos_adicionales && (
+
+              {/* Tipo recomendado + Resumen (both formats) */}
+              {(optimaInforme.informe?.tipo_recomendado || optimaInforme.informe?.poliza_optima?.tipo_recomendado) && (
+                <div className="flex items-center gap-2">
+                  <Target size={16} className="text-amber-600" />
+                  <span className="text-sm font-semibold text-gray-800">{optimaInforme.informe.tipo_recomendado || optimaInforme.informe.poliza_optima.tipo_recomendado}</span>
+                </div>
+              )}
+              {optimaInforme.informe?.resumen && (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                  <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.resumen}</p>
+                </div>
+              )}
+              {!optimaInforme.informe?.resumen && optimaInforme.informe?.consejos_adicionales && (
                 <div className="bg-purple-50 border border-purple-100 rounded-lg p-4">
-                  <h4 className="text-xs font-semibold text-purple-700 uppercase tracking-wider mb-2">Consejos adicionales</h4>
+                  <h4 className="text-xs font-semibold text-purple-700 uppercase tracking-wider mb-2">Consejos</h4>
                   <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.consejos_adicionales}</p>
                 </div>
+              )}
+
+              {/* Precio (both formats) */}
+              {(optimaInforme.informe?.precio_orientativo || optimaInforme.informe?.poliza_optima?.precio_orientativo) && (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                  <Euro size={16} className="text-green-600" />
+                  <span className="text-sm font-bold text-green-700">{optimaInforme.informe.precio_orientativo || optimaInforme.informe.poliza_optima.precio_orientativo}</span>
+                </div>
+              )}
+
+              {/* Compañías (both formats) */}
+              {optimaInforme.informe?.companias_recomendadas && (
+                <div className="space-y-1.5">
+                  <span className="text-xs font-medium text-gray-500">Compañías recomendadas:</span>
+                  {optimaInforme.informe.companias_recomendadas.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-sm text-gray-700">
+                      <Shield size={13} className="text-blue-500 flex-shrink-0" /> {c}
+                    </div>
+                  ))}
+                </div>
+              )}
+              {!optimaInforme.informe?.companias_recomendadas && optimaInforme.informe?.poliza_optima?.companias_sugeridas && (
+                <div><span className="text-xs font-medium text-gray-500">Compañías sugeridas:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{optimaInforme.informe.poliza_optima.companias_sugeridas}</p></div>
               )}
 
               {/* Guardar propuesta */}
@@ -1564,29 +1751,11 @@ export default function PolizasInquilinos() {
               )}
 
               <div className="flex gap-3 pt-2 border-t border-gray-100">
-                <button onClick={() => {
-                    const inf = optimaInforme.informe;
-                    const win = window.open('', '_blank');
-                    win.document.write(`<html><head><title>Informe Póliza Óptima</title><style>body{font-family:system-ui,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;color:#333}h2{color:#1e3a5f}h3{color:#555;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;margin-top:24px}p{line-height:1.6}.seccion{background:#f8f9fa;border-radius:8px;padding:16px;margin:12px 0}</style></head><body>`);
-                    win.document.write(`<h2>Informe Póliza Óptima Inquilino</h2>`);
-                    if (optimaInforme.poliza_inmueble) win.document.write(`<p><strong>Base:</strong> ${optimaInforme.poliza_inmueble.nombre_inmueble} — ${optimaInforme.poliza_inmueble.compania || 'Sin compañía'}</p>`);
-                    if (inf.resumen_poliza_propietario) win.document.write(`<h3>Tu póliza cubre al inquilino</h3><div class="seccion"><p>${inf.resumen_poliza_propietario}</p></div>`);
-                    if (inf.huecos_cobertura) win.document.write(`<h3>Huecos de cobertura</h3><div class="seccion"><p>${inf.huecos_cobertura}</p></div>`);
-                    if (inf.poliza_optima) {
-                      win.document.write(`<h3>Póliza óptima recomendada</h3><div class="seccion">`);
-                      if (inf.poliza_optima.tipo_recomendado) win.document.write(`<p><strong>Tipo:</strong> ${inf.poliza_optima.tipo_recomendado}</p>`);
-                      if (inf.poliza_optima.coberturas_imprescindibles) win.document.write(`<p><strong>Imprescindibles:</strong> ${inf.poliza_optima.coberturas_imprescindibles}</p>`);
-                      if (inf.poliza_optima.coberturas_recomendables) win.document.write(`<p><strong>Recomendables:</strong> ${inf.poliza_optima.coberturas_recomendables}</p>`);
-                      if (inf.poliza_optima.precio_orientativo) win.document.write(`<p><strong>Precio orientativo:</strong> ${inf.poliza_optima.precio_orientativo}</p>`);
-                      if (inf.poliza_optima.companias_sugeridas) win.document.write(`<p><strong>Compañías:</strong> ${inf.poliza_optima.companias_sugeridas}</p>`);
-                      win.document.write(`</div>`);
-                    }
-                    if (inf.riesgos_sin_cubrir) win.document.write(`<h3>Riesgos sin cubrir</h3><div class="seccion"><p>${inf.riesgos_sin_cubrir}</p></div>`);
-                    if (inf.consejos_adicionales) win.document.write(`<h3>Consejos</h3><div class="seccion"><p>${inf.consejos_adicionales}</p></div>`);
-                    win.document.write(`<p style="color:#999;font-size:12px;margin-top:30px">Generado el ${new Date().toLocaleDateString('es-ES')}</p></body></html>`);
-                    win.document.close();
-                    win.print();
-                }} className="btn-secundario flex-1 flex items-center justify-center gap-2">
+                <button onClick={() => generarPdfInforme(
+                    optimaInforme.informe,
+                    optimaInforme.poliza_inmueble?.nombre_inmueble,
+                    optimaInforme.poliza_inmueble?.compania
+                )} className="btn-secundario flex-1 flex items-center justify-center gap-2">
                   <Download size={14} /> Descargar PDF
                 </button>
                 <button onClick={() => setModalOptima(false)}
@@ -1606,68 +1775,125 @@ export default function PolizasInquilinos() {
         titulo="Informe de propuesta"
         ancho="max-w-2xl"
       >
-        {propuestaVer && propuestaVer.informe && (
+        {propuestaVer && propuestaVer.informe && (() => {
+          const inf = propuestaVer.informe;
+          return (
           <div className="space-y-4">
             {propuestaVer.poliza_inmueble_info && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-500">
                 Base: <strong>{propuestaVer.poliza_inmueble_info.nombre_inmueble}</strong> — {propuestaVer.poliza_inmueble_info.compania || 'Sin compañía'}
               </div>
             )}
-            {propuestaVer.informe.resumen_poliza_propietario && (
+
+            {/* New table format */}
+            {inf.tabla_coberturas && (
+              <div className="overflow-x-auto rounded-xl border border-gray-200">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr>
+                      <th className="text-left px-3 py-2.5 bg-gray-100 text-gray-600 font-semibold text-xs uppercase tracking-wider">Cobertura / Riesgo</th>
+                      <th className="text-center px-3 py-2.5 bg-green-50 text-green-700 font-semibold text-xs uppercase tracking-wider w-36">Cubierto propietario</th>
+                      <th className="text-center px-3 py-2.5 bg-blue-50 text-blue-700 font-semibold text-xs uppercase tracking-wider w-36">Contratar inquilino</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inf.tabla_coberturas.map((row, i) => (
+                      <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
+                        <td className="px-3 py-2 text-gray-700 text-sm">{row.concepto}</td>
+                        <td className="text-center px-3 py-2">{row.propietario ? <span className="text-green-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}</td>
+                        <td className="text-center px-3 py-2">{row.inquilino ? <span className="text-blue-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Old format fallback */}
+            {!inf.tabla_coberturas && inf.resumen_poliza_propietario && (
               <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
                 <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Tu póliza cubre al inquilino</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-line">{propuestaVer.informe.resumen_poliza_propietario}</p>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{inf.resumen_poliza_propietario}</p>
               </div>
             )}
-            {propuestaVer.informe.huecos_cobertura && (
+            {!inf.tabla_coberturas && inf.huecos_cobertura && (
               <div className="bg-red-50 border border-red-100 rounded-lg p-4">
                 <h4 className="text-xs font-semibold text-red-700 uppercase tracking-wider mb-2">Huecos de cobertura</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-line">{propuestaVer.informe.huecos_cobertura}</p>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{inf.huecos_cobertura}</p>
               </div>
             )}
-            {propuestaVer.informe.poliza_optima && (
+            {!inf.tabla_coberturas && inf.poliza_optima && (
               <div className="bg-green-50 border border-green-100 rounded-lg p-4 space-y-3">
                 <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-2">Póliza óptima recomendada</h4>
-                {propuestaVer.informe.poliza_optima.tipo_recomendado && (
-                  <div><span className="text-xs font-medium text-gray-500">Tipo:</span> <span className="text-sm font-semibold text-gray-800">{propuestaVer.informe.poliza_optima.tipo_recomendado}</span></div>
+                {inf.poliza_optima.coberturas_imprescindibles && (
+                  <div><span className="text-xs font-medium text-gray-500">Coberturas imprescindibles:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{inf.poliza_optima.coberturas_imprescindibles}</p></div>
                 )}
-                {propuestaVer.informe.poliza_optima.coberturas_imprescindibles && (
-                  <div><span className="text-xs font-medium text-gray-500">Coberturas imprescindibles:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{propuestaVer.informe.poliza_optima.coberturas_imprescindibles}</p></div>
-                )}
-                {propuestaVer.informe.poliza_optima.coberturas_recomendables && (
-                  <div><span className="text-xs font-medium text-gray-500">Coberturas recomendables:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{propuestaVer.informe.poliza_optima.coberturas_recomendables}</p></div>
-                )}
-                {propuestaVer.informe.poliza_optima.precio_orientativo && (
-                  <div className="flex items-center gap-2 bg-white border border-green-200 rounded-lg px-3 py-2">
-                    <Euro size={16} className="text-green-600" />
-                    <span className="text-sm font-bold text-green-700">{propuestaVer.informe.poliza_optima.precio_orientativo}</span>
-                  </div>
-                )}
-                {propuestaVer.informe.poliza_optima.companias_sugeridas && (
-                  <div><span className="text-xs font-medium text-gray-500">Compañías sugeridas:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{propuestaVer.informe.poliza_optima.companias_sugeridas}</p></div>
+                {inf.poliza_optima.coberturas_recomendables && (
+                  <div><span className="text-xs font-medium text-gray-500">Coberturas recomendables:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{inf.poliza_optima.coberturas_recomendables}</p></div>
                 )}
               </div>
             )}
-            {propuestaVer.informe.riesgos_sin_cubrir && (
+            {!inf.tabla_coberturas && inf.riesgos_sin_cubrir && (
               <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
                 <h4 className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2">Riesgos sin cubrir</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-line">{propuestaVer.informe.riesgos_sin_cubrir}</p>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{inf.riesgos_sin_cubrir}</p>
               </div>
             )}
-            {propuestaVer.informe.consejos_adicionales && (
+
+            {/* Type + Summary (both formats) */}
+            {(inf.tipo_recomendado || inf.poliza_optima?.tipo_recomendado) && (
+              <div className="flex items-center gap-2">
+                <Target size={16} className="text-amber-600" />
+                <span className="text-sm font-semibold text-gray-800">{inf.tipo_recomendado || inf.poliza_optima.tipo_recomendado}</span>
+              </div>
+            )}
+            {inf.resumen && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <p className="text-sm text-gray-700 whitespace-pre-line">{inf.resumen}</p>
+              </div>
+            )}
+            {!inf.resumen && inf.consejos_adicionales && (
               <div className="bg-purple-50 border border-purple-100 rounded-lg p-4">
-                <h4 className="text-xs font-semibold text-purple-700 uppercase tracking-wider mb-2">Consejos adicionales</h4>
-                <p className="text-sm text-gray-700 whitespace-pre-line">{propuestaVer.informe.consejos_adicionales}</p>
+                <h4 className="text-xs font-semibold text-purple-700 uppercase tracking-wider mb-2">Consejos</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{inf.consejos_adicionales}</p>
               </div>
             )}
+
+            {/* Price (both formats) */}
+            {(inf.precio_orientativo || inf.poliza_optima?.precio_orientativo) && (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
+                <Euro size={16} className="text-green-600" />
+                <span className="text-sm font-bold text-green-700">{inf.precio_orientativo || inf.poliza_optima.precio_orientativo}</span>
+              </div>
+            )}
+
+            {/* Companies (both formats) */}
+            {inf.companias_recomendadas && (
+              <div className="space-y-1.5">
+                <span className="text-xs font-medium text-gray-500">Compañías recomendadas:</span>
+                {inf.companias_recomendadas.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-sm text-gray-700">
+                    <Shield size={13} className="text-blue-500 flex-shrink-0" /> {c}
+                  </div>
+                ))}
+              </div>
+            )}
+            {!inf.companias_recomendadas && inf.poliza_optima?.companias_sugeridas && (
+              <div><span className="text-xs font-medium text-gray-500">Compañías sugeridas:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{inf.poliza_optima.companias_sugeridas}</p></div>
+            )}
+
             <div className="flex gap-3 pt-2 border-t border-gray-100">
+              <button onClick={() => descargarPdfPropuesta(propuestaVer)} className="btn-secundario flex items-center justify-center gap-2">
+                <Download size={14} /> PDF
+              </button>
               <button onClick={() => { contratarDesdePropuesta(propuestaVer); setPropuestaVer(null); }} className="btn-primario flex-1 justify-center">
                 <Plus size={14} /> Contratar esta póliza
               </button>
               <button onClick={() => setPropuestaVer(null)} className="btn-secundario flex-1 justify-center">Cerrar</button>
             </div>
           </div>
-        )}
+          );
+        })()}
       </Modal>
 
       {/* Modal confirmar eliminación propuesta */}

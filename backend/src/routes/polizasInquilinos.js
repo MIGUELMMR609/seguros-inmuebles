@@ -132,25 +132,31 @@ ${analisisPrevio}
 - Datos específicos: ${datosEspecificos}
 
 === INSTRUCCIONES ===
-1. Analiza qué cubre la póliza del propietario al inquilino y qué NO
-2. Identifica los huecos de cobertura que el inquilino necesita cubrir
-3. Recomienda la póliza óptima que COMPLEMENTE (no duplique) lo que ya tiene el propietario
-4. Da precios orientativos del mercado español actual
-5. Sugiere compañías concretas
+1. Genera una TABLA de coberturas/riesgos concretos con DOS columnas:
+   - "propietario" (true/false): ¿Lo cubre la póliza del propietario?
+   - "inquilino" (true/false): ¿Debe contratarlo el inquilino?
+2. Cada concepto debe ser CORTO y CLARO (máximo 6-8 palabras), tipo condicionante de póliza
+3. Incluye entre 10 y 20 filas con coberturas/riesgos relevantes
+4. Resume la recomendación en 3-4 líneas máximo
+5. Da un precio orientativo anual estimado del mercado español actual
+6. Sugiere MÁXIMO 3 compañías de España con breve justificación (1 línea cada una)
 
 Devuelve ÚNICAMENTE un JSON válido (sin markdown, sin texto extra) con esta estructura:
 {
-  "resumen_poliza_propietario": "Qué cubre la póliza del propietario al inquilino",
-  "huecos_cobertura": "Qué NO cubre la póliza del propietario al inquilino",
-  "poliza_optima": {
-    "tipo_recomendado": "Tipo de seguro recomendado (hogar inquilino, RC, multirriesgo comercial, etc.)",
-    "coberturas_imprescindibles": "Lista de coberturas que DEBE tener",
-    "coberturas_recomendables": "Coberturas opcionales pero recomendadas",
-    "precio_orientativo": "Rango de precio estimado €/año",
-    "companias_sugeridas": "2-3 compañías recomendadas con breve justificación"
-  },
-  "riesgos_sin_cubrir": "Riesgos que quedarían sin cubrir incluso con la póliza recomendada",
-  "consejos_adicionales": "Consejos prácticos para el inquilino"
+  "tabla_coberturas": [
+    { "concepto": "Incendio y explosión", "propietario": true, "inquilino": false },
+    { "concepto": "Daños por agua", "propietario": true, "inquilino": false },
+    { "concepto": "RC inquilino a terceros", "propietario": false, "inquilino": true },
+    { "concepto": "Robo de contenido", "propietario": false, "inquilino": true }
+  ],
+  "tipo_recomendado": "Tipo de seguro (hogar inquilino, RC, multirriesgo comercial, etc.)",
+  "resumen": "Resumen en 3-4 líneas máximo con la recomendación principal para el inquilino",
+  "precio_orientativo": "Rango de precio estimado (ej: 150-250 €/año)",
+  "companias_recomendadas": [
+    "Mapfre — buena relación calidad/precio para inquilinos",
+    "Zurich — amplia cobertura de RC",
+    "AXA — buen servicio postventa"
+  ]
 }`;
 
     const controlador = new AbortController();
