@@ -1335,7 +1335,7 @@ export default function PolizasInquilinos() {
         <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.target === e.currentTarget && setModalOptima(false)}>
           <div className="absolute inset-0 bg-[#0D1B2A]/80 backdrop-blur-md" onClick={() => setModalOptima(false)} />
           <div className={`relative z-10 flex flex-col fixed inset-0 sm:static sm:inset-auto ${optimaPaso === 5 ? 'sm:max-w-[640px]' : 'sm:max-w-[520px]'} sm:w-full sm:rounded-2xl sm:max-h-[90vh] overflow-hidden transition-all duration-300`}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) { e.preventDefault(); e.stopPropagation(); const els = Array.from(e.currentTarget.querySelectorAll('input, select')); const i = els.indexOf(e.target); if (i >= 0 && els[i + 1]) els[i + 1].focus(); } }}
             style={{ background: 'rgba(15,25,45,0.92)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
 
             {/* Header: título + progreso en la misma línea */}
@@ -1479,7 +1479,6 @@ export default function PolizasInquilinos() {
                         {subKey && optimaDatos[key] && (
                           <input placeholder={subPlaceholder} inputMode="decimal" value={formatearMiles(optimaDatos[subKey] || '')}
                             onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: limpiarMiles(e.target.value) }))}
-                            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                             className="w-full mt-1 px-3 py-1.5 rounded-lg text-xs text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
                         )}
@@ -1489,7 +1488,6 @@ export default function PolizasInquilinos() {
                       <span className="text-xs text-white/60">Personas</span>
                       <input type="number" min="1" max="20" value={optimaDatos.num_personas} placeholder="N"
                         onChange={(e) => setOptimaDatos((p) => ({ ...p, num_personas: e.target.value }))}
-                        onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                         className="w-16 px-2 py-1 rounded-lg text-xs text-center text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
                     </div>
@@ -1556,7 +1554,6 @@ export default function PolizasInquilinos() {
                             inputMode={subType === 'number' ? undefined : 'decimal'}
                             placeholder={subPlaceholder} value={subType === 'number' ? (optimaDatos[subKey] || '') : formatearMiles(optimaDatos[subKey] || '')}
                             onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: subType === 'number' ? e.target.value : limpiarMiles(e.target.value) }))}
-                            onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                             className="w-full mt-1 px-3 py-1.5 rounded-lg text-xs text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-amber-500/40"
                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
                         )}
