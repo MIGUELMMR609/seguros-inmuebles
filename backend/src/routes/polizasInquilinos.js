@@ -97,6 +97,10 @@ router.post('/poliza-optima', async (req, res) => {
       if (datos_inmueble.tiene_empleados) items.push(`Empleados: ${datos_inmueble.num_empleados || 'Sí'}`);
       if (datos_inmueble.atiende_publico) items.push('Atiende al público');
       if (datos_inmueble.tiene_maquinaria) items.push('Maquinaria/equipos especiales');
+      if (datos_inmueble.necesita_rc_empleados) items.push('Necesita RC empleados');
+      if (datos_inmueble.necesita_rc_explotacion) items.push('Necesita RC explotación');
+      if (datos_inmueble.necesita_defensa_juridica) items.push('Necesita defensa jurídica');
+      if (datos_inmueble.necesita_equipos_electronicos) items.push(`Necesita seguro equipos electrónicos${datos_inmueble.valor_equipos_electronicos ? ': ' + datos_inmueble.valor_equipos_electronicos + ' €' : ''}`);
       datosEspecificos = items.join(', ') || 'Sin datos adicionales';
     }
 

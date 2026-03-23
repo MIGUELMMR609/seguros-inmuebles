@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale, Home, Store } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale, Home, Store, Eye, ClipboardCheck, Euro } from 'lucide-react';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
@@ -15,6 +15,8 @@ import {
   obtenerInquilinosApi,
   analizarExpertoPolizaInquilinoApi,
   compararPolizasApi,
+  obtenerPropuestasApi,
+  eliminarPropuestaApi,
 } from '../api/index.js';
 
 const TIPOS_POLIZA = [
@@ -71,6 +73,11 @@ const datosInmuebleVacio = {
   num_empleados: '',
   atiende_publico: false,
   tiene_maquinaria: false,
+  necesita_rc_empleados: false,
+  necesita_rc_explotacion: false,
+  necesita_defensa_juridica: false,
+  necesita_equipos_electronicos: false,
+  valor_equipos_electronicos: '',
 };
 
 function calcularEstado(fechaVencimiento) {
@@ -113,15 +120,22 @@ export default function PolizasInquilinos() {
   const [comparando, setComparando] = useState(false);
   const [resultadoComparacion, setResultadoComparacion] = useState(null);
 
+  // Propuestas pendientes
+  const [propuestas, setPropuestas] = useState([]);
+  const [propuestaVer, setPropuestaVer] = useState(null);
+  const [confirmandoEliminarPropuesta, setConfirmandoEliminarPropuesta] = useState(null);
+
   async function cargar() {
     try {
-      const [resPolizas, resInquilinos, resTodas] = await Promise.all([
+      const [resPolizas, resInquilinos, resTodas, resPropuestas] = await Promise.all([
         obtenerPolizasInquilinosApi(filtroInquilino ? { inquilino_id: filtroInquilino } : {}),
         obtenerInquilinosApi(),
         obtenerPolizasInquilinosApi({}),
+        obtenerPropuestasApi(),
       ]);
       setPolizas(resPolizas.data);
       setInquilinos(resInquilinos.data);
+      setPropuestas(resPropuestas.data);
 
       const conPolizaActiva = new Set(
         resTodas.data
@@ -324,6 +338,35 @@ export default function PolizasInquilinos() {
     );
   }
 
+  async function handleEliminarPropuesta(id) {
+    try {
+      await eliminarPropuestaApi(id);
+      setConfirmandoEliminarPropuesta(null);
+      setPropuestas((prev) => prev.filter((p) => p.id !== id));
+      setToast({ mensaje: 'Propuesta eliminada', tipo: 'success' });
+    } catch {
+      setToast({ mensaje: 'Error al eliminar la propuesta', tipo: 'error' });
+    }
+  }
+
+  function contratarDesdePropuesta(prop) {
+    const inf = prop.informe;
+    setEditando(null);
+    setFormulario({
+      ...formularioVacio,
+      inquilino_id: prop.inquilino_id || '',
+      tipo: inf?.poliza_optima?.tipo_recomendado?.toLowerCase().includes('local') ? 'local_negocio'
+           : inf?.poliza_optima?.tipo_recomendado?.toLowerCase().includes('vida') ? 'vida'
+           : inf?.poliza_optima?.tipo_recomendado?.toLowerCase().includes('rc') ? 'responsabilidad_civil'
+           : 'hogar',
+      notas: `Propuesta IA: ${inf?.poliza_optima?.tipo_recomendado || ''}\nCoberturas: ${inf?.poliza_optima?.coberturas_imprescindibles || ''}\nPrecio orientativo: ${inf?.poliza_optima?.precio_orientativo || ''}`,
+      datos_inmueble: prop.datos_inmueble || null,
+    });
+    setError('');
+    setPasoModal('form');
+    setModalAbierto(true);
+  }
+
   const columnas = [
     {
       clave: 'nombre_inmueble', titulo: 'Inmueble', sortable: true,
@@ -475,6 +518,50 @@ export default function PolizasInquilinos() {
             >
               Cancelar
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Propuestas pendientes */}
+      {propuestas.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <ClipboardCheck size={15} className="text-emerald-600" />
+            Propuestas pendientes ({propuestas.length})
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {propuestas.map((prop) => (
+              <div key={prop.id} className="bg-white border border-gray-200 rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-start justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">{prop.nombre_inquilino || 'Sin inquilino asignado'}</p>
+                    <p className="text-xs text-gray-400">{prop.nombre_inmueble || 'Sin inmueble'}</p>
+                  </div>
+                  <span className="text-xs text-gray-400">{new Date(prop.created_at).toLocaleDateString('es-ES')}</span>
+                </div>
+                {prop.informe?.poliza_optima?.tipo_recomendado && (
+                  <p className="text-xs text-emerald-700 bg-emerald-50 px-2 py-1 rounded-md mb-2 inline-block font-medium">
+                    {prop.informe.poliza_optima.tipo_recomendado}
+                  </p>
+                )}
+                {prop.informe?.poliza_optima?.precio_orientativo && (
+                  <div className="flex items-center gap-1 text-xs text-gray-500 mb-3">
+                    <Euro size={12} /> {prop.informe.poliza_optima.precio_orientativo}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <button onClick={() => setPropuestaVer(prop)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-700 bg-blue-50 hover:bg-blue-100 rounded-lg transition-colors">
+                    <Eye size={13} /> Ver informe
+                  </button>
+                  <button onClick={() => contratarDesdePropuesta(prop)} className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium text-emerald-700 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors">
+                    <Plus size={13} /> Contratar
+                  </button>
+                  <button onClick={() => setConfirmandoEliminarPropuesta(prop)} className="px-2 py-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors">
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
@@ -718,6 +805,56 @@ export default function PolizasInquilinos() {
                       <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_maquinaria: false } }))}
                         className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.tiene_maquinaria ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between col-span-2 sm:col-span-1">
+                    <label className="text-sm text-gray-700">¿Necesita RC empleados?</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, necesita_rc_empleados: true } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.necesita_rc_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, necesita_rc_empleados: false } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.necesita_rc_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between col-span-2 sm:col-span-1">
+                    <label className="text-sm text-gray-700">¿Necesita RC explotación?</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, necesita_rc_explotacion: true } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.necesita_rc_explotacion ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, necesita_rc_explotacion: false } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.necesita_rc_explotacion ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between col-span-2 sm:col-span-1">
+                    <label className="text-sm text-gray-700">¿Necesita defensa jurídica?</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, necesita_defensa_juridica: true } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.necesita_defensa_juridica ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, necesita_defensa_juridica: false } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.necesita_defensa_juridica ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm text-gray-700">¿Necesita seguro equipos electrónicos?</label>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, necesita_equipos_electronicos: true } }))}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.necesita_equipos_electronicos ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                        <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, necesita_equipos_electronicos: false } }))}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.necesita_equipos_electronicos ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                      </div>
+                    </div>
+                    {formulario.datos_inmueble.necesita_equipos_electronicos && (
+                      <input
+                        placeholder="Valor aproximado equipos (€)"
+                        value={formulario.datos_inmueble.valor_equipos_electronicos || ''}
+                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, valor_equipos_electronicos: e.target.value } }))}
+                        className="campo-formulario mt-2 text-sm"
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -965,6 +1102,88 @@ export default function PolizasInquilinos() {
         datos={resultadoComparacion}
         tipo="inquilinos"
       />
+
+      {/* Modal ver informe propuesta */}
+      <Modal
+        abierto={!!propuestaVer}
+        onCerrar={() => setPropuestaVer(null)}
+        titulo="Informe de propuesta"
+        ancho="max-w-2xl"
+      >
+        {propuestaVer && propuestaVer.informe && (
+          <div className="space-y-4">
+            {propuestaVer.poliza_inmueble_info && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-500">
+                Base: <strong>{propuestaVer.poliza_inmueble_info.nombre_inmueble}</strong> — {propuestaVer.poliza_inmueble_info.compania || 'Sin compañía'}
+              </div>
+            )}
+            {propuestaVer.informe.resumen_poliza_propietario && (
+              <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
+                <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Tu póliza cubre al inquilino</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{propuestaVer.informe.resumen_poliza_propietario}</p>
+              </div>
+            )}
+            {propuestaVer.informe.huecos_cobertura && (
+              <div className="bg-red-50 border border-red-100 rounded-lg p-4">
+                <h4 className="text-xs font-semibold text-red-700 uppercase tracking-wider mb-2">Huecos de cobertura</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{propuestaVer.informe.huecos_cobertura}</p>
+              </div>
+            )}
+            {propuestaVer.informe.poliza_optima && (
+              <div className="bg-green-50 border border-green-100 rounded-lg p-4 space-y-3">
+                <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-2">Póliza óptima recomendada</h4>
+                {propuestaVer.informe.poliza_optima.tipo_recomendado && (
+                  <div><span className="text-xs font-medium text-gray-500">Tipo:</span> <span className="text-sm font-semibold text-gray-800">{propuestaVer.informe.poliza_optima.tipo_recomendado}</span></div>
+                )}
+                {propuestaVer.informe.poliza_optima.coberturas_imprescindibles && (
+                  <div><span className="text-xs font-medium text-gray-500">Coberturas imprescindibles:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{propuestaVer.informe.poliza_optima.coberturas_imprescindibles}</p></div>
+                )}
+                {propuestaVer.informe.poliza_optima.coberturas_recomendables && (
+                  <div><span className="text-xs font-medium text-gray-500">Coberturas recomendables:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{propuestaVer.informe.poliza_optima.coberturas_recomendables}</p></div>
+                )}
+                {propuestaVer.informe.poliza_optima.precio_orientativo && (
+                  <div className="flex items-center gap-2 bg-white border border-green-200 rounded-lg px-3 py-2">
+                    <Euro size={16} className="text-green-600" />
+                    <span className="text-sm font-bold text-green-700">{propuestaVer.informe.poliza_optima.precio_orientativo}</span>
+                  </div>
+                )}
+                {propuestaVer.informe.poliza_optima.companias_sugeridas && (
+                  <div><span className="text-xs font-medium text-gray-500">Compañías sugeridas:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{propuestaVer.informe.poliza_optima.companias_sugeridas}</p></div>
+                )}
+              </div>
+            )}
+            {propuestaVer.informe.riesgos_sin_cubrir && (
+              <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
+                <h4 className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2">Riesgos sin cubrir</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{propuestaVer.informe.riesgos_sin_cubrir}</p>
+              </div>
+            )}
+            {propuestaVer.informe.consejos_adicionales && (
+              <div className="bg-purple-50 border border-purple-100 rounded-lg p-4">
+                <h4 className="text-xs font-semibold text-purple-700 uppercase tracking-wider mb-2">Consejos adicionales</h4>
+                <p className="text-sm text-gray-700 whitespace-pre-line">{propuestaVer.informe.consejos_adicionales}</p>
+              </div>
+            )}
+            <div className="flex gap-3 pt-2 border-t border-gray-100">
+              <button onClick={() => { contratarDesdePropuesta(propuestaVer); setPropuestaVer(null); }} className="btn-primario flex-1 justify-center">
+                <Plus size={14} /> Contratar esta póliza
+              </button>
+              <button onClick={() => setPropuestaVer(null)} className="btn-secundario flex-1 justify-center">Cerrar</button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal confirmar eliminación propuesta */}
+      <Modal abierto={!!confirmandoEliminarPropuesta} onCerrar={() => setConfirmandoEliminarPropuesta(null)} titulo="Eliminar propuesta" ancho="max-w-sm">
+        <p className="text-gray-600 text-sm mb-6">
+          ¿Eliminar esta propuesta{confirmandoEliminarPropuesta?.nombre_inquilino ? ` de ${confirmandoEliminarPropuesta.nombre_inquilino}` : ''}?
+        </p>
+        <div className="flex gap-3">
+          <button onClick={() => setConfirmandoEliminarPropuesta(null)} className="btn-secundario flex-1">Cancelar</button>
+          <button onClick={() => handleEliminarPropuesta(confirmandoEliminarPropuesta.id)} className="btn-peligro flex-1 justify-center">Eliminar</button>
+        </div>
+      </Modal>
 
       {toast && <Toast mensaje={toast.mensaje} tipo={toast.tipo} onCerrar={() => setToast(null)} />}
     </div>

@@ -280,6 +280,20 @@ async function inicializarBaseDatos() {
       ALTER TABLE contrato_renovaciones ADD COLUMN IF NOT EXISTS motivo VARCHAR(50) DEFAULT 'renovado';
     `);
 
+    // Tabla de propuestas de pólizas (generadas por IA)
+    await cliente.query(`
+      CREATE TABLE IF NOT EXISTS propuestas_polizas (
+        id SERIAL PRIMARY KEY,
+        inquilino_id INTEGER REFERENCES inquilinos(id) ON DELETE SET NULL,
+        poliza_inmueble_id INTEGER REFERENCES polizas(id) ON DELETE SET NULL,
+        datos_inmueble JSONB,
+        informe JSONB NOT NULL,
+        poliza_inmueble_info JSONB,
+        estado VARCHAR(50) DEFAULT 'pendiente',
+        created_at TIMESTAMP DEFAULT NOW()
+      );
+    `);
+
     // Usuario admin por defecto
     const bcrypt = require('bcryptjs');
     const usuarioExistente = await cliente.query(

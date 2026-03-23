@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import {
   Plus, Pencil, Trash2, Users, AlertTriangle,
   RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro, CheckCircle, History,
-  Target, Home, Store,
+  Target, Home, Store, Save,
 } from 'lucide-react';
 import { imprimirInformeContrato } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
@@ -17,6 +17,7 @@ import {
   actualizarMotivoRenovacionApi,
   obtenerPolizasApi,
   generarPolizaOptimaApi,
+  crearPropuestaApi,
 } from '../api/index.js';
 
 const formularioVacio = {
@@ -66,6 +67,11 @@ const datosInmuebleVacio = {
   num_empleados: '',
   atiende_publico: false,
   tiene_maquinaria: false,
+  necesita_rc_empleados: false,
+  necesita_rc_explotacion: false,
+  necesita_defensa_juridica: false,
+  necesita_equipos_electronicos: false,
+  valor_equipos_electronicos: '',
 };
 
 export default function Inquilinos() {
@@ -127,6 +133,9 @@ export default function Inquilinos() {
   const [optimaDatos, setOptimaDatos] = useState({ ...datosInmuebleVacio });
   const [optimaInforme, setOptimaInforme] = useState(null);
   const [optimaError, setOptimaError] = useState('');
+  const [guardandoPropuesta, setGuardandoPropuesta] = useState(false);
+  const [propuestaGuardada, setPropuestaGuardada] = useState(false);
+  const [propuestaInquilinoId, setPropuestaInquilinoId] = useState('');
 
   async function abrirOptima() {
     setOptimaPolizaId('');
@@ -134,6 +143,8 @@ export default function Inquilinos() {
     setOptimaPaso(1);
     setOptimaInforme(null);
     setOptimaError('');
+    setPropuestaGuardada(false);
+    setPropuestaInquilinoId('');
     setModalOptima(true);
     try {
       const res = await obtenerPolizasApi();
@@ -1640,6 +1651,49 @@ export default function Inquilinos() {
                       className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.tiene_maquinaria ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
                   </div>
                 </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-gray-700">¿Necesita RC empleados?</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_rc_empleados: true }))}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.necesita_rc_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
+                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_rc_empleados: false }))}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.necesita_rc_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-gray-700">¿Necesita RC explotación?</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_rc_explotacion: true }))}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.necesita_rc_explotacion ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
+                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_rc_explotacion: false }))}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.necesita_rc_explotacion ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <label className="text-sm text-gray-700">¿Necesita defensa jurídica?</label>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_defensa_juridica: true }))}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.necesita_defensa_juridica ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
+                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_defensa_juridica: false }))}
+                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.necesita_defensa_juridica ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-gray-700">¿Necesita seguro equipos electrónicos?</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_equipos_electronicos: true }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.necesita_equipos_electronicos ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
+                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_equipos_electronicos: false }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.necesita_equipos_electronicos ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
+                    </div>
+                  </div>
+                  {optimaDatos.necesita_equipos_electronicos && (
+                    <input placeholder="Valor aproximado equipos (€)" value={optimaDatos.valor_equipos_electronicos}
+                      onChange={(e) => setOptimaDatos((p) => ({ ...p, valor_equipos_electronicos: e.target.value }))}
+                      className="campo-formulario mt-2 text-sm" />
+                  )}
+                </div>
               </div>
               <div className="flex gap-3 pt-2">
                 <button onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="btn-secundario flex-1">← Atrás</button>
@@ -1733,10 +1787,47 @@ export default function Inquilinos() {
                 </div>
               )}
 
+              {/* Guardar propuesta */}
+              {!propuestaGuardada ? (
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Guardar como propuesta pendiente</p>
+                  <select value={propuestaInquilinoId} onChange={(e) => setPropuestaInquilinoId(e.target.value)} className="campo-formulario text-sm">
+                    <option value="">Selecciona inquilino (opcional)</option>
+                    {inquilinos.filter((i) => i.estado === 'activo').map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
+                  </select>
+                  <button
+                    disabled={guardandoPropuesta}
+                    onClick={async () => {
+                      setGuardandoPropuesta(true);
+                      try {
+                        await crearPropuestaApi({
+                          inquilino_id: propuestaInquilinoId ? parseInt(propuestaInquilinoId) : null,
+                          poliza_inmueble_id: optimaInforme.poliza_inmueble?.id || null,
+                          datos_inmueble: optimaDatos,
+                          informe: optimaInforme.informe,
+                          poliza_inmueble_info: optimaInforme.poliza_inmueble || null,
+                        });
+                        setPropuestaGuardada(true);
+                      } catch {
+                        setOptimaError('Error al guardar la propuesta');
+                      } finally {
+                        setGuardandoPropuesta(false);
+                      }
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-sm transition-all disabled:opacity-50"
+                  >
+                    {guardandoPropuesta ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : <Save size={14} />}
+                    {guardandoPropuesta ? 'Guardando...' : 'Guardar propuesta'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded-lg">
+                  <CheckCircle size={16} /> Propuesta guardada correctamente
+                </div>
+              )}
+
               <div className="flex gap-3 pt-2 border-t border-gray-100">
                 <button onClick={() => {
-                  const contenido = document.getElementById('informe-optima-contenido');
-                  if (contenido) {
                     const win = window.open('', '_blank');
                     win.document.write(`<html><head><title>Informe Póliza Óptima</title><style>body{font-family:system-ui,sans-serif;max-width:700px;margin:40px auto;padding:0 20px;color:#333}h2{color:#1e3a5f}h3{color:#555;font-size:14px;text-transform:uppercase;letter-spacing:0.5px;margin-top:24px}p{line-height:1.6}.seccion{background:#f8f9fa;border-radius:8px;padding:16px;margin:12px 0}</style></head><body>`);
                     win.document.write(`<h2>🎯 Informe Póliza Óptima Inquilino</h2>`);
@@ -1758,7 +1849,6 @@ export default function Inquilinos() {
                     win.document.write(`<p style="color:#999;font-size:12px;margin-top:30px">Generado el ${new Date().toLocaleDateString('es-ES')}</p></body></html>`);
                     win.document.close();
                     win.print();
-                  }
                 }} className="btn-secundario flex-1 flex items-center justify-center gap-2">
                   <Download size={14} /> Descargar PDF
                 </button>

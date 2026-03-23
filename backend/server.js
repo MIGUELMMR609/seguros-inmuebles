@@ -25,6 +25,7 @@ const generarContratoRoutes = require('./src/routes/generar_contrato');
 const { router: backupRoutes } = require('./src/routes/backup');
 const { router: comparadorRoutes } = require('./src/routes/comparador');
 const actividadRoutes = require('./src/routes/actividad');
+const propuestasRoutes = require('./src/routes/propuestas');
 
 const app = express();
 const PUERTO = process.env.PORT || 3000;
@@ -81,6 +82,7 @@ app.use('/api/analizar-contrato', analizarContratoRoutes);
 app.use('/api/backup', backupRoutes);
 app.use('/api/comparador', comparadorRoutes);
 app.use('/api/actividad', actividadRoutes);
+app.use('/api/propuestas', propuestasRoutes);
 app.use('/api', generarContratoRoutes);
 
 // Servir frontend en producción (solo si el build existe localmente)

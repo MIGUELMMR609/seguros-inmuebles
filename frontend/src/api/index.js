@@ -77,6 +77,11 @@ export const analizarExpertoPolizaInquilinoApi = (id) =>
 export const generarPolizaOptimaApi = (datos) =>
   api.post('/polizas-inquilinos/poliza-optima', datos, { timeout: 120_000 });
 
+// --- Propuestas de pólizas ---
+export const obtenerPropuestasApi = () => api.get('/propuestas');
+export const crearPropuestaApi = (datos) => api.post('/propuestas', datos);
+export const eliminarPropuestaApi = (id) => api.delete(`/propuestas/${id}`);
+
 // --- Alertas ---
 export const obtenerAlertasApi = (dias = 30) => api.get('/alertas', { params: { dias } });
 export const obtenerResumenAlertasApi = () => api.get('/alertas/resumen');
