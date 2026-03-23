@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale, Home, Store, Eye, ClipboardCheck, Euro, Target, Save, CheckCircle } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale, Home, Store, Eye, ClipboardCheck, Euro, Target, Save, CheckCircle, X } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
@@ -1326,447 +1326,413 @@ export default function PolizasInquilinos() {
         tipo="inquilinos"
       />
 
-      {/* Modal Póliza Óptima */}
-      <Modal
-        abierto={modalOptima}
-        onCerrar={() => setModalOptima(false)}
-        titulo="Póliza Óptima Inquilino"
-        ancho={optimaPaso === 5 ? 'max-w-2xl' : 'max-w-lg'}
-      >
-        <div className="space-y-5">
-          {/* Paso 1: Seleccionar póliza del inmueble */}
-          {optimaPaso === 1 && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-500">Paso 1 de 5 — Selecciona tu póliza del inmueble</p>
-              <p className="text-xs text-gray-400">La IA analizará qué cubre tu póliza y qué le falta al inquilino.</p>
-              {polizasInmuebles.length === 0 ? (
-                <div className="text-center py-6 text-gray-400 text-sm">No hay pólizas de inmuebles registradas.</div>
-              ) : (
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  {polizasInmuebles.map((p) => (
-                    <label key={p.id} className={`flex items-start gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
-                      optimaPolizaId === String(p.id) ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
-                    }`}>
-                      <input type="radio" name="poliza_inmueble" value={p.id}
-                        checked={optimaPolizaId === String(p.id)}
-                        onChange={() => setOptimaPolizaId(String(p.id))}
-                        className="mt-1 w-4 h-4 text-blue-600" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm text-gray-800 truncate">{p.nombre_inmueble || 'Sin inmueble'}</span>
-                          {p.documento_url && <FileText size={14} className="text-green-500 flex-shrink-0" title="Tiene PDF" />}
-                          {p.riesgos_cubiertos && <Sparkles size={14} className="text-purple-500 flex-shrink-0" title="Tiene análisis IA" />}
+      {/* Modal Póliza Óptima — Dark Glassmorphism Wizard */}
+      {modalOptima && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.target === e.currentTarget && setModalOptima(false)}>
+          <div className="absolute inset-0 bg-[#0D1B2A]/80 backdrop-blur-md" onClick={() => setModalOptima(false)} />
+          <div className={`relative z-10 flex flex-col fixed inset-0 sm:static sm:inset-auto ${optimaPaso === 5 ? 'sm:max-w-[640px]' : 'sm:max-w-[520px]'} sm:w-full sm:rounded-2xl sm:max-h-[90vh] overflow-hidden transition-all duration-300`}
+            style={{ background: 'rgba(15,25,45,0.92)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
+
+            {/* Header: título + progreso en la misma línea */}
+            <div className="flex items-center justify-between px-5 py-3 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                  <Target size={14} className="text-white" />
+                </div>
+                <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50 truncate">Poliza Optima</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Progress dots */}
+                {[1,2,3,4,5].map((s) => (
+                  <div key={s} className="flex items-center gap-1">
+                    <div className={`h-1.5 rounded-full transition-all duration-500 ${optimaPaso >= s ? 'w-5' : 'w-1.5'}`}
+                      style={{ background: optimaPaso >= s ? 'linear-gradient(90deg, #6366f1, #a78bfa)' : 'rgba(255,255,255,0.12)' }} />
+                  </div>
+                ))}
+                <button onClick={() => setModalOptima(false)} className="ml-2 p-1.5 rounded-lg transition-colors hover:bg-white/10 text-white/30 hover:text-white/60">
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="flex-1 overflow-y-auto px-5 py-4">
+
+              {/* ── Paso 1: Seleccionar póliza ── */}
+              {optimaPaso === 1 && (
+                <div className="space-y-3 animate-[fadeSlide_0.3s_ease-out]">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-indigo-400/80">Selecciona poliza del inmueble</p>
+                  {polizasInmuebles.length === 0 ? (
+                    <div className="text-center py-8 text-white/30 text-xs">No hay polizas de inmuebles registradas.</div>
+                  ) : (
+                    <div className="max-h-56 overflow-y-auto space-y-1.5 pr-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(255,255,255,0.1) transparent' }}>
+                      {polizasInmuebles.map((p) => (
+                        <button key={p.id} type="button" onClick={() => setOptimaPolizaId(String(p.id))}
+                          className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-200 ${
+                            optimaPolizaId === String(p.id)
+                              ? 'ring-1 ring-indigo-500/60'
+                              : 'hover:bg-white/[0.04]'
+                          }`}
+                          style={optimaPolizaId === String(p.id) ? { background: 'rgba(99,102,241,0.12)' } : { background: 'rgba(255,255,255,0.02)' }}>
+                          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors ${
+                            optimaPolizaId === String(p.id) ? 'bg-indigo-500/20' : 'bg-white/5'
+                          }`}>
+                            <Shield size={14} className={optimaPolizaId === String(p.id) ? 'text-indigo-400' : 'text-white/25'} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium text-white/90 truncate">{p.nombre_inmueble || 'Sin inmueble'}</span>
+                              {p.documento_url && <FileText size={11} className="text-emerald-400/60 flex-shrink-0" />}
+                              {p.riesgos_cubiertos && <Sparkles size={11} className="text-purple-400/60 flex-shrink-0" />}
+                            </div>
+                            <div className="text-[11px] text-white/35 mt-0.5">
+                              {p.compania_aseguradora || 'Sin compania'}
+                              {p.importe_anual && <span> · {parseFloat(p.importe_anual).toFixed(0)} EUR/ano</span>}
+                              {p.valoracion && <span className="ml-1 font-semibold text-emerald-400/70">· {p.valoracion}/10</span>}
+                            </div>
+                          </div>
+                          {optimaPolizaId === String(p.id) && (
+                            <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #6366f1, #a78bfa)' }}>
+                              <CheckCircle size={12} className="text-white" />
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => setModalOptima(false)} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 transition-colors hover:text-white/60 hover:bg-white/5" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Cancelar</button>
+                    <button onClick={() => setOptimaPaso(2)} disabled={!optimaPolizaId}
+                      className="flex-1 px-4 py-2 rounded-full text-xs font-bold text-white transition-all disabled:opacity-30"
+                      style={{ background: optimaPolizaId ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.05)' }}>
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Paso 2: Tipo de uso ── */}
+              {optimaPaso === 2 && (
+                <div className="space-y-4 animate-[fadeSlide_0.3s_ease-out]">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-indigo-400/80">Tipo de uso del inmueble</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => setOptimaDatos({ ...datosInmuebleVacio, tipo_inmueble: 'vivienda' })}
+                      className={`flex flex-col items-center gap-2 px-4 py-5 rounded-xl transition-all duration-200 ${
+                        optimaDatos.tipo_inmueble === 'vivienda' ? 'ring-1 ring-sky-400/50' : 'hover:bg-white/[0.04]'
+                      }`}
+                      style={optimaDatos.tipo_inmueble === 'vivienda' ? { background: 'rgba(56,189,248,0.1)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: optimaDatos.tipo_inmueble === 'vivienda' ? 'rgba(56,189,248,0.15)' : 'rgba(255,255,255,0.05)' }}>
+                        <Home size={20} className={optimaDatos.tipo_inmueble === 'vivienda' ? 'text-sky-400' : 'text-white/30'} />
+                      </div>
+                      <span className={`text-xs font-semibold ${optimaDatos.tipo_inmueble === 'vivienda' ? 'text-sky-300' : 'text-white/40'}`}>Vivienda</span>
+                    </button>
+                    <button type="button" onClick={() => setOptimaDatos({ ...datosInmuebleVacio, tipo_inmueble: 'local_negocio' })}
+                      className={`flex flex-col items-center gap-2 px-4 py-5 rounded-xl transition-all duration-200 ${
+                        optimaDatos.tipo_inmueble === 'local_negocio' ? 'ring-1 ring-amber-400/50' : 'hover:bg-white/[0.04]'
+                      }`}
+                      style={optimaDatos.tipo_inmueble === 'local_negocio' ? { background: 'rgba(251,191,36,0.1)' } : { background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: optimaDatos.tipo_inmueble === 'local_negocio' ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.05)' }}>
+                        <Store size={20} className={optimaDatos.tipo_inmueble === 'local_negocio' ? 'text-amber-400' : 'text-white/30'} />
+                      </div>
+                      <span className={`text-xs font-semibold ${optimaDatos.tipo_inmueble === 'local_negocio' ? 'text-amber-300' : 'text-white/40'}`}>Local negocio</span>
+                    </button>
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => setOptimaPaso(1)} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
+                    <button onClick={() => setOptimaPaso(3)} disabled={!optimaDatos.tipo_inmueble}
+                      className="flex-1 px-4 py-2 rounded-full text-xs font-bold text-white transition-all disabled:opacity-30"
+                      style={{ background: optimaDatos.tipo_inmueble ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.05)' }}>
+                      Siguiente
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Paso 3: Datos vivienda ── */}
+              {optimaPaso === 3 && optimaDatos.tipo_inmueble === 'vivienda' && (
+                <div className="space-y-3 animate-[fadeSlide_0.3s_ease-out]">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-sky-400/80">Datos de la vivienda</p>
+                  {optimaError && <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{optimaError}</div>}
+                  <div className="space-y-2" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '12px' }}>
+                    {[
+                      { label: 'Mascotas', key: 'tiene_mascotas' },
+                      { label: 'Objetos de valor', key: 'tiene_objetos_valor', subKey: 'valor_objetos_valor', subPlaceholder: 'Valor (EUR)' },
+                      { label: 'Vehiculo en garaje', key: 'tiene_vehiculo_garaje' },
+                    ].map(({ label, key, subKey, subPlaceholder }) => (
+                      <div key={key}>
+                        <div className="flex items-center justify-between py-1">
+                          <span className="text-xs text-white/60">{label}</span>
+                          <div className="flex rounded-full overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, [key]: true }))}
+                              className={`px-3 py-1 text-[10px] font-bold transition-all ${optimaDatos[key] ? 'text-white' : 'text-white/30 hover:text-white/50'}`}
+                              style={optimaDatos[key] ? { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' } : {}}>SI</button>
+                            <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, [key]: false }))}
+                              className={`px-3 py-1 text-[10px] font-bold transition-all ${!optimaDatos[key] ? 'text-white' : 'text-white/30 hover:text-white/50'}`}
+                              style={!optimaDatos[key] ? { background: 'rgba(255,255,255,0.1)' } : {}}>NO</button>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-500 mt-0.5">
-                          {p.compania_aseguradora || 'Sin compañía'}
-                          {p.importe_anual && <span> · {parseFloat(p.importe_anual).toFixed(0)} €/año</span>}
-                          {p.valoracion && <span className="ml-1 font-semibold text-green-600">· {p.valoracion}/10</span>}
-                        </div>
-                        {p.riesgos_cubiertos && (
-                          <p className="text-xs text-gray-400 mt-1 line-clamp-2">{p.riesgos_cubiertos}</p>
+                        {subKey && optimaDatos[key] && (
+                          <input placeholder={subPlaceholder} value={optimaDatos[subKey] || ''}
+                            onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: e.target.value }))}
+                            className="w-full mt-1 px-3 py-1.5 rounded-lg text-xs text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
+                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
                         )}
                       </div>
-                    </label>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setModalOptima(false)} className="btn-secundario flex-1">Cancelar</button>
-                <button onClick={() => setOptimaPaso(2)} disabled={!optimaPolizaId}
-                  className="btn-primario flex-1 justify-center disabled:opacity-50">
-                  Siguiente →
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Paso 2: Tipo de uso */}
-          {optimaPaso === 2 && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-500">Paso 2 de 5 — ¿Es una vivienda o local de negocio?</p>
-              <div className="flex gap-3">
-                <button type="button"
-                  onClick={() => setOptimaDatos({ ...datosInmuebleVacio, tipo_inmueble: 'vivienda' })}
-                  className={`flex-1 flex flex-col items-center gap-2 px-4 py-5 rounded-xl border-2 text-sm font-medium transition-all ${
-                    optimaDatos.tipo_inmueble === 'vivienda' ? 'border-blue-500 bg-blue-50 text-blue-700 shadow-md' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'
-                  }`}>
-                  <Home size={28} />
-                  <span>Vivienda</span>
-                </button>
-                <button type="button"
-                  onClick={() => setOptimaDatos({ ...datosInmuebleVacio, tipo_inmueble: 'local_negocio' })}
-                  className={`flex-1 flex flex-col items-center gap-2 px-4 py-5 rounded-xl border-2 text-sm font-medium transition-all ${
-                    optimaDatos.tipo_inmueble === 'local_negocio' ? 'border-orange-500 bg-orange-50 text-orange-700 shadow-md' : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'
-                  }`}>
-                  <Store size={28} />
-                  <span>Local de negocio</span>
-                </button>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setOptimaPaso(1)} className="btn-secundario flex-1">← Atrás</button>
-                <button onClick={() => setOptimaPaso(3)} disabled={!optimaDatos.tipo_inmueble}
-                  className="btn-primario flex-1 justify-center disabled:opacity-50">Siguiente →</button>
-              </div>
-            </div>
-          )}
-
-          {/* Paso 3: Datos específicos VIVIENDA */}
-          {optimaPaso === 3 && optimaDatos.tipo_inmueble === 'vivienda' && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-500">Paso 3 de 5 — Datos de la vivienda</p>
-              {optimaError && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{optimaError}</div>}
-              <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-4 space-y-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-700">¿Tiene mascotas?</label>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_mascotas: true }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.tiene_mascotas ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_mascotas: false }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.tiene_mascotas ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm text-gray-700">¿Tiene objetos de valor?</label>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_objetos_valor: true }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.tiene_objetos_valor ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_objetos_valor: false }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.tiene_objetos_valor ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
+                    ))}
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-xs text-white/60">Personas</span>
+                      <input type="number" min="1" max="20" value={optimaDatos.num_personas} placeholder="N"
+                        onChange={(e) => setOptimaDatos((p) => ({ ...p, num_personas: e.target.value }))}
+                        className="w-16 px-2 py-1 rounded-lg text-xs text-center text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
                     </div>
                   </div>
-                  {optimaDatos.tiene_objetos_valor && (
-                    <input placeholder="Valor aproximado (€)" value={optimaDatos.valor_objetos_valor}
-                      onChange={(e) => setOptimaDatos((p) => ({ ...p, valor_objetos_valor: e.target.value }))}
-                      className="campo-formulario mt-2 text-sm" />
-                  )}
-                </div>
-                <div>
-                  <label className="text-sm text-gray-700">¿Cuántas personas vivirán?</label>
-                  <input type="number" min="1" max="20" value={optimaDatos.num_personas}
-                    onChange={(e) => setOptimaDatos((p) => ({ ...p, num_personas: e.target.value }))}
-                    className="campo-formulario mt-1 text-sm" placeholder="Nº personas" />
-                </div>
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-700">¿Tiene vehículo en garaje?</label>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_vehiculo_garaje: true }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.tiene_vehiculo_garaje ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_vehiculo_garaje: false }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.tiene_vehiculo_garaje ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
+                    <button onClick={handleGenerarInforme}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white transition-all hover:shadow-lg hover:shadow-indigo-500/20"
+                      style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                      <Sparkles size={13} /> Generar informe
+                    </button>
                   </div>
-                </div>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="btn-secundario flex-1">← Atrás</button>
-                <button onClick={handleGenerarInforme}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-sm transition-all">
-                  <Sparkles size={16} /> Generar informe IA
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Paso 3: Datos específicos LOCAL DE NEGOCIO */}
-          {optimaPaso === 3 && optimaDatos.tipo_inmueble === 'local_negocio' && (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-500">Paso 3 de 5 — Datos del local de negocio</p>
-              {optimaError && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{optimaError}</div>}
-              <div className="bg-orange-50/50 border border-orange-100 rounded-xl p-4 space-y-4">
-                <div>
-                  <label className="text-sm text-gray-700">Tipo de negocio</label>
-                  <select value={optimaDatos.tipo_negocio} onChange={(e) => setOptimaDatos((p) => ({ ...p, tipo_negocio: e.target.value }))} className="campo-formulario mt-1 text-sm">
-                    <option value="">Selecciona tipo...</option>
-                    <option value="tienda">Tienda</option><option value="oficina">Oficina</option>
-                    <option value="restaurante">Restaurante / Bar</option><option value="taller">Taller / Industria</option>
-                    <option value="almacen">Almacén</option><option value="peluqueria">Peluquería / Estética</option>
-                    <option value="clinica">Clínica / Consulta</option><option value="otro">Otro</option>
-                  </select>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm text-gray-700">¿Tiene mercancía?</label>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_mercancia: true }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.tiene_mercancia ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_mercancia: false }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.tiene_mercancia ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
-                    </div>
-                  </div>
-                  {optimaDatos.tiene_mercancia && (
-                    <input placeholder="Valor aproximado (€)" value={optimaDatos.valor_mercancia}
-                      onChange={(e) => setOptimaDatos((p) => ({ ...p, valor_mercancia: e.target.value }))} className="campo-formulario mt-2 text-sm" />
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm text-gray-700">¿Tiene empleados?</label>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_empleados: true }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.tiene_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_empleados: false }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.tiene_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
-                    </div>
-                  </div>
-                  {optimaDatos.tiene_empleados && (
-                    <input type="number" min="1" placeholder="¿Cuántos?" value={optimaDatos.num_empleados}
-                      onChange={(e) => setOptimaDatos((p) => ({ ...p, num_empleados: e.target.value }))} className="campo-formulario mt-2 text-sm" />
-                  )}
-                </div>
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-700">¿Atiende público?</label>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, atiende_publico: true }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.atiende_publico ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, atiende_publico: false }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.atiende_publico ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-700">¿Maquinaria o equipos especiales?</label>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_maquinaria: true }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.tiene_maquinaria ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, tiene_maquinaria: false }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.tiene_maquinaria ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-700">¿Necesita RC empleados?</label>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_rc_empleados: true }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.necesita_rc_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_rc_empleados: false }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.necesita_rc_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-700">¿Necesita RC explotación?</label>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_rc_explotacion: true }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.necesita_rc_explotacion ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_rc_explotacion: false }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.necesita_rc_explotacion ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <label className="text-sm text-gray-700">¿Necesita defensa jurídica?</label>
-                  <div className="flex gap-2">
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_defensa_juridica: true }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.necesita_defensa_juridica ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                    <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_defensa_juridica: false }))}
-                      className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.necesita_defensa_juridica ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
-                  </div>
-                </div>
-                <div>
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm text-gray-700">¿Necesita seguro equipos electrónicos?</label>
-                    <div className="flex gap-2">
-                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_equipos_electronicos: true }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${optimaDatos.necesita_equipos_electronicos ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>Sí</button>
-                      <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, necesita_equipos_electronicos: false }))}
-                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!optimaDatos.necesita_equipos_electronicos ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200'}`}>No</button>
-                    </div>
-                  </div>
-                  {optimaDatos.necesita_equipos_electronicos && (
-                    <input placeholder="Valor aproximado equipos (€)" value={optimaDatos.valor_equipos_electronicos}
-                      onChange={(e) => setOptimaDatos((p) => ({ ...p, valor_equipos_electronicos: e.target.value }))} className="campo-formulario mt-2 text-sm" />
-                  )}
-                </div>
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="btn-secundario flex-1">← Atrás</button>
-                <button onClick={handleGenerarInforme}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white hover:from-amber-600 hover:to-orange-600 shadow-sm transition-all">
-                  <Sparkles size={16} /> Generar informe IA
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Paso 4: Analizando con IA */}
-          {optimaPaso === 4 && (
-            <div className="flex flex-col items-center justify-center py-14 text-center">
-              <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600" />
-              </div>
-              <p className="text-gray-700 font-medium">Analizando tu póliza con IA...</p>
-              <p className="text-sm text-gray-400 mt-1">Comparando coberturas y generando recomendaciones. Puede tardar hasta 2 minutos.</p>
-            </div>
-          )}
-
-          {/* Paso 5: Informe completo */}
-          {optimaPaso === 5 && optimaInforme && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-500">Paso 5 de 5 — Informe de póliza óptima</p>
-                {optimaInforme.poliza_inmueble && (
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    {optimaInforme.poliza_inmueble.tiene_pdf && <span className="flex items-center gap-1 text-green-600"><FileText size={12} /> PDF leído</span>}
-                    {optimaInforme.poliza_inmueble.tiene_analisis && <span className="flex items-center gap-1 text-purple-600"><Sparkles size={12} /> Análisis previo</span>}
-                  </div>
-                )}
-              </div>
-              {optimaInforme.poliza_inmueble && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-xs text-gray-500">
-                  Base: <strong>{optimaInforme.poliza_inmueble.nombre_inmueble}</strong> — {optimaInforme.poliza_inmueble.compania || 'Sin compañía'}
                 </div>
               )}
 
-              {/* New table format */}
-              {optimaInforme.informe?.tabla_coberturas && (
-                <div className="overflow-x-auto rounded-xl border border-gray-200">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr>
-                        <th className="text-left px-3 py-2.5 bg-gray-100 text-gray-600 font-semibold text-xs uppercase tracking-wider">Cobertura / Riesgo</th>
-                        <th className="text-center px-3 py-2.5 bg-green-50 text-green-700 font-semibold text-xs uppercase tracking-wider w-36">Cubierto propietario</th>
-                        <th className="text-center px-3 py-2.5 bg-blue-50 text-blue-700 font-semibold text-xs uppercase tracking-wider w-36">Contratar inquilino</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {optimaInforme.informe.tabla_coberturas.map((row, i) => (
-                        <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                          <td className="px-3 py-2 text-gray-700 text-sm">{row.concepto}</td>
-                          <td className="text-center px-3 py-2">{row.propietario ? <span className="text-green-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}</td>
-                          <td className="text-center px-3 py-2">{row.inquilino ? <span className="text-blue-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}</td>
-                        </tr>
+              {/* ── Paso 3: Datos local de negocio ── */}
+              {optimaPaso === 3 && optimaDatos.tipo_inmueble === 'local_negocio' && (
+                <div className="space-y-3 animate-[fadeSlide_0.3s_ease-out]">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-400/80">Datos del local</p>
+                  {optimaError && <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">{optimaError}</div>}
+                  <div className="space-y-2" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '12px', padding: '12px' }}>
+                    {/* Tipo negocio */}
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-xs text-white/60">Tipo</span>
+                      <select value={optimaDatos.tipo_negocio} onChange={(e) => setOptimaDatos((p) => ({ ...p, tipo_negocio: e.target.value }))}
+                        className="px-2 py-1 rounded-lg text-xs text-white/90 outline-none focus:ring-1 focus:ring-amber-500/40 appearance-none cursor-pointer"
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', maxWidth: '160px' }}>
+                        <option value="" className="bg-[#0f192d]">Selecciona...</option>
+                        <option value="tienda" className="bg-[#0f192d]">Tienda</option>
+                        <option value="oficina" className="bg-[#0f192d]">Oficina</option>
+                        <option value="restaurante" className="bg-[#0f192d]">Restaurante/Bar</option>
+                        <option value="taller" className="bg-[#0f192d]">Taller/Industria</option>
+                        <option value="almacen" className="bg-[#0f192d]">Almacen</option>
+                        <option value="peluqueria" className="bg-[#0f192d]">Peluqueria</option>
+                        <option value="clinica" className="bg-[#0f192d]">Clinica</option>
+                        <option value="otro" className="bg-[#0f192d]">Otro</option>
+                      </select>
+                    </div>
+                    {/* Boolean toggles */}
+                    {[
+                      { label: 'Mercancia', key: 'tiene_mercancia', subKey: 'valor_mercancia', subPlaceholder: 'Valor (EUR)' },
+                      { label: 'Empleados', key: 'tiene_empleados', subKey: 'num_empleados', subPlaceholder: 'Cuantos', subType: 'number' },
+                      { label: 'Atiende publico', key: 'atiende_publico' },
+                      { label: 'Maquinaria', key: 'tiene_maquinaria' },
+                      { label: 'RC empleados', key: 'necesita_rc_empleados' },
+                      { label: 'RC explotacion', key: 'necesita_rc_explotacion' },
+                      { label: 'Defensa juridica', key: 'necesita_defensa_juridica' },
+                      { label: 'Equipos electronicos', key: 'necesita_equipos_electronicos', subKey: 'valor_equipos_electronicos', subPlaceholder: 'Valor (EUR)' },
+                    ].map(({ label, key, subKey, subPlaceholder, subType }) => (
+                      <div key={key}>
+                        <div className="flex items-center justify-between py-1">
+                          <span className="text-xs text-white/60">{label}</span>
+                          <div className="flex rounded-full overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.1)' }}>
+                            <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, [key]: true }))}
+                              className={`px-3 py-1 text-[10px] font-bold transition-all ${optimaDatos[key] ? 'text-white' : 'text-white/30 hover:text-white/50'}`}
+                              style={optimaDatos[key] ? { background: 'linear-gradient(135deg, #f59e0b, #d97706)' } : {}}>SI</button>
+                            <button type="button" onClick={() => setOptimaDatos((p) => ({ ...p, [key]: false }))}
+                              className={`px-3 py-1 text-[10px] font-bold transition-all ${!optimaDatos[key] ? 'text-white' : 'text-white/30 hover:text-white/50'}`}
+                              style={!optimaDatos[key] ? { background: 'rgba(255,255,255,0.1)' } : {}}>NO</button>
+                          </div>
+                        </div>
+                        {subKey && optimaDatos[key] && (
+                          <input type={subType || 'text'} min={subType === 'number' ? '1' : undefined} placeholder={subPlaceholder} value={optimaDatos[subKey] || ''}
+                            onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: e.target.value }))}
+                            className="w-full mt-1 px-3 py-1.5 rounded-lg text-xs text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-amber-500/40"
+                            style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
+                    <button onClick={handleGenerarInforme}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white transition-all hover:shadow-lg hover:shadow-amber-500/20"
+                      style={{ background: 'linear-gradient(135deg, #f59e0b, #d97706)' }}>
+                      <Sparkles size={13} /> Generar informe
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* ── Paso 4: Analizando ── */}
+              {optimaPaso === 4 && (
+                <div className="flex flex-col items-center justify-center py-16 text-center animate-[fadeSlide_0.3s_ease-out]">
+                  <div className="relative w-16 h-16 mb-5">
+                    <div className="absolute inset-0 rounded-2xl animate-pulse" style={{ background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))' }} />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-transparent border-t-indigo-400 border-r-purple-400" />
+                    </div>
+                  </div>
+                  <p className="text-sm font-medium text-white/80">Analizando con IA...</p>
+                  <p className="text-[11px] text-white/30 mt-1">Comparando coberturas. Puede tardar hasta 2 min.</p>
+                </div>
+              )}
+
+              {/* ── Paso 5: Informe ── */}
+              {optimaPaso === 5 && optimaInforme && (() => {
+                const inf = optimaInforme.informe;
+                return (
+                <div className="space-y-3 animate-[fadeSlide_0.3s_ease-out]">
+                  {/* Badge info */}
+                  {optimaInforme.poliza_inmueble && (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-medium text-white/50" style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        {optimaInforme.poliza_inmueble.nombre_inmueble}
+                      </span>
+                      {optimaInforme.poliza_inmueble.compania && <span className="text-[10px] text-white/30">{optimaInforme.poliza_inmueble.compania}</span>}
+                      {optimaInforme.poliza_inmueble.tiene_pdf && <FileText size={10} className="text-emerald-400/50" />}
+                      {optimaInforme.poliza_inmueble.tiene_analisis && <Sparkles size={10} className="text-purple-400/50" />}
+                    </div>
+                  )}
+
+                  {/* Tabla coberturas — new format */}
+                  {inf?.tabla_coberturas && (
+                    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
+                            <th className="text-left px-3 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-white/40">Cobertura</th>
+                            <th className="text-center px-2 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-400/60 w-24">Propietario</th>
+                            <th className="text-center px-2 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-sky-400/60 w-24">Inquilino</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {inf.tabla_coberturas.map((row, i) => (
+                            <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                              <td className="px-3 py-1.5 text-white/70">{row.concepto}</td>
+                              <td className="text-center px-2 py-1.5">{row.propietario ? <span className="text-emerald-400 font-bold">SI</span> : <span className="text-white/15">—</span>}</td>
+                              <td className="text-center px-2 py-1.5">{row.inquilino ? <span className="text-sky-400 font-bold">SI</span> : <span className="text-white/15">—</span>}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  {/* Old format fallbacks */}
+                  {!inf?.tabla_coberturas && inf?.resumen_poliza_propietario && (
+                    <div className="rounded-xl p-3" style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.12)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-sky-400/60 mb-1.5">Cubierto por propietario</p>
+                      <p className="text-xs text-white/60 whitespace-pre-line leading-relaxed">{inf.resumen_poliza_propietario}</p>
+                    </div>
+                  )}
+                  {!inf?.tabla_coberturas && inf?.huecos_cobertura && (
+                    <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.12)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-red-400/60 mb-1.5">Huecos de cobertura</p>
+                      <p className="text-xs text-white/60 whitespace-pre-line leading-relaxed">{inf.huecos_cobertura}</p>
+                    </div>
+                  )}
+                  {!inf?.tabla_coberturas && inf?.poliza_optima && (
+                    <div className="rounded-xl p-3" style={{ background: 'rgba(34,197,94,0.06)', border: '1px solid rgba(34,197,94,0.12)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-400/60 mb-1.5">Poliza optima</p>
+                      {inf.poliza_optima.coberturas_imprescindibles && <p className="text-xs text-white/60 whitespace-pre-line">{inf.poliza_optima.coberturas_imprescindibles}</p>}
+                    </div>
+                  )}
+                  {!inf?.tabla_coberturas && inf?.riesgos_sin_cubrir && (
+                    <div className="rounded-xl p-3" style={{ background: 'rgba(251,146,60,0.06)', border: '1px solid rgba(251,146,60,0.12)' }}>
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-orange-400/60 mb-1.5">Riesgos sin cubrir</p>
+                      <p className="text-xs text-white/60 whitespace-pre-line">{inf.riesgos_sin_cubrir}</p>
+                    </div>
+                  )}
+
+                  {/* Tipo + Resumen + Precio + Companias — both formats */}
+                  {(inf?.tipo_recomendado || inf?.poliza_optima?.tipo_recomendado) && (
+                    <div className="flex items-center gap-2">
+                      <Target size={13} className="text-indigo-400/70" />
+                      <span className="text-xs font-bold text-white/80">{inf.tipo_recomendado || inf.poliza_optima.tipo_recomendado}</span>
+                    </div>
+                  )}
+                  {(inf?.resumen || (!inf?.tabla_coberturas && inf?.consejos_adicionales)) && (
+                    <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <p className="text-xs text-white/55 leading-relaxed whitespace-pre-line">{inf.resumen || inf.consejos_adicionales}</p>
+                    </div>
+                  )}
+                  {(inf?.precio_orientativo || inf?.poliza_optima?.precio_orientativo) && (
+                    <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }}>
+                      <Euro size={14} className="text-emerald-400" />
+                      <span className="text-xs font-bold text-emerald-300">{inf.precio_orientativo || inf.poliza_optima.precio_orientativo}</span>
+                    </div>
+                  )}
+                  {(inf?.companias_recomendadas || inf?.poliza_optima?.companias_sugeridas) && (
+                    <div className="space-y-1">
+                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/30">Companias</p>
+                      {(inf.companias_recomendadas || [inf.poliza_optima.companias_sugeridas]).map((c, i) => (
+                        <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs text-white/55" style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                          <Shield size={11} className="text-indigo-400/50 flex-shrink-0" /> {c}
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
-
-              {/* Old format fallback */}
-              {!optimaInforme.informe?.tabla_coberturas && optimaInforme.informe?.resumen_poliza_propietario && (
-                <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                  <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">Tu póliza cubre al inquilino</h4>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.resumen_poliza_propietario}</p>
-                </div>
-              )}
-              {!optimaInforme.informe?.tabla_coberturas && optimaInforme.informe?.huecos_cobertura && (
-                <div className="bg-red-50 border border-red-100 rounded-lg p-4">
-                  <h4 className="text-xs font-semibold text-red-700 uppercase tracking-wider mb-2">Huecos de cobertura</h4>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.huecos_cobertura}</p>
-                </div>
-              )}
-              {!optimaInforme.informe?.tabla_coberturas && optimaInforme.informe?.poliza_optima && (
-                <div className="bg-green-50 border border-green-100 rounded-lg p-4 space-y-3">
-                  <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wider mb-2">Póliza óptima recomendada</h4>
-                  {optimaInforme.informe.poliza_optima.coberturas_imprescindibles && (
-                    <div><span className="text-xs font-medium text-gray-500">Coberturas imprescindibles:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{optimaInforme.informe.poliza_optima.coberturas_imprescindibles}</p></div>
-                  )}
-                  {optimaInforme.informe.poliza_optima.coberturas_recomendables && (
-                    <div><span className="text-xs font-medium text-gray-500">Coberturas recomendables:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{optimaInforme.informe.poliza_optima.coberturas_recomendables}</p></div>
-                  )}
-                </div>
-              )}
-              {!optimaInforme.informe?.tabla_coberturas && optimaInforme.informe?.riesgos_sin_cubrir && (
-                <div className="bg-orange-50 border border-orange-100 rounded-lg p-4">
-                  <h4 className="text-xs font-semibold text-orange-700 uppercase tracking-wider mb-2">Riesgos sin cubrir</h4>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.riesgos_sin_cubrir}</p>
-                </div>
-              )}
-
-              {/* Tipo recomendado + Resumen (both formats) */}
-              {(optimaInforme.informe?.tipo_recomendado || optimaInforme.informe?.poliza_optima?.tipo_recomendado) && (
-                <div className="flex items-center gap-2">
-                  <Target size={16} className="text-amber-600" />
-                  <span className="text-sm font-semibold text-gray-800">{optimaInforme.informe.tipo_recomendado || optimaInforme.informe.poliza_optima.tipo_recomendado}</span>
-                </div>
-              )}
-              {optimaInforme.informe?.resumen && (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.resumen}</p>
-                </div>
-              )}
-              {!optimaInforme.informe?.resumen && optimaInforme.informe?.consejos_adicionales && (
-                <div className="bg-purple-50 border border-purple-100 rounded-lg p-4">
-                  <h4 className="text-xs font-semibold text-purple-700 uppercase tracking-wider mb-2">Consejos</h4>
-                  <p className="text-sm text-gray-700 whitespace-pre-line">{optimaInforme.informe.consejos_adicionales}</p>
-                </div>
-              )}
-
-              {/* Precio (both formats) */}
-              {(optimaInforme.informe?.precio_orientativo || optimaInforme.informe?.poliza_optima?.precio_orientativo) && (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
-                  <Euro size={16} className="text-green-600" />
-                  <span className="text-sm font-bold text-green-700">{optimaInforme.informe.precio_orientativo || optimaInforme.informe.poliza_optima.precio_orientativo}</span>
-                </div>
-              )}
-
-              {/* Compañías (both formats) */}
-              {optimaInforme.informe?.companias_recomendadas && (
-                <div className="space-y-1.5">
-                  <span className="text-xs font-medium text-gray-500">Compañías recomendadas:</span>
-                  {optimaInforme.informe.companias_recomendadas.map((c, i) => (
-                    <div key={i} className="flex items-center gap-2 bg-white border border-gray-100 rounded-lg px-3 py-1.5 text-sm text-gray-700">
-                      <Shield size={13} className="text-blue-500 flex-shrink-0" /> {c}
                     </div>
-                  ))}
-                </div>
-              )}
-              {!optimaInforme.informe?.companias_recomendadas && optimaInforme.informe?.poliza_optima?.companias_sugeridas && (
-                <div><span className="text-xs font-medium text-gray-500">Compañías sugeridas:</span><p className="text-sm text-gray-700 mt-1 whitespace-pre-line">{optimaInforme.informe.poliza_optima.companias_sugeridas}</p></div>
-              )}
+                  )}
 
-              {/* Guardar propuesta */}
-              {!propuestaGuardada ? (
-                <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 space-y-2">
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Guardar como propuesta pendiente</p>
-                  <select value={propuestaInquilinoId} onChange={(e) => setPropuestaInquilinoId(e.target.value)} className="campo-formulario text-sm">
-                    <option value="">Selecciona inquilino (opcional)</option>
-                    {inquilinos.filter((i) => i.estado === 'activo').map((i) => <option key={i.id} value={i.id}>{i.nombre}</option>)}
-                  </select>
-                  <button
-                    disabled={guardandoPropuesta}
-                    onClick={async () => {
-                      setGuardandoPropuesta(true);
-                      try {
-                        await crearPropuestaApi({
-                          inquilino_id: propuestaInquilinoId ? parseInt(propuestaInquilinoId) : null,
-                          poliza_inmueble_id: optimaInforme.poliza_inmueble?.id || null,
-                          datos_inmueble: optimaDatos,
-                          informe: optimaInforme.informe,
-                          poliza_inmueble_info: optimaInforme.poliza_inmueble || null,
-                        });
-                        setPropuestaGuardada(true);
-                        await cargar();
-                      } catch {
-                        setOptimaError('Error al guardar la propuesta');
-                      } finally {
-                        setGuardandoPropuesta(false);
-                      }
-                    }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600 shadow-sm transition-all disabled:opacity-50"
-                  >
-                    {guardandoPropuesta ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : <Save size={14} />}
-                    {guardandoPropuesta ? 'Guardando...' : 'Guardar propuesta'}
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 text-sm px-3 py-2 rounded-lg">
-                  <CheckCircle size={16} /> Propuesta guardada correctamente
-                </div>
-              )}
+                  {/* Guardar propuesta */}
+                  <div className="pt-1" style={{ borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+                    {!propuestaGuardada ? (
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-white/30">Guardar propuesta</p>
+                        <select value={propuestaInquilinoId} onChange={(e) => setPropuestaInquilinoId(e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg text-xs text-white/80 outline-none focus:ring-1 focus:ring-indigo-500/40 appearance-none cursor-pointer"
+                          style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                          <option value="" className="bg-[#0f192d]">Inquilino (opcional)</option>
+                          {inquilinos.filter((i) => i.estado === 'activo').map((i) => <option key={i.id} value={i.id} className="bg-[#0f192d]">{i.nombre}</option>)}
+                        </select>
+                        <button disabled={guardandoPropuesta}
+                          onClick={async () => {
+                            setGuardandoPropuesta(true);
+                            try {
+                              await crearPropuestaApi({
+                                inquilino_id: propuestaInquilinoId ? parseInt(propuestaInquilinoId) : null,
+                                poliza_inmueble_id: optimaInforme.poliza_inmueble?.id || null,
+                                datos_inmueble: optimaDatos,
+                                informe: optimaInforme.informe,
+                                poliza_inmueble_info: optimaInforme.poliza_inmueble || null,
+                              });
+                              setPropuestaGuardada(true);
+                              await cargar();
+                            } catch { setOptimaError('Error al guardar'); }
+                            finally { setGuardandoPropuesta(false); }
+                          }}
+                          className="w-full flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-bold text-white transition-all disabled:opacity-40 hover:shadow-lg hover:shadow-emerald-500/20"
+                          style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                          {guardandoPropuesta ? <div className="animate-spin rounded-full h-3 w-3 border-2 border-transparent border-t-white" /> : <Save size={12} />}
+                          {guardandoPropuesta ? 'Guardando...' : 'Guardar propuesta'}
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2 text-xs text-emerald-400 px-3 py-2 rounded-lg" style={{ background: 'rgba(16,185,129,0.08)' }}>
+                        <CheckCircle size={14} /> Propuesta guardada
+                      </div>
+                    )}
+                  </div>
 
-              <div className="flex gap-3 pt-2 border-t border-gray-100">
-                <button onClick={() => generarPdfInforme(
-                    optimaInforme.informe,
-                    optimaInforme.poliza_inmueble?.nombre_inmueble,
-                    optimaInforme.poliza_inmueble?.compania
-                )} className="btn-secundario flex-1 flex items-center justify-center gap-2">
-                  <Download size={14} /> Descargar PDF
-                </button>
-                <button onClick={() => setModalOptima(false)}
-                  className="btn-primario flex-1 justify-center">
-                  Cerrar
-                </button>
-              </div>
+                  {/* Acciones finales */}
+                  <div className="flex gap-2 pt-1">
+                    <button onClick={() => generarPdfInforme(inf, optimaInforme.poliza_inmueble?.nombre_inmueble, optimaInforme.poliza_inmueble?.compania)}
+                      className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2 rounded-full text-xs font-semibold text-white/50 hover:text-white/70 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+                      <Download size={12} /> PDF
+                    </button>
+                    <button onClick={() => setModalOptima(false)}
+                      className="flex-1 px-4 py-2 rounded-full text-xs font-bold text-white transition-all"
+                      style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+                );
+              })()}
             </div>
-          )}
+          </div>
         </div>
-      </Modal>
+      )}
 
       {/* Modal ver informe propuesta */}
       <Modal
