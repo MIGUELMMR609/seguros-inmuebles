@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Download, Scale, ArrowLeftRight } from 'lucide-react';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
@@ -11,7 +11,7 @@ import Toast from '../components/Toast.jsx';
 import {
   obtenerPolizasApi, crearPolizaApi, actualizarPolizaApi, eliminarPolizaApi,
   obtenerInmueblesApi, renovarPolizaApi, obtenerHistorialApi, analizarExpertoPolizaApi,
-  compararPolizasApi, compararRenovacionApi,
+  compararPolizasApi, compararRenovacionApi, analizarPdfApi,
 } from '../api/index.js';
 
 const TIPOS_POLIZA = [
@@ -54,6 +54,8 @@ const renovarVacio = {
   nueva_fecha_inicio: '', nueva_fecha_vencimiento: '', nuevo_importe: '',
   nuevo_importe_pago: '', nueva_fecha_proximo_pago: '', notas: '',
   nueva_compania_aseguradora: '', nuevo_numero_poliza: '',
+  nueva_periodicidad_pago: '', nuevo_contacto_nombre: '', nuevo_contacto_telefono: '',
+  nuevo_contacto_email: '', nuevo_documento_url: '',
 };
 
 function calcularEstado(fechaVencimiento, tipoInmueble) {
@@ -90,10 +92,15 @@ export default function Polizas() {
   // Renovación
   const [modalRenovar, setModalRenovar] = useState(false);
   const [polizaRenovando, setPolizaRenovando] = useState(null);
-  const [pasoRenovar, setPasoRenovar] = useState('eleccion'); // 'eleccion' | 'form'
+  const [pasoRenovar, setPasoRenovar] = useState('eleccion'); // 'eleccion' | 'pdf' | 'analizando' | 'form' | 'comparacion' | 'confirmar'
   const [tipoRenovacion, setTipoRenovacion] = useState('misma'); // 'misma' | 'nueva'
   const [renovarForm, setRenovarForm] = useState(renovarVacio);
   const [guardandoRenovacion, setGuardandoRenovacion] = useState(false);
+  const renovarPdfInputRef = useRef(null);
+  const [renovacionPdfFile, setRenovacionPdfFile] = useState(null);
+  const [renovacionErrorPdf, setRenovacionErrorPdf] = useState('');
+  const [renovacionComparacion, setRenovacionComparacion] = useState(null);
+  const [renovacionComparando, setRenovacionComparando] = useState(false);
 
   // Análisis experto IA (modal desde tabla)
   const [modalAnalisis, setModalAnalisis] = useState(false);
@@ -266,6 +273,11 @@ export default function Polizas() {
       nueva_fecha_inicio: poliza.fecha_vencimiento?.split('T')[0] || '',
     });
     setPasoRenovar('eleccion');
+    setTipoRenovacion('misma');
+    setRenovacionPdfFile(null);
+    setRenovacionErrorPdf('');
+    setRenovacionComparacion(null);
+    setRenovacionComparando(false);
     setError('');
     setModalRenovar(true);
   }
@@ -279,15 +291,77 @@ export default function Polizas() {
         nuevo_numero_poliza: '',
       }));
     }
-    setPasoRenovar('form');
+    setPasoRenovar('pdf');
   }
 
-  async function handleRenovar(e) {
+  async function handleRenovacionPdf(archivo) {
+    if (!archivo) return;
+    if (archivo.type !== 'application/pdf') {
+      setRenovacionErrorPdf('Solo se permiten archivos PDF');
+      return;
+    }
+    if (archivo.size > 20 * 1024 * 1024) {
+      setRenovacionErrorPdf('El archivo no puede superar los 20 MB');
+      return;
+    }
+    setRenovacionErrorPdf('');
+    setRenovacionPdfFile(archivo);
+    setPasoRenovar('analizando');
+    try {
+      const res = await analizarPdfApi(archivo);
+      const datos = res.data?.datos || res.data;
+      const documentoUrl = res.data?.documento_url || datos?.documento_url || '';
+      setRenovarForm((prev) => ({
+        ...prev,
+        nueva_compania_aseguradora: datos.compania_aseguradora || prev.nueva_compania_aseguradora,
+        nuevo_numero_poliza: datos.numero_poliza || prev.nuevo_numero_poliza,
+        nueva_fecha_inicio: datos.fecha_inicio || prev.nueva_fecha_inicio,
+        nueva_fecha_vencimiento: datos.fecha_vencimiento || prev.nueva_fecha_vencimiento,
+        nuevo_importe: datos.importe_anual != null ? String(datos.importe_anual) : prev.nuevo_importe,
+        nuevo_importe_pago: datos.importe_pago != null ? String(datos.importe_pago) : prev.nuevo_importe_pago,
+        nueva_periodicidad_pago: datos.periodicidad_pago || prev.nueva_periodicidad_pago,
+        nueva_fecha_proximo_pago: datos.fecha_proximo_pago || prev.nueva_fecha_proximo_pago,
+        nuevo_contacto_nombre: datos.contacto_nombre || prev.nuevo_contacto_nombre,
+        nuevo_contacto_telefono: datos.contacto_telefono || prev.nuevo_contacto_telefono,
+        nuevo_contacto_email: datos.contacto_email || prev.nuevo_contacto_email,
+        nuevo_documento_url: documentoUrl || prev.nuevo_documento_url,
+      }));
+      setPasoRenovar('form');
+    } catch (err) {
+      setRenovacionErrorPdf(err.response?.data?.error || 'Error al analizar el PDF');
+      setPasoRenovar('pdf');
+    }
+  }
+
+  function handleRenovarFormSubmit(e) {
     e.preventDefault();
     if (!renovarForm.nueva_fecha_vencimiento) {
       setError('La nueva fecha de vencimiento es requerida');
       return;
     }
+    // Si hay PDF antiguo y nuevo → comparar
+    if (polizaRenovando?.documento_url && renovacionPdfFile) {
+      setPasoRenovar('comparacion');
+      iniciarComparacion();
+    } else {
+      setPasoRenovar('confirmar');
+    }
+  }
+
+  async function iniciarComparacion() {
+    setRenovacionComparando(true);
+    setRenovacionComparacion(null);
+    try {
+      const res = await compararRenovacionApi(polizaRenovando.id, renovacionPdfFile);
+      setRenovacionComparacion(res.data);
+    } catch {
+      setRenovacionComparacion({ error: true });
+    } finally {
+      setRenovacionComparando(false);
+    }
+  }
+
+  async function handleConfirmarRenovacion() {
     setGuardandoRenovacion(true);
     setError('');
     try {
@@ -982,7 +1056,7 @@ export default function Polizas() {
         abierto={modalRenovar}
         onCerrar={() => { setModalRenovar(false); setError(''); }}
         titulo={`Renovar póliza — ${polizaRenovando?.numero_poliza || ''}`}
-        ancho="max-w-lg"
+        ancho="max-w-3xl"
       >
         {polizaRenovando && (
           <div className="bg-gray-50 rounded-lg p-3 mb-4 text-sm text-gray-600">
@@ -993,7 +1067,8 @@ export default function Polizas() {
           </div>
         )}
 
-        {pasoRenovar === 'eleccion' ? (
+        {/* Paso 1: Elección misma/nueva compañía */}
+        {pasoRenovar === 'eleccion' && (
           <div className="space-y-3">
             <p className="text-sm text-gray-600 mb-4">¿Cómo se renueva esta póliza?</p>
             <button
@@ -1013,19 +1088,123 @@ export default function Polizas() {
               <p className="text-sm text-gray-500 mt-1">Se ha cambiado de compañía aseguradora. Actualizar todos los datos.</p>
             </button>
           </div>
-        ) : (
-          <form onSubmit={handleRenovar} className="space-y-4">
-            {tipoRenovacion === 'nueva' && (
-              <>
-                <CampoRenovar name="nueva_compania_aseguradora" label="Nueva compañía aseguradora" placeholder="Nombre de la nueva compañía" />
-                <CampoRenovar name="nuevo_numero_poliza" label="Nuevo número de póliza" placeholder="POL-2025-XXXX" />
-              </>
+        )}
+
+        {/* Paso 2: PDF */}
+        {pasoRenovar === 'pdf' && (
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <div className="w-14 h-14 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
+              <FileText size={28} className="text-blue-500" />
+            </div>
+            <p className="text-gray-800 font-semibold text-lg mb-1">¿Tienes la nueva póliza en PDF?</p>
+            <p className="text-sm text-gray-400 mb-6">Analizaremos el documento con IA para pre-rellenar el formulario automáticamente.</p>
+            <input
+              ref={renovarPdfInputRef}
+              type="file"
+              accept=".pdf"
+              className="hidden"
+              onChange={(e) => { if (e.target.files[0]) handleRenovacionPdf(e.target.files[0]); }}
+            />
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => renovarPdfInputRef.current?.click()}
+                className="btn-primario"
+              >
+                <FileText size={16} /> Sí, analizar PDF
+              </button>
+              <button
+                type="button"
+                onClick={() => setPasoRenovar('form')}
+                className="btn-secundario"
+              >
+                Omitir
+              </button>
+            </div>
+            {renovacionErrorPdf && (
+              <div className="mt-4 bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">{renovacionErrorPdf}</div>
             )}
-            <CampoRenovar name="nueva_fecha_inicio" label="Nueva fecha de inicio" type="date" />
-            <CampoRenovar name="nueva_fecha_vencimiento" label="Nueva fecha de vencimiento *" type="date" />
-            <CampoRenovar name="nuevo_importe" label="Nuevo importe anual (€)" type="number" placeholder="Dejar vacío para mantener el actual" />
-            <CampoRenovar name="nuevo_importe_pago" label="Nuevo importe por pago (€)" type="number" placeholder="Dejar vacío para mantener el actual" />
-            <CampoRenovar name="nueva_fecha_proximo_pago" label="Próximo pago" type="date" />
+            <div className="flex gap-3 mt-6">
+              <button type="button" onClick={() => { setPasoRenovar('eleccion'); setRenovacionErrorPdf(''); }} className="text-sm text-gray-400 hover:text-gray-600">
+                ← Atrás
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Paso 2b: Analizando PDF */}
+        {pasoRenovar === 'analizando' && (
+          <div className="flex flex-col items-center justify-center py-14 text-center">
+            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+            </div>
+            <p className="text-gray-700 font-medium">Analizando el PDF...</p>
+            <p className="text-sm text-gray-400 mt-1">Extrayendo datos con IA. Esto puede tardar unos segundos.</p>
+          </div>
+        )}
+
+        {/* Paso 3: Formulario */}
+        {pasoRenovar === 'form' && (
+          <form onSubmit={handleRenovarFormSubmit} className="space-y-5">
+            {/* Datos póliza */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Datos de la póliza</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <CampoRenovar name="nueva_compania_aseguradora" label={tipoRenovacion === 'nueva' ? 'Nueva compañía aseguradora' : 'Compañía aseguradora'} placeholder="Nombre de la compañía" />
+                <CampoRenovar name="nuevo_numero_poliza" label={tipoRenovacion === 'nueva' ? 'Nuevo nº póliza' : 'Nº póliza'} placeholder="POL-2025-XXXX" />
+              </div>
+            </div>
+
+            {/* Fechas */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Fechas</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <CampoRenovar name="nueva_fecha_inicio" label="Fecha de inicio" type="date" />
+                <CampoRenovar name="nueva_fecha_vencimiento" label="Fecha de vencimiento *" type="date" />
+              </div>
+            </div>
+
+            {/* Importes */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Importes y pagos</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <CampoRenovar name="nuevo_importe" label="Importe anual (€)" type="number" placeholder="Dejar vacío = mantener" />
+                <CampoRenovar name="nuevo_importe_pago" label="Importe por pago (€)" type="number" placeholder="Dejar vacío = mantener" />
+                <div>
+                  <label className="etiqueta-formulario">Periodicidad</label>
+                  <select
+                    name="nueva_periodicidad_pago"
+                    value={renovarForm.nueva_periodicidad_pago}
+                    onChange={(e) => setRenovarForm((p) => ({ ...p, nueva_periodicidad_pago: e.target.value }))}
+                    className="campo-formulario"
+                  >
+                    <option value="">Mantener actual</option>
+                    {PERIODICIDADES.map((p) => <option key={p.valor} value={p.valor}>{p.etiqueta}</option>)}
+                  </select>
+                </div>
+                <CampoRenovar name="nueva_fecha_proximo_pago" label="Próximo pago" type="date" />
+              </div>
+            </div>
+
+            {/* Contacto */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Contacto de la compañía</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <CampoRenovar name="nuevo_contacto_nombre" label="Nombre contacto" placeholder="Nombre del agente" />
+                <CampoRenovar name="nuevo_contacto_telefono" label="Teléfono" placeholder="600 000 000" />
+                <CampoRenovar name="nuevo_contacto_email" label="Email" placeholder="agente@compania.com" />
+              </div>
+            </div>
+
+            {/* PDF (si omitió el paso anterior) */}
+            {!renovacionPdfFile && (
+              <div>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Documento PDF</h3>
+                <UploadPDF urlActual={renovarForm.nuevo_documento_url} onSubida={(url) => setRenovarForm((p) => ({ ...p, nuevo_documento_url: url }))} />
+              </div>
+            )}
+
+            {/* Notas */}
             <div>
               <label className="etiqueta-formulario">Notas de renovación</label>
               <textarea
@@ -1034,17 +1213,224 @@ export default function Polizas() {
                 rows={2} className="campo-formulario resize-none" placeholder="Observaciones sobre esta renovación..."
               />
             </div>
+
             {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}
             <div className="flex gap-3 pt-2">
-              <button type="button" onClick={() => { setPasoRenovar('eleccion'); setError(''); }} className="btn-secundario">
-                Atrás
-              </button>
+              <button type="button" onClick={() => { setPasoRenovar('pdf'); setError(''); }} className="btn-secundario">Atrás</button>
               <button type="button" onClick={() => { setModalRenovar(false); setError(''); }} className="btn-secundario flex-1">Cancelar</button>
-              <button type="submit" disabled={guardandoRenovacion} className="btn-primario flex-1 justify-center">
-                {guardandoRenovacion ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : 'Renovar póliza'}
-              </button>
+              <button type="submit" className="btn-primario flex-1 justify-center">Siguiente</button>
             </div>
           </form>
+        )}
+
+        {/* Paso 4: Comparación */}
+        {pasoRenovar === 'comparacion' && (
+          <div className="space-y-6">
+            {renovacionComparando ? (
+              <div className="flex flex-col items-center justify-center py-14 text-center">
+                <div className="w-16 h-16 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-600" />
+                </div>
+                <p className="text-gray-700 font-medium">Comparando pólizas con IA...</p>
+                <p className="text-sm text-gray-400 mt-1">Analizando diferencias entre la póliza actual y la nueva. Puede tardar hasta 2 minutos.</p>
+              </div>
+            ) : renovacionComparacion?.error ? (
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 text-amber-700 text-sm px-4 py-3 rounded-lg">
+                  No se pudo generar el informe comparativo. Puedes continuar igualmente con la renovación.
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => { setPasoRenovar('form'); setError(''); }} className="btn-secundario">Atrás</button>
+                  <button type="button" onClick={() => { setModalRenovar(false); setError(''); }} className="btn-secundario flex-1">No renovar</button>
+                  <button type="button" onClick={handleConfirmarRenovacion} disabled={guardandoRenovacion} className="btn-primario flex-1 justify-center">
+                    {guardandoRenovacion ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : 'Sí, renovar'}
+                  </button>
+                </div>
+              </div>
+            ) : renovacionComparacion ? (
+              <div className="space-y-6">
+                {/* Resumen ejecutivo */}
+                {renovacionComparacion.resumen && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-xl p-4">
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Resumen ejecutivo</h3>
+                    <p className="text-sm text-gray-700">{renovacionComparacion.resumen}</p>
+                  </div>
+                )}
+
+                {/* Tabla comparativa */}
+                {renovacionComparacion.polizas?.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Tabla comparativa</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr>
+                            <th className="text-left py-2 px-3 bg-gray-100 text-gray-600 font-semibold rounded-tl-lg w-36">Campo</th>
+                            {renovacionComparacion.polizas.map((p) => (
+                              <th key={p.id} className={`py-2 px-3 text-center font-semibold text-sm ${
+                                p.id === renovacionComparacion.recomendacion?.mejor_id
+                                  ? 'bg-green-100 text-green-800 border-b-2 border-green-400' : 'bg-gray-100 text-gray-700'
+                              }`}>
+                                {p.etiqueta || p.compania || `Póliza ${p.id}`}
+                                {p.id === renovacionComparacion.recomendacion?.mejor_id && (
+                                  <span className="ml-1 text-xs bg-green-600 text-white px-1.5 py-0.5 rounded-full">Mejor</span>
+                                )}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          <tr className="border-t border-gray-100">
+                            <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50">Compañía</td>
+                            {renovacionComparacion.polizas.map((p) => (
+                              <td key={p.id} className="py-2 px-3 text-center text-gray-700">{p.compania || '—'}</td>
+                            ))}
+                          </tr>
+                          <tr className="border-t border-gray-100">
+                            <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50">Prima anual</td>
+                            {renovacionComparacion.polizas.map((p) => (
+                              <td key={p.id} className="py-2 px-3 text-center text-gray-700">
+                                {p.prima_anual != null ? `${parseFloat(p.prima_anual).toFixed(2)} €` : '—'}
+                              </td>
+                            ))}
+                          </tr>
+                          <tr className="border-t border-gray-100">
+                            <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50">Capital asegurado</td>
+                            {renovacionComparacion.polizas.map((p) => (
+                              <td key={p.id} className="py-2 px-3 text-center text-gray-700 text-xs">{p.capital_asegurado || '—'}</td>
+                            ))}
+                          </tr>
+                          <tr className="border-t border-gray-100">
+                            <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50">Franquicia</td>
+                            {renovacionComparacion.polizas.map((p) => (
+                              <td key={p.id} className="py-2 px-3 text-center text-gray-700 text-xs">{p.franquicia || '—'}</td>
+                            ))}
+                          </tr>
+                          <tr className="border-t border-gray-100">
+                            <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50 align-top">Riesgos cubiertos</td>
+                            {renovacionComparacion.polizas.map((p) => (
+                              <td key={p.id} className="py-2 px-3 align-top">
+                                {Array.isArray(p.riesgos_cubiertos) && p.riesgos_cubiertos.length > 0 ? (
+                                  <ul className="space-y-0.5">
+                                    {p.riesgos_cubiertos.map((r, i) => (
+                                      <li key={i} className="text-xs text-green-700 flex items-start gap-1"><span className="mt-0.5">✅</span> {r}</li>
+                                    ))}
+                                  </ul>
+                                ) : <span className="text-gray-400 text-xs">—</span>}
+                              </td>
+                            ))}
+                          </tr>
+                          <tr className="border-t border-gray-100">
+                            <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50 align-top">Fortalezas</td>
+                            {renovacionComparacion.polizas.map((p) => (
+                              <td key={p.id} className="py-2 px-3 text-xs text-green-700 bg-green-50 align-top">{p.fortalezas || '—'}</td>
+                            ))}
+                          </tr>
+                          <tr className="border-t border-gray-100">
+                            <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50">Valoración</td>
+                            {renovacionComparacion.polizas.map((p) => (
+                              <td key={p.id} className="py-2 px-3 text-center">
+                                <span className={`text-sm font-bold px-2 py-0.5 rounded-full ${
+                                  p.valoracion >= 7 ? 'bg-green-100 text-green-700' :
+                                  p.valoracion >= 5 ? 'bg-yellow-100 text-yellow-700' :
+                                  'bg-red-100 text-red-700'
+                                }`}>
+                                  {p.valoracion != null ? `${p.valoracion}/10` : '—'}
+                                </span>
+                              </td>
+                            ))}
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tabla coberturas */}
+                {renovacionComparacion.tabla_coberturas?.length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Coberturas por póliza</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm border-collapse">
+                        <thead>
+                          <tr>
+                            <th className="text-left py-2 px-3 bg-gray-100 text-gray-600 font-semibold rounded-tl-lg">Cobertura</th>
+                            {renovacionComparacion.polizas?.map((p) => (
+                              <th key={p.id} className="py-2 px-3 text-center bg-gray-100 text-gray-600 font-semibold text-xs">
+                                {p.compania || `Póliza ${p.id}`}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {renovacionComparacion.tabla_coberturas.map((fila, i) => (
+                            <tr key={i} className="border-t border-gray-100">
+                              <td className="py-2 px-3 text-gray-700 font-medium bg-gray-50 text-xs">{fila.cobertura}</td>
+                              {(fila.valores || []).map((v, j) => (
+                                <td key={j} className={`py-2 px-3 text-center text-base ${
+                                  v === '✅' ? 'bg-green-50 text-green-700' :
+                                  v === '❌' ? 'bg-red-50 text-red-700' :
+                                  v === '⚠️' ? 'bg-yellow-50 text-yellow-700' :
+                                  'bg-gray-50 text-gray-600'
+                                }`}>{v || '—'}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Recomendación IA */}
+                {renovacionComparacion.recomendacion && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-5">
+                    <h3 className="text-xs font-semibold text-green-600 uppercase tracking-wider mb-2">Recomendación IA</h3>
+                    <p className="text-sm text-green-800">{renovacionComparacion.recomendacion.texto}</p>
+                  </div>
+                )}
+
+                {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}
+                <div className="flex gap-3 pt-2">
+                  <button type="button" onClick={() => { setPasoRenovar('form'); setError(''); }} className="btn-secundario">Atrás</button>
+                  <button type="button" onClick={() => { setModalRenovar(false); setError(''); }} className="btn-secundario flex-1">No renovar</button>
+                  <button type="button" onClick={handleConfirmarRenovacion} disabled={guardandoRenovacion} className="btn-primario flex-1 justify-center">
+                    {guardandoRenovacion ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : 'Sí, renovar'}
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {/* Paso 5: Confirmar (sin comparación) */}
+        {pasoRenovar === 'confirmar' && (
+          <div className="space-y-4">
+            <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+              <h3 className="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-3">Resumen de la renovación</h3>
+              <div className="grid grid-cols-2 gap-2 text-sm text-gray-700">
+                {renovarForm.nueva_compania_aseguradora && (
+                  <div className="col-span-2"><span className="text-gray-400">Compañía:</span> {renovarForm.nueva_compania_aseguradora}</div>
+                )}
+                {renovarForm.nuevo_numero_poliza && (
+                  <div><span className="text-gray-400">Nº póliza:</span> {renovarForm.nuevo_numero_poliza}</div>
+                )}
+                <div><span className="text-gray-400">Inicio:</span> {renovarForm.nueva_fecha_inicio ? new Date(renovarForm.nueva_fecha_inicio + 'T00:00:00').toLocaleDateString('es-ES') : '—'}</div>
+                <div><span className="text-gray-400">Vencimiento:</span> {renovarForm.nueva_fecha_vencimiento ? new Date(renovarForm.nueva_fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-ES') : '—'}</div>
+                {renovarForm.nuevo_importe && (
+                  <div><span className="text-gray-400">Importe anual:</span> {parseFloat(renovarForm.nuevo_importe).toFixed(2)} €</div>
+                )}
+              </div>
+            </div>
+            {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}
+            <div className="flex gap-3 pt-2">
+              <button type="button" onClick={() => { setPasoRenovar('form'); setError(''); }} className="btn-secundario">Atrás</button>
+              <button type="button" onClick={() => { setModalRenovar(false); setError(''); }} className="btn-secundario flex-1">No renovar</button>
+              <button type="button" onClick={handleConfirmarRenovacion} disabled={guardandoRenovacion} className="btn-primario flex-1 justify-center">
+                {guardandoRenovacion ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : 'Sí, renovar'}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
 
@@ -1063,9 +1449,22 @@ export default function Polizas() {
                   <span className="text-xs text-gray-400">{new Date(h.fecha_renovacion).toLocaleDateString('es-ES')}</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-gray-600">
+                  {h.compania_aseguradora && (
+                    <div className="col-span-2"><span className="text-gray-400">Compañía:</span> {h.compania_aseguradora}</div>
+                  )}
+                  {h.numero_poliza && (
+                    <div className="col-span-2"><span className="text-gray-400">Nº póliza:</span> <span className="font-mono">{h.numero_poliza}</span></div>
+                  )}
                   <div><span className="text-gray-400">Inicio:</span> {h.fecha_inicio ? new Date(h.fecha_inicio).toLocaleDateString('es-ES') : '—'}</div>
                   <div><span className="text-gray-400">Vencimiento:</span> {h.fecha_vencimiento ? new Date(h.fecha_vencimiento).toLocaleDateString('es-ES') : '—'}</div>
                   <div><span className="text-gray-400">Importe:</span> {h.importe ? `${parseFloat(h.importe).toFixed(2)} €` : '—'}</div>
+                  {h.documento_url && (
+                    <div>
+                      <a href={urlDoc(h.documento_url)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline">
+                        <FileText size={14} /> Ver PDF
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {h.notas && <p className="text-gray-500 text-xs mt-2 italic">{h.notas}</p>}
               </div>

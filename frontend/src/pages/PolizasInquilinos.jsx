@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale } from 'lucide-react';
+import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale, Home, Store } from 'lucide-react';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
@@ -52,6 +52,25 @@ const formularioVacio = {
   analisis_carencias: '',
   como_complementar: '',
   direccion_bien_asegurado: '',
+  datos_inmueble: null,
+};
+
+const datosInmuebleVacio = {
+  tipo_inmueble: '', // 'vivienda' o 'local_negocio'
+  // Vivienda
+  tiene_mascotas: false,
+  tiene_objetos_valor: false,
+  valor_objetos_valor: '',
+  num_personas: '',
+  tiene_vehiculo_garaje: false,
+  // Local de negocio
+  tipo_negocio: '',
+  tiene_mercancia: false,
+  valor_mercancia: '',
+  tiene_empleados: false,
+  num_empleados: '',
+  atiende_publico: false,
+  tiene_maquinaria: false,
 };
 
 function calcularEstado(fechaVencimiento) {
@@ -149,6 +168,7 @@ export default function PolizasInquilinos() {
       analisis_carencias: poliza.analisis_carencias || '',
       como_complementar: poliza.como_complementar || '',
       direccion_bien_asegurado: poliza.direccion_bien_asegurado || '',
+      datos_inmueble: poliza.datos_inmueble || null,
     });
     setError('');
     setPasoModal('form');
@@ -523,6 +543,184 @@ export default function PolizasInquilinos() {
                   <input name="tomador_poliza" value={formulario.tomador_poliza} onChange={handleCambio} className="campo-formulario" placeholder="Nombre del tomador..." />
                 </div>
               </div>
+            </div>
+
+            {/* Datos del inmueble: vivienda o local */}
+            <div>
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Datos del inmueble asegurado</h3>
+              <div className="flex gap-3 mb-4">
+                <button
+                  type="button"
+                  onClick={() => setFormulario((prev) => ({
+                    ...prev,
+                    datos_inmueble: { ...datosInmuebleVacio, tipo_inmueble: 'vivienda' },
+                  }))}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                    formulario.datos_inmueble?.tipo_inmueble === 'vivienda'
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Home size={18} />
+                  <span>🏠 Vivienda</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormulario((prev) => ({
+                    ...prev,
+                    datos_inmueble: { ...datosInmuebleVacio, tipo_inmueble: 'local_negocio' },
+                  }))}
+                  className={`flex-1 flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
+                    formulario.datos_inmueble?.tipo_inmueble === 'local_negocio'
+                      ? 'border-orange-500 bg-orange-50 text-orange-700'
+                      : 'border-gray-200 bg-white text-gray-500 hover:border-gray-300 hover:bg-gray-50'
+                  }`}
+                >
+                  <Store size={18} />
+                  <span>🏪 Local de negocio</span>
+                </button>
+              </div>
+
+              {/* Campos para VIVIENDA */}
+              {formulario.datos_inmueble?.tipo_inmueble === 'vivienda' && (
+                <div className="grid grid-cols-2 gap-4 bg-blue-50/50 border border-blue-100 rounded-xl p-4">
+                  <div className="flex items-center justify-between col-span-2 sm:col-span-1">
+                    <label className="text-sm text-gray-700">¿Tiene mascotas?</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_mascotas: true } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.tiene_mascotas ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_mascotas: false } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.tiene_mascotas ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                    </div>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm text-gray-700">¿Tiene objetos de valor?</label>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_objetos_valor: true } }))}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.tiene_objetos_valor ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                        <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_objetos_valor: false } }))}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.tiene_objetos_valor ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                      </div>
+                    </div>
+                    {formulario.datos_inmueble.tiene_objetos_valor && (
+                      <input
+                        placeholder="Valor aproximado (€)"
+                        value={formulario.datos_inmueble.valor_objetos_valor || ''}
+                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, valor_objetos_valor: e.target.value } }))}
+                        className="campo-formulario mt-2 text-sm"
+                      />
+                    )}
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <label className="text-sm text-gray-700">¿Cuántas personas vivirán?</label>
+                    <input
+                      type="number" min="1" max="20"
+                      value={formulario.datos_inmueble.num_personas || ''}
+                      onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, num_personas: e.target.value } }))}
+                      className="campo-formulario mt-1 text-sm"
+                      placeholder="Nº personas"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between col-span-2 sm:col-span-1">
+                    <label className="text-sm text-gray-700">¿Tiene vehículo en garaje?</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_vehiculo_garaje: true } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.tiene_vehiculo_garaje ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_vehiculo_garaje: false } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.tiene_vehiculo_garaje ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Campos para LOCAL DE NEGOCIO */}
+              {formulario.datos_inmueble?.tipo_inmueble === 'local_negocio' && (
+                <div className="grid grid-cols-2 gap-4 bg-orange-50/50 border border-orange-100 rounded-xl p-4">
+                  <div className="col-span-2">
+                    <label className="text-sm text-gray-700">Tipo de negocio</label>
+                    <select
+                      value={formulario.datos_inmueble.tipo_negocio || ''}
+                      onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tipo_negocio: e.target.value } }))}
+                      className="campo-formulario mt-1 text-sm"
+                    >
+                      <option value="">Selecciona tipo...</option>
+                      <option value="tienda">Tienda</option>
+                      <option value="oficina">Oficina</option>
+                      <option value="restaurante">Restaurante / Bar</option>
+                      <option value="taller">Taller / Industria</option>
+                      <option value="almacen">Almacén</option>
+                      <option value="peluqueria">Peluquería / Estética</option>
+                      <option value="clinica">Clínica / Consulta</option>
+                      <option value="otro">Otro</option>
+                    </select>
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm text-gray-700">¿Tiene mercancía?</label>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_mercancia: true } }))}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.tiene_mercancia ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                        <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_mercancia: false } }))}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.tiene_mercancia ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                      </div>
+                    </div>
+                    {formulario.datos_inmueble.tiene_mercancia && (
+                      <input
+                        placeholder="Valor aproximado (€)"
+                        value={formulario.datos_inmueble.valor_mercancia || ''}
+                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, valor_mercancia: e.target.value } }))}
+                        className="campo-formulario mt-2 text-sm"
+                      />
+                    )}
+                  </div>
+
+                  <div className="col-span-2 sm:col-span-1">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm text-gray-700">¿Tiene empleados?</label>
+                      <div className="flex gap-2">
+                        <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_empleados: true } }))}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.tiene_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                        <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_empleados: false } }))}
+                          className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.tiene_empleados ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                      </div>
+                    </div>
+                    {formulario.datos_inmueble.tiene_empleados && (
+                      <input
+                        type="number" min="1"
+                        placeholder="¿Cuántos?"
+                        value={formulario.datos_inmueble.num_empleados || ''}
+                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, num_empleados: e.target.value } }))}
+                        className="campo-formulario mt-2 text-sm"
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between col-span-2 sm:col-span-1">
+                    <label className="text-sm text-gray-700">¿Atiende público?</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, atiende_publico: true } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.atiende_publico ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, atiende_publico: false } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.atiende_publico ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between col-span-2 sm:col-span-1">
+                    <label className="text-sm text-gray-700">¿Maquinaria o equipos especiales?</label>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_maquinaria: true } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${formulario.datos_inmueble.tiene_maquinaria ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>Sí</button>
+                      <button type="button" onClick={() => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, tiene_maquinaria: false } }))}
+                        className={`px-3 py-1 rounded-lg text-xs font-medium border transition-colors ${!formulario.datos_inmueble.tiene_maquinaria ? 'bg-orange-600 text-white border-orange-600' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}>No</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Contacto compañía */}

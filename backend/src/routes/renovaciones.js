@@ -31,6 +31,8 @@ router.post('/:polizaId', async (req, res) => {
     const {
       nueva_fecha_inicio, nueva_fecha_vencimiento, nuevo_importe, nuevo_importe_pago,
       nueva_fecha_proximo_pago, notas, nueva_compania_aseguradora, nuevo_numero_poliza,
+      nuevo_documento_url, nuevo_contacto_nombre, nuevo_contacto_telefono,
+      nuevo_contacto_email, nueva_periodicidad_pago,
     } = req.body;
 
     if (!nueva_fecha_vencimiento) {
@@ -39,7 +41,7 @@ router.post('/:polizaId', async (req, res) => {
 
     // Obtener datos actuales de la póliza
     const polizaActual = await cliente.query(
-      'SELECT fecha_inicio, fecha_vencimiento, importe_anual FROM polizas WHERE id = $1',
+      'SELECT fecha_inicio, fecha_vencimiento, importe_anual, compania_aseguradora, numero_poliza, documento_url FROM polizas WHERE id = $1',
       [polizaId]
     );
 
@@ -48,13 +50,13 @@ router.post('/:polizaId', async (req, res) => {
       return res.status(404).json({ error: 'Póliza no encontrada' });
     }
 
-    const { fecha_inicio, fecha_vencimiento, importe_anual } = polizaActual.rows[0];
+    const { fecha_inicio, fecha_vencimiento, importe_anual, compania_aseguradora, numero_poliza, documento_url } = polizaActual.rows[0];
 
     // Guardar datos actuales en el historial
     await cliente.query(
-      `INSERT INTO historial_polizas (poliza_id, fecha_inicio, fecha_vencimiento, importe, notas)
-       VALUES ($1, $2, $3, $4, $5)`,
-      [polizaId, fecha_inicio, fecha_vencimiento, importe_anual, notas || null]
+      `INSERT INTO historial_polizas (poliza_id, fecha_inicio, fecha_vencimiento, importe, notas, compania_aseguradora, numero_poliza, documento_url)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [polizaId, fecha_inicio, fecha_vencimiento, importe_anual, notas || null, compania_aseguradora, numero_poliza, documento_url]
     );
 
     // Actualizar la póliza con los nuevos datos
@@ -67,6 +69,11 @@ router.post('/:polizaId', async (req, res) => {
            fecha_proximo_pago = COALESCE($5, fecha_proximo_pago),
            compania_aseguradora = COALESCE($7, compania_aseguradora),
            numero_poliza = COALESCE($8, numero_poliza),
+           documento_url = COALESCE($9, documento_url),
+           contacto_nombre = COALESCE($10, contacto_nombre),
+           contacto_telefono = COALESCE($11, contacto_telefono),
+           contacto_email = COALESCE($12, contacto_email),
+           periodicidad_pago = COALESCE($13, periodicidad_pago),
            updated_at = NOW()
        WHERE id = $6
        RETURNING *`,
@@ -79,6 +86,11 @@ router.post('/:polizaId', async (req, res) => {
         polizaId,
         nueva_compania_aseguradora || null,
         nuevo_numero_poliza || null,
+        nuevo_documento_url || null,
+        nuevo_contacto_nombre || null,
+        nuevo_contacto_telefono || null,
+        nuevo_contacto_email || null,
+        nueva_periodicidad_pago || null,
       ]
     );
 

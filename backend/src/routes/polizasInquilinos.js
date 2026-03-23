@@ -85,6 +85,7 @@ router.post('/', async (req, res) => {
       analisis_carencias,
       como_complementar,
       direccion_bien_asegurado,
+      datos_inmueble,
     } = req.body;
 
     if (!inquilino_id) {
@@ -125,8 +126,9 @@ router.post('/', async (req, res) => {
           analisis_fortalezas = $7,
           analisis_carencias = $8,
           como_complementar = $9,
-          direccion_bien_asegurado = $10
-         WHERE id = $11`,
+          direccion_bien_asegurado = $10,
+          datos_inmueble = $11
+         WHERE id = $12`,
         [
           tipo || 'hogar',
           contacto_nombre || null,
@@ -138,6 +140,7 @@ router.post('/', async (req, res) => {
           analisis_carencias || null,
           como_complementar || null,
           direccion_bien_asegurado || null,
+          datos_inmueble ? JSON.stringify(datos_inmueble) : null,
           polizaId,
         ]
       );
@@ -178,6 +181,7 @@ router.put('/:id', async (req, res) => {
       analisis_carencias,
       como_complementar,
       direccion_bien_asegurado,
+      datos_inmueble,
     } = req.body;
 
     // UPDATE base
@@ -219,8 +223,9 @@ router.put('/:id', async (req, res) => {
           analisis_fortalezas = $7,
           analisis_carencias = $8,
           como_complementar = $9,
-          direccion_bien_asegurado = $10
-         WHERE id = $11`,
+          direccion_bien_asegurado = $10,
+          datos_inmueble = $11
+         WHERE id = $12`,
         [
           tipo || 'hogar',
           contacto_nombre || null,
@@ -232,6 +237,7 @@ router.put('/:id', async (req, res) => {
           analisis_carencias || null,
           como_complementar || null,
           direccion_bien_asegurado || null,
+          datos_inmueble ? JSON.stringify(datos_inmueble) : null,
           req.params.id,
         ]
       );

@@ -118,6 +118,13 @@ async function inicializarBaseDatos() {
       );
     `);
 
+    // Nuevas columnas en historial_polizas (migración)
+    await cliente.query(`
+      ALTER TABLE historial_polizas ADD COLUMN IF NOT EXISTS compania_aseguradora VARCHAR(255);
+      ALTER TABLE historial_polizas ADD COLUMN IF NOT EXISTS numero_poliza VARCHAR(255);
+      ALTER TABLE historial_polizas ADD COLUMN IF NOT EXISTS documento_url VARCHAR(500);
+    `);
+
     // Tabla siniestros
     await cliente.query(`
       CREATE TABLE IF NOT EXISTS siniestros (
@@ -190,6 +197,7 @@ async function inicializarBaseDatos() {
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS valoracion NUMERIC(3,1);
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS comparador_mercado JSONB;
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS fecha_ultimo_analisis TIMESTAMP;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS datos_inmueble JSONB;
     `);
 
     // Nuevas columnas en inquilinos (migración)
