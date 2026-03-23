@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Download, Scale, ArrowLeftRight } from 'lucide-react';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
+import { formatearMiles, limpiarMiles } from '../utils/moneda.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
 import ModalComparador from '../components/ModalComparador.jsx';
@@ -509,7 +510,7 @@ export default function Polizas() {
     },
     {
       clave: 'importe_anual', titulo: 'Importe/año',
-      render: (f) => f.importe_anual ? `${parseFloat(f.importe_anual).toFixed(2)} €` : '—',
+      render: (f) => f.importe_anual ? `${formatearMiles(parseFloat(f.importe_anual).toFixed(2))} €` : '—',
     },
     {
       clave: 'estado', titulo: 'Estado', sortable: true,
@@ -554,18 +555,19 @@ export default function Polizas() {
     },
   ];
 
-  const CampoRenovar = ({ name, label, type = 'text', placeholder }) => (
+  const CampoRenovar = ({ name, label, type = 'text', placeholder, moneda }) => (
     <div>
       <label className="etiqueta-formulario">{label}</label>
       <input
-        type={type}
+        type={moneda ? 'text' : type}
+        inputMode={moneda ? 'decimal' : undefined}
         name={name}
-        value={renovarForm[name]}
-        onChange={(e) => setRenovarForm((p) => ({ ...p, [e.target.name]: e.target.value }))}
+        value={moneda ? formatearMiles(renovarForm[name]) : renovarForm[name]}
+        onChange={(e) => setRenovarForm((p) => ({ ...p, [e.target.name]: moneda ? limpiarMiles(e.target.value) : e.target.value }))}
         className="campo-formulario"
         placeholder={placeholder}
-        step={type === 'number' ? '0.01' : undefined}
-        min={type === 'number' ? '0' : undefined}
+        step={!moneda && type === 'number' ? '0.01' : undefined}
+        min={!moneda && type === 'number' ? '0' : undefined}
       />
     </div>
   );
@@ -768,7 +770,7 @@ export default function Polizas() {
                 </div>
                 <div>
                   <label className="etiqueta-formulario">Importe anual (€)</label>
-                  <input type="number" step="0.01" min="0" name="importe_anual" value={formulario.importe_anual} onChange={handleCambio} className="campo-formulario" placeholder="0.00" />
+                  <input type="text" inputMode="decimal" name="importe_anual" value={formatearMiles(formulario.importe_anual)} onChange={(e) => handleCambio({ target: { name: 'importe_anual', value: limpiarMiles(e.target.value) } })} className="campo-formulario" placeholder="0,00" />
                 </div>
                 <div>
                   <label className="etiqueta-formulario">Fecha de inicio</label>
@@ -816,7 +818,7 @@ export default function Polizas() {
                 </div>
                 <div>
                   <label className="etiqueta-formulario">Importe por pago (€)</label>
-                  <input type="number" step="0.01" min="0" name="importe_pago" value={formulario.importe_pago} onChange={handleCambio} className="campo-formulario" placeholder="0.00" />
+                  <input type="text" inputMode="decimal" name="importe_pago" value={formatearMiles(formulario.importe_pago)} onChange={(e) => handleCambio({ target: { name: 'importe_pago', value: limpiarMiles(e.target.value) } })} className="campo-formulario" placeholder="0,00" />
                 </div>
                 <div>
                   <label className="etiqueta-formulario">Próximo pago</label>
@@ -1063,7 +1065,7 @@ export default function Polizas() {
             <p><strong>Inmueble:</strong> {polizaRenovando.nombre_inmueble}</p>
             <p><strong>Compañía actual:</strong> {polizaRenovando.compania_aseguradora || '—'}</p>
             <p><strong>Vencimiento actual:</strong> {polizaRenovando.fecha_vencimiento ? new Date(polizaRenovando.fecha_vencimiento).toLocaleDateString('es-ES') : '—'}</p>
-            <p><strong>Importe actual:</strong> {polizaRenovando.importe_anual ? `${parseFloat(polizaRenovando.importe_anual).toFixed(2)} €` : '—'}</p>
+            <p><strong>Importe actual:</strong> {polizaRenovando.importe_anual ? `${formatearMiles(parseFloat(polizaRenovando.importe_anual).toFixed(2))} €` : '—'}</p>
           </div>
         )}
 
@@ -1168,8 +1170,8 @@ export default function Polizas() {
             <div>
               <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Importes y pagos</h3>
               <div className="grid grid-cols-3 gap-4">
-                <CampoRenovar name="nuevo_importe" label="Importe anual (€)" type="number" placeholder="Dejar vacío = mantener" />
-                <CampoRenovar name="nuevo_importe_pago" label="Importe por pago (€)" type="number" placeholder="Dejar vacío = mantener" />
+                <CampoRenovar name="nuevo_importe" label="Importe anual (€)" moneda placeholder="Dejar vacío = mantener" />
+                <CampoRenovar name="nuevo_importe_pago" label="Importe por pago (€)" moneda placeholder="Dejar vacío = mantener" />
                 <div>
                   <label className="etiqueta-formulario">Periodicidad</label>
                   <select
@@ -1290,7 +1292,7 @@ export default function Polizas() {
                             <td className="py-2 px-3 font-medium text-gray-500 bg-gray-50">Prima anual</td>
                             {renovacionComparacion.polizas.map((p) => (
                               <td key={p.id} className="py-2 px-3 text-center text-gray-700">
-                                {p.prima_anual != null ? `${parseFloat(p.prima_anual).toFixed(2)} €` : '—'}
+                                {p.prima_anual != null ? `${formatearMiles(parseFloat(p.prima_anual).toFixed(2))} €` : '—'}
                               </td>
                             ))}
                           </tr>
@@ -1418,7 +1420,7 @@ export default function Polizas() {
                 <div><span className="text-gray-400">Inicio:</span> {renovarForm.nueva_fecha_inicio ? new Date(renovarForm.nueva_fecha_inicio + 'T00:00:00').toLocaleDateString('es-ES') : '—'}</div>
                 <div><span className="text-gray-400">Vencimiento:</span> {renovarForm.nueva_fecha_vencimiento ? new Date(renovarForm.nueva_fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-ES') : '—'}</div>
                 {renovarForm.nuevo_importe && (
-                  <div><span className="text-gray-400">Importe anual:</span> {parseFloat(renovarForm.nuevo_importe).toFixed(2)} €</div>
+                  <div><span className="text-gray-400">Importe anual:</span> {formatearMiles(parseFloat(renovarForm.nuevo_importe).toFixed(2))} €</div>
                 )}
               </div>
             </div>
@@ -1457,7 +1459,7 @@ export default function Polizas() {
                   )}
                   <div><span className="text-gray-400">Inicio:</span> {h.fecha_inicio ? new Date(h.fecha_inicio).toLocaleDateString('es-ES') : '—'}</div>
                   <div><span className="text-gray-400">Vencimiento:</span> {h.fecha_vencimiento ? new Date(h.fecha_vencimiento).toLocaleDateString('es-ES') : '—'}</div>
-                  <div><span className="text-gray-400">Importe:</span> {h.importe ? `${parseFloat(h.importe).toFixed(2)} €` : '—'}</div>
+                  <div><span className="text-gray-400">Importe:</span> {h.importe ? `${formatearMiles(parseFloat(h.importe).toFixed(2))} €` : '—'}</div>
                   {h.documento_url && (
                     <div>
                       <a href={urlDoc(h.documento_url)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline">

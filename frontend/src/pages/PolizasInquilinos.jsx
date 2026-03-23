@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, Refres
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
+import { formatearMiles, limpiarMiles } from '../utils/moneda.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
 import ModalComparador from '../components/ModalComparador.jsx';
@@ -598,7 +599,7 @@ export default function PolizasInquilinos() {
     {
       clave: 'importe_anual',
       titulo: 'Importe',
-      render: (f) => f.importe_anual ? `${parseFloat(f.importe_anual).toFixed(2)} €` : '—',
+      render: (f) => f.importe_anual ? `${formatearMiles(parseFloat(f.importe_anual).toFixed(2))} €` : '—',
     },
     {
       clave: 'estado', titulo: 'Estado', sortable: true,
@@ -838,7 +839,7 @@ export default function PolizasInquilinos() {
                 </div>
                 <div>
                   <label className="etiqueta-formulario">Importe anual (€)</label>
-                  <input type="number" step="0.01" min="0" name="importe_anual" value={formulario.importe_anual} onChange={handleCambio} className="campo-formulario" placeholder="0.00" />
+                  <input type="text" inputMode="decimal" name="importe_anual" value={formatearMiles(formulario.importe_anual)} onChange={(e) => handleCambio({ target: { name: 'importe_anual', value: limpiarMiles(e.target.value) } })} className="campo-formulario" placeholder="0,00" />
                 </div>
                 <div>
                   <label className="etiqueta-formulario">Fecha de inicio</label>
@@ -917,8 +918,9 @@ export default function PolizasInquilinos() {
                     {formulario.datos_inmueble.tiene_objetos_valor && (
                       <input
                         placeholder="Valor aproximado (€)"
-                        value={formulario.datos_inmueble.valor_objetos_valor || ''}
-                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, valor_objetos_valor: e.target.value } }))}
+                        inputMode="decimal"
+                        value={formatearMiles(formulario.datos_inmueble.valor_objetos_valor || '')}
+                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, valor_objetos_valor: limpiarMiles(e.target.value) } }))}
                         className="campo-formulario mt-2 text-sm"
                       />
                     )}
@@ -982,8 +984,9 @@ export default function PolizasInquilinos() {
                     {formulario.datos_inmueble.tiene_mercancia && (
                       <input
                         placeholder="Valor aproximado (€)"
-                        value={formulario.datos_inmueble.valor_mercancia || ''}
-                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, valor_mercancia: e.target.value } }))}
+                        inputMode="decimal"
+                        value={formatearMiles(formulario.datos_inmueble.valor_mercancia || '')}
+                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, valor_mercancia: limpiarMiles(e.target.value) } }))}
                         className="campo-formulario mt-2 text-sm"
                       />
                     )}
@@ -1073,8 +1076,9 @@ export default function PolizasInquilinos() {
                     {formulario.datos_inmueble.necesita_equipos_electronicos && (
                       <input
                         placeholder="Valor aproximado equipos (€)"
-                        value={formulario.datos_inmueble.valor_equipos_electronicos || ''}
-                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, valor_equipos_electronicos: e.target.value } }))}
+                        inputMode="decimal"
+                        value={formatearMiles(formulario.datos_inmueble.valor_equipos_electronicos || '')}
+                        onChange={(e) => setFormulario((prev) => ({ ...prev, datos_inmueble: { ...prev.datos_inmueble, valor_equipos_electronicos: limpiarMiles(e.target.value) } }))}
                         className="campo-formulario mt-2 text-sm"
                       />
                     )}
@@ -1387,7 +1391,7 @@ export default function PolizasInquilinos() {
                             </div>
                             <div className="text-[11px] text-white/35 mt-0.5">
                               {p.compania_aseguradora || 'Sin compania'}
-                              {p.importe_anual && <span> · {parseFloat(p.importe_anual).toFixed(0)} EUR/ano</span>}
+                              {p.importe_anual && <span> · {formatearMiles(parseFloat(p.importe_anual).toFixed(0))} EUR/ano</span>}
                               {p.valoracion && <span className="ml-1 font-semibold text-emerald-400/70">· {p.valoracion}/10</span>}
                             </div>
                           </div>
@@ -1472,8 +1476,8 @@ export default function PolizasInquilinos() {
                           </div>
                         </div>
                         {subKey && optimaDatos[key] && (
-                          <input placeholder={subPlaceholder} value={optimaDatos[subKey] || ''}
-                            onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: e.target.value }))}
+                          <input placeholder={subPlaceholder} inputMode="decimal" value={formatearMiles(optimaDatos[subKey] || '')}
+                            onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: limpiarMiles(e.target.value) }))}
                             onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                             className="w-full mt-1 px-3 py-1.5 rounded-lg text-xs text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
@@ -1547,8 +1551,10 @@ export default function PolizasInquilinos() {
                           </div>
                         </div>
                         {subKey && optimaDatos[key] && (
-                          <input type={subType || 'text'} min={subType === 'number' ? '1' : undefined} placeholder={subPlaceholder} value={optimaDatos[subKey] || ''}
-                            onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: e.target.value }))}
+                          <input type={subType || 'text'} min={subType === 'number' ? '1' : undefined}
+                            inputMode={subType === 'number' ? undefined : 'decimal'}
+                            placeholder={subPlaceholder} value={subType === 'number' ? (optimaDatos[subKey] || '') : formatearMiles(optimaDatos[subKey] || '')}
+                            onChange={(e) => setOptimaDatos((p) => ({ ...p, [subKey]: subType === 'number' ? e.target.value : limpiarMiles(e.target.value) }))}
                             onKeyDown={(e) => e.key === 'Enter' && e.preventDefault()}
                             className="w-full mt-1 px-3 py-1.5 rounded-lg text-xs text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-amber-500/40"
                             style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />

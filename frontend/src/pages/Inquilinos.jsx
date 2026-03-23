@@ -4,6 +4,7 @@ import {
   RefreshCw, UserX, FileText, Sparkles, SkipForward, Download, Euro, CheckCircle, History,
 } from 'lucide-react';
 import { imprimirInformeContrato } from '../utils/imprimirInforme.js';
+import { formatearMiles, limpiarMiles } from '../utils/moneda.js';
 import Tabla from '../components/Tabla.jsx';
 import Modal from '../components/Modal.jsx';
 import UploadPDF from '../components/UploadPDF.jsx';
@@ -522,7 +523,7 @@ export default function Inquilinos() {
     {
       clave: 'importe_renta', titulo: 'Renta/mes',
       render: (f) => f.importe_renta
-        ? <span className="font-medium">{parseFloat(f.importe_renta).toFixed(2)} €</span>
+        ? <span className="font-medium">{formatearMiles(parseFloat(f.importe_renta).toFixed(2))} €</span>
         : '—',
     },
     {
@@ -768,14 +769,13 @@ export default function Inquilinos() {
                 <label className="etiqueta-formulario">Renta mensual (€)</label>
                 <div className="relative">
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     name="importe_renta"
-                    value={formulario.importe_renta}
-                    onChange={handleCambio}
+                    value={formatearMiles(formulario.importe_renta)}
+                    onChange={(e) => handleCambio({ target: { name: 'importe_renta', value: limpiarMiles(e.target.value) } })}
                     className="campo-formulario pl-8"
-                    placeholder="800.00"
-                    step="0.01"
-                    min="0"
+                    placeholder="800,00"
                   />
                   <Euro size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 </div>
@@ -1084,7 +1084,7 @@ export default function Inquilinos() {
               <div className="col-span-2">
                 <label className="etiqueta-formulario">Nueva renta mensual (€)</label>
                 <div className="relative">
-                  <input type="number" value={formularioRenovacion.importe} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, importe: e.target.value }))} className="campo-formulario pl-8" placeholder="800.00" step="0.01" min="0" />
+                  <input type="text" inputMode="decimal" value={formatearMiles(formularioRenovacion.importe)} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, importe: limpiarMiles(e.target.value) }))} className="campo-formulario pl-8" placeholder="800,00" />
                   <Euro size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 </div>
               </div>
@@ -1168,7 +1168,7 @@ export default function Inquilinos() {
               <div className="col-span-2">
                 <label className="etiqueta-formulario">Renta mensual (€)</label>
                 <div className="relative">
-                  <input type="number" value={formularioRenovacion.importe} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, importe: e.target.value }))} className="campo-formulario pl-8" placeholder="800.00" step="0.01" min="0" />
+                  <input type="text" inputMode="decimal" value={formatearMiles(formularioRenovacion.importe)} onChange={(e) => setFormularioRenovacion((p) => ({ ...p, importe: limpiarMiles(e.target.value) }))} className="campo-formulario pl-8" placeholder="800,00" />
                   <Euro size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
                 </div>
               </div>
@@ -1227,7 +1227,7 @@ export default function Inquilinos() {
                           {' → '}
                           {r.fecha_fin ? new Date(r.fecha_fin).toLocaleDateString('es-ES') : '—'}
                         </span>
-                        {r.importe && <span className="font-medium text-gray-700">{parseFloat(r.importe).toFixed(0)} €/mes</span>}
+                        {r.importe && <span className="font-medium text-gray-700">{formatearMiles(parseFloat(r.importe).toFixed(0))} €/mes</span>}
                       </div>
                       <div className="flex items-center justify-between flex-wrap gap-1">
                         <span className="text-gray-400">Archivado el {new Date(r.fecha_renovacion).toLocaleDateString('es-ES')}</span>
@@ -1280,7 +1280,7 @@ export default function Inquilinos() {
                     {r.fecha_fin ? new Date(r.fecha_fin).toLocaleDateString('es-ES') : '—'}
                   </span>
                   <div className="flex items-center gap-2">
-                    {r.importe && <span className="font-medium text-gray-700">{parseFloat(r.importe).toFixed(0)} €/mes</span>}
+                    {r.importe && <span className="font-medium text-gray-700">{formatearMiles(parseFloat(r.importe).toFixed(0))} €/mes</span>}
                     {r.documento_url && (
                       <a
                         href={r.documento_url}
