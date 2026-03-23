@@ -6,8 +6,236 @@ const { verificarToken } = require('../middleware/auth');
 const { registrarActividad } = require('../utils/actividad');
 const { llamarAnthropicApi } = require('../utils/anthropic');
 
+const MAX_BYTES_PDF = 5 * 1024 * 1024; // 5 MB límite Anthropic
+
 const router = express.Router();
 router.use(verificarToken);
+
+// POST /api/polizas-inquilinos/poliza-optima
+// IMPORTANTE: debe estar ANTES de las rutas /:id para que Express no lo confunda con un id
+router.post('/poliza-optima', async (req, res) => {
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'La clave de API de IA no está configurada (ANTHROPIC_API_KEY)' });
+  }
+
+  try {
+    const { poliza_inmueble_id, datos_inmueble } = req.body;
+    console.log('[poliza-optima] Inicio — poliza_inmueble_id:', poliza_inmueble_id);
+
+    if (!poliza_inmueble_id) {
+      return res.status(400).json({ error: 'Debes seleccionar una póliza de inmueble' });
+    }
+
+    // 1. Cargar la póliza del inmueble con su análisis
+    const resPoliza = await pool.query(
+      `SELECT p.*, i.nombre AS nombre_inmueble, i.direccion AS direccion_inmueble
+       FROM polizas p
+       LEFT JOIN inmuebles i ON p.inmueble_id = i.id
+       WHERE p.id = $1`,
+      [poliza_inmueble_id]
+    );
+
+    if (resPoliza.rows.length === 0) {
+      return res.status(404).json({ error: 'Póliza de inmueble no encontrada' });
+    }
+
+    const polizaInmueble = resPoliza.rows[0];
+    console.log('[poliza-optima] Póliza cargada:', polizaInmueble.nombre_inmueble, '| PDF:', !!polizaInmueble.documento_url, '| Análisis:', !!(polizaInmueble.riesgos_cubiertos));
+
+    // 2. Intentar leer el PDF de la póliza del inmueble
+    let base64Pdf = null;
+    if (polizaInmueble.documento_url) {
+      try {
+        const rutaArchivo = path.join(__dirname, '../../uploads', path.basename(polizaInmueble.documento_url));
+        if (fs.existsSync(rutaArchivo)) {
+          const buf = fs.readFileSync(rutaArchivo);
+          // Limitar tamaño del PDF a 5MB para Anthropic
+          if (buf.length <= MAX_BYTES_PDF) {
+            base64Pdf = buf.toString('base64');
+          } else {
+            console.log('[poliza-optima] PDF demasiado grande (' + (buf.length / 1024 / 1024).toFixed(1) + 'MB), se omite');
+          }
+        } else {
+          console.log('[poliza-optima] PDF no en disco, intentando HTTP fallback...');
+          const urlPdf = polizaInmueble.documento_url.startsWith('http')
+            ? polizaInmueble.documento_url
+            : `${req.protocol}://${req.get('host')}${polizaInmueble.documento_url}`;
+          const resPdf = await fetch(urlPdf);
+          if (resPdf.ok) {
+            const buf = Buffer.from(await resPdf.arrayBuffer());
+            if (buf.length <= MAX_BYTES_PDF) {
+              base64Pdf = buf.toString('base64');
+            } else {
+              console.log('[poliza-optima] PDF HTTP demasiado grande, se omite');
+            }
+          } else {
+            console.log('[poliza-optima] PDF HTTP fallback falló:', resPdf.status);
+          }
+        }
+      } catch (errPdf) {
+        console.log('[poliza-optima] PDF no disponible:', errPdf.message);
+      }
+    }
+
+    console.log('[poliza-optima] PDF base64:', base64Pdf ? (base64Pdf.length / 1024).toFixed(0) + 'KB' : 'no');
+
+    // 3. Construir contexto
+    const tipoUso = datos_inmueble?.tipo_inmueble === 'local_negocio' ? 'Local de negocio' : 'Vivienda';
+
+    let datosEspecificos = '';
+    if (datos_inmueble?.tipo_inmueble === 'vivienda') {
+      const items = [];
+      if (datos_inmueble.tiene_mascotas) items.push('Tiene mascotas');
+      if (datos_inmueble.tiene_objetos_valor) items.push(`Objetos de valor: ${datos_inmueble.valor_objetos_valor || 'Sí'}`);
+      if (datos_inmueble.num_personas) items.push(`${datos_inmueble.num_personas} personas vivirán`);
+      if (datos_inmueble.tiene_vehiculo_garaje) items.push('Vehículo en garaje');
+      datosEspecificos = items.join(', ') || 'Sin datos adicionales';
+    } else if (datos_inmueble?.tipo_inmueble === 'local_negocio') {
+      const items = [];
+      if (datos_inmueble.tipo_negocio) items.push(`Tipo: ${datos_inmueble.tipo_negocio}`);
+      if (datos_inmueble.tiene_mercancia) items.push(`Mercancía: ${datos_inmueble.valor_mercancia || 'Sí'}`);
+      if (datos_inmueble.tiene_empleados) items.push(`Empleados: ${datos_inmueble.num_empleados || 'Sí'}`);
+      if (datos_inmueble.atiende_publico) items.push('Atiende al público');
+      if (datos_inmueble.tiene_maquinaria) items.push('Maquinaria/equipos especiales');
+      datosEspecificos = items.join(', ') || 'Sin datos adicionales';
+    }
+
+    let analisisPrevio = '';
+    if (polizaInmueble.riesgos_cubiertos || polizaInmueble.riesgos_no_cubiertos) {
+      analisisPrevio = `
+ANÁLISIS PREVIO DE LA PÓLIZA DEL INMUEBLE:
+- Riesgos cubiertos: ${polizaInmueble.riesgos_cubiertos || 'No analizado'}
+- Riesgos NO cubiertos: ${polizaInmueble.riesgos_no_cubiertos || 'No analizado'}
+- Fortalezas: ${polizaInmueble.analisis_fortalezas || 'No analizado'}
+- Carencias: ${polizaInmueble.analisis_carencias || 'No analizado'}
+- Cómo complementar: ${polizaInmueble.como_complementar || 'No analizado'}`;
+    }
+
+    const prompt = `Eres un experto corredor de seguros en España con más de 20 años de experiencia.
+
+Tu tarea: Recomendar la PÓLIZA ÓPTIMA DE INQUILINO que COMPLEMENTE la póliza del propietario del inmueble.
+
+=== PÓLIZA ACTUAL DEL PROPIETARIO (INMUEBLE) ===
+- Inmueble: ${polizaInmueble.nombre_inmueble || 'No especificado'}${polizaInmueble.direccion_inmueble ? ' (' + polizaInmueble.direccion_inmueble + ')' : ''}
+- Compañía: ${polizaInmueble.compania_aseguradora || 'No especificada'}
+- Tipo: ${polizaInmueble.tipo || 'vivienda'}
+- Importe: ${polizaInmueble.importe_anual ? polizaInmueble.importe_anual + ' €/año' : 'No especificado'}
+- Valoración: ${polizaInmueble.valoracion ? polizaInmueble.valoracion + '/10' : 'No valorada'}
+${analisisPrevio}
+
+=== DATOS DEL INQUILINO / USO ===
+- Tipo de uso: ${tipoUso}
+- Datos específicos: ${datosEspecificos}
+
+=== INSTRUCCIONES ===
+1. Analiza qué cubre la póliza del propietario al inquilino y qué NO
+2. Identifica los huecos de cobertura que el inquilino necesita cubrir
+3. Recomienda la póliza óptima que COMPLEMENTE (no duplique) lo que ya tiene el propietario
+4. Da precios orientativos del mercado español actual
+5. Sugiere compañías concretas
+
+Devuelve ÚNICAMENTE un JSON válido (sin markdown, sin texto extra) con esta estructura:
+{
+  "resumen_poliza_propietario": "Qué cubre la póliza del propietario al inquilino",
+  "huecos_cobertura": "Qué NO cubre la póliza del propietario al inquilino",
+  "poliza_optima": {
+    "tipo_recomendado": "Tipo de seguro recomendado (hogar inquilino, RC, multirriesgo comercial, etc.)",
+    "coberturas_imprescindibles": "Lista de coberturas que DEBE tener",
+    "coberturas_recomendables": "Coberturas opcionales pero recomendadas",
+    "precio_orientativo": "Rango de precio estimado €/año",
+    "companias_sugeridas": "2-3 compañías recomendadas con breve justificación"
+  },
+  "riesgos_sin_cubrir": "Riesgos que quedarían sin cubrir incluso con la póliza recomendada",
+  "consejos_adicionales": "Consejos prácticos para el inquilino"
+}`;
+
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), 115_000);
+
+    // Construir el contenido del mensaje
+    const contenidoMensaje = [];
+    if (base64Pdf) {
+      contenidoMensaje.push({
+        type: 'document',
+        source: { type: 'base64', media_type: 'application/pdf', data: base64Pdf },
+      });
+    }
+    contenidoMensaje.push({ type: 'text', text: prompt });
+
+    console.log('[poliza-optima] Llamando a Anthropic... (con PDF:', !!base64Pdf, ')');
+
+    const respuesta = await llamarAnthropicApi({
+      method: 'POST',
+      signal: controlador.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        ...(base64Pdf ? { 'anthropic-beta': 'pdfs-2024-09-25' } : {}),
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 3000,
+        messages: [{ role: 'user', content: contenidoMensaje }],
+      }),
+    });
+
+    clearTimeout(temporizador);
+
+    if (!respuesta.ok) {
+      const cuerpo = await respuesta.text();
+      console.error(`[poliza-optima] Error Anthropic [${respuesta.status}]:`, cuerpo.slice(0, 500));
+      let detalle = '';
+      try { detalle = JSON.parse(cuerpo)?.error?.message || cuerpo.slice(0, 200); } catch { detalle = cuerpo.slice(0, 200); }
+      return res.status(502).json({ error: `IA [${respuesta.status}]: ${detalle}` });
+    }
+
+    const resultadoIA = await respuesta.json();
+    const textoCompleto = resultadoIA.content
+      .filter((b) => b.type === 'text')
+      .map((b) => b.text)
+      .join('');
+
+    console.log('[poliza-optima] Respuesta IA recibida, longitud:', textoCompleto.length);
+
+    let datos;
+    try {
+      datos = JSON.parse(textoCompleto);
+    } catch {
+      const m = textoCompleto.match(/\{[\s\S]*\}/);
+      if (!m) {
+        console.error('[poliza-optima] No se encontró JSON en respuesta IA:', textoCompleto.slice(0, 500));
+        return res.status(422).json({ error: 'No se pudo extraer el informe de la IA' });
+      }
+      try {
+        datos = JSON.parse(m[0]);
+      } catch (errJson) {
+        console.error('[poliza-optima] JSON inválido en respuesta IA:', errJson.message, m[0].slice(0, 300));
+        return res.status(422).json({ error: 'La IA devolvió un formato no válido. Inténtalo de nuevo.' });
+      }
+    }
+
+    console.log('[poliza-optima] Informe generado correctamente');
+
+    res.json({
+      informe: datos,
+      poliza_inmueble: {
+        id: polizaInmueble.id,
+        nombre_inmueble: polizaInmueble.nombre_inmueble,
+        compania: polizaInmueble.compania_aseguradora,
+        tiene_pdf: !!base64Pdf,
+        tiene_analisis: !!(polizaInmueble.riesgos_cubiertos || polizaInmueble.riesgos_no_cubiertos),
+      },
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.error('[poliza-optima] Timeout (>115s)');
+      return res.status(504).json({ error: 'La IA tardó demasiado. Inténtalo de nuevo.' });
+    }
+    console.error('[poliza-optima] Error interno:', error.message, error.stack);
+    res.status(500).json({ error: 'Error interno al generar el informe: ' + error.message });
+  }
+});
 
 // GET /api/polizas-inquilinos
 router.get('/', async (req, res) => {
@@ -444,201 +672,6 @@ Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
     }
     console.error('Error analizar-experto-inquilino:', error.message);
     res.status(500).json({ error: 'Error interno al analizar la póliza' });
-  }
-});
-
-// POST /api/polizas-inquilinos/poliza-optima
-// Genera informe de póliza óptima para inquilino basándose en la póliza del inmueble
-router.post('/poliza-optima', async (req, res) => {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return res.status(503).json({ error: 'La clave de API de IA no está configurada (ANTHROPIC_API_KEY)' });
-  }
-
-  try {
-    const { poliza_inmueble_id, datos_inmueble } = req.body;
-
-    if (!poliza_inmueble_id) {
-      return res.status(400).json({ error: 'Debes seleccionar una póliza de inmueble' });
-    }
-
-    // 1. Cargar la póliza del inmueble con su análisis
-    const resPoliza = await pool.query(
-      `SELECT p.*, i.nombre AS nombre_inmueble, i.direccion AS direccion_inmueble
-       FROM polizas p
-       LEFT JOIN inmuebles i ON p.inmueble_id = i.id
-       WHERE p.id = $1`,
-      [poliza_inmueble_id]
-    );
-
-    if (resPoliza.rows.length === 0) {
-      return res.status(404).json({ error: 'Póliza de inmueble no encontrada' });
-    }
-
-    const polizaInmueble = resPoliza.rows[0];
-
-    // 2. Intentar leer el PDF de la póliza del inmueble
-    let base64Pdf = null;
-    if (polizaInmueble.documento_url) {
-      try {
-        const rutaArchivo = path.join(__dirname, '../../uploads', path.basename(polizaInmueble.documento_url));
-        if (fs.existsSync(rutaArchivo)) {
-          base64Pdf = fs.readFileSync(rutaArchivo).toString('base64');
-        } else {
-          const urlPdf = polizaInmueble.documento_url.startsWith('http')
-            ? polizaInmueble.documento_url
-            : `${req.protocol}://${req.get('host')}${polizaInmueble.documento_url}`;
-          const resPdf = await fetch(urlPdf);
-          if (resPdf.ok) {
-            const buf = await resPdf.arrayBuffer();
-            base64Pdf = Buffer.from(buf).toString('base64');
-          }
-        }
-      } catch {
-        // PDF no disponible, usaremos el análisis guardado
-      }
-    }
-
-    // 3. Construir contexto de la póliza del inmueble (análisis previo + PDF)
-    const tipoUso = datos_inmueble?.tipo_inmueble === 'local_negocio' ? 'Local de negocio' : 'Vivienda';
-
-    let datosEspecificos = '';
-    if (datos_inmueble?.tipo_inmueble === 'vivienda') {
-      const items = [];
-      if (datos_inmueble.tiene_mascotas) items.push('Tiene mascotas');
-      if (datos_inmueble.tiene_objetos_valor) items.push(`Objetos de valor: ${datos_inmueble.valor_objetos_valor || 'Sí'}`);
-      if (datos_inmueble.num_personas) items.push(`${datos_inmueble.num_personas} personas vivirán`);
-      if (datos_inmueble.tiene_vehiculo_garaje) items.push('Vehículo en garaje');
-      datosEspecificos = items.join(', ') || 'Sin datos adicionales';
-    } else if (datos_inmueble?.tipo_inmueble === 'local_negocio') {
-      const items = [];
-      if (datos_inmueble.tipo_negocio) items.push(`Tipo: ${datos_inmueble.tipo_negocio}`);
-      if (datos_inmueble.tiene_mercancia) items.push(`Mercancía: ${datos_inmueble.valor_mercancia || 'Sí'}`);
-      if (datos_inmueble.tiene_empleados) items.push(`Empleados: ${datos_inmueble.num_empleados || 'Sí'}`);
-      if (datos_inmueble.atiende_publico) items.push('Atiende al público');
-      if (datos_inmueble.tiene_maquinaria) items.push('Maquinaria/equipos especiales');
-      datosEspecificos = items.join(', ') || 'Sin datos adicionales';
-    }
-
-    let analisisPrevio = '';
-    if (polizaInmueble.riesgos_cubiertos || polizaInmueble.riesgos_no_cubiertos) {
-      analisisPrevio = `
-ANÁLISIS PREVIO DE LA PÓLIZA DEL INMUEBLE:
-- Riesgos cubiertos: ${polizaInmueble.riesgos_cubiertos || 'No analizado'}
-- Riesgos NO cubiertos: ${polizaInmueble.riesgos_no_cubiertos || 'No analizado'}
-- Fortalezas: ${polizaInmueble.analisis_fortalezas || 'No analizado'}
-- Carencias: ${polizaInmueble.analisis_carencias || 'No analizado'}
-- Cómo complementar: ${polizaInmueble.como_complementar || 'No analizado'}`;
-    }
-
-    const prompt = `Eres un experto corredor de seguros en España con más de 20 años de experiencia.
-
-Tu tarea: Recomendar la PÓLIZA ÓPTIMA DE INQUILINO que COMPLEMENTE la póliza del propietario del inmueble.
-
-=== PÓLIZA ACTUAL DEL PROPIETARIO (INMUEBLE) ===
-- Inmueble: ${polizaInmueble.nombre_inmueble || 'No especificado'}${polizaInmueble.direccion_inmueble ? ' (' + polizaInmueble.direccion_inmueble + ')' : ''}
-- Compañía: ${polizaInmueble.compania_aseguradora || 'No especificada'}
-- Tipo: ${polizaInmueble.tipo || 'vivienda'}
-- Importe: ${polizaInmueble.importe_anual ? polizaInmueble.importe_anual + ' €/año' : 'No especificado'}
-- Valoración: ${polizaInmueble.valoracion ? polizaInmueble.valoracion + '/10' : 'No valorada'}
-${analisisPrevio}
-
-=== DATOS DEL INQUILINO / USO ===
-- Tipo de uso: ${tipoUso}
-- Datos específicos: ${datosEspecificos}
-
-=== INSTRUCCIONES ===
-1. Analiza qué cubre la póliza del propietario al inquilino y qué NO
-2. Identifica los huecos de cobertura que el inquilino necesita cubrir
-3. Recomienda la póliza óptima que COMPLEMENTE (no duplique) lo que ya tiene el propietario
-4. Da precios orientativos del mercado español actual
-5. Sugiere compañías concretas
-
-Devuelve ÚNICAMENTE un JSON válido con esta estructura:
-{
-  "resumen_poliza_propietario": "Qué cubre la póliza del propietario al inquilino",
-  "huecos_cobertura": "Qué NO cubre la póliza del propietario al inquilino",
-  "poliza_optima": {
-    "tipo_recomendado": "Tipo de seguro recomendado (hogar inquilino, RC, multirriesgo comercial, etc.)",
-    "coberturas_imprescindibles": "Lista de coberturas que DEBE tener",
-    "coberturas_recomendables": "Coberturas opcionales pero recomendadas",
-    "precio_orientativo": "Rango de precio estimado €/año",
-    "companias_sugeridas": "2-3 compañías recomendadas con breve justificación"
-  },
-  "riesgos_sin_cubrir": "Riesgos que quedarían sin cubrir incluso con la póliza recomendada",
-  "consejos_adicionales": "Consejos prácticos para el inquilino"
-}`;
-
-    const controlador = new AbortController();
-    const temporizador = setTimeout(() => controlador.abort(), 115_000);
-
-    // Construir el contenido del mensaje
-    const contenidoMensaje = [];
-    if (base64Pdf) {
-      contenidoMensaje.push({
-        type: 'document',
-        source: { type: 'base64', media_type: 'application/pdf', data: base64Pdf },
-      });
-    }
-    contenidoMensaje.push({ type: 'text', text: prompt });
-
-    const respuesta = await llamarAnthropicApi({
-      method: 'POST',
-      signal: controlador.signal,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        ...(base64Pdf ? { 'anthropic-beta': 'pdfs-2024-09-25' } : {}),
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 3000,
-        messages: [{ role: 'user', content: contenidoMensaje }],
-      }),
-    });
-
-    clearTimeout(temporizador);
-
-    if (!respuesta.ok) {
-      const cuerpo = await respuesta.text();
-      console.error(`Error Anthropic poliza-optima [${respuesta.status}]:`, cuerpo.slice(0, 300));
-      let detalle = '';
-      try { detalle = JSON.parse(cuerpo)?.error?.message || cuerpo.slice(0, 200); } catch { detalle = cuerpo.slice(0, 200); }
-      return res.status(502).json({ error: `IA [${respuesta.status}]: ${detalle}` });
-    }
-
-    const resultadoIA = await respuesta.json();
-    const textoCompleto = resultadoIA.content
-      .filter((b) => b.type === 'text')
-      .map((b) => b.text)
-      .join('');
-
-    let datos;
-    try {
-      datos = JSON.parse(textoCompleto);
-    } catch {
-      const m = textoCompleto.match(/\{[\s\S]*\}/);
-      if (!m) return res.status(422).json({ error: 'No se pudo extraer el informe de la IA' });
-      datos = JSON.parse(m[0]);
-    }
-
-    res.json({
-      informe: datos,
-      poliza_inmueble: {
-        id: polizaInmueble.id,
-        nombre_inmueble: polizaInmueble.nombre_inmueble,
-        compania: polizaInmueble.compania_aseguradora,
-        tiene_pdf: !!base64Pdf,
-        tiene_analisis: !!(polizaInmueble.riesgos_cubiertos || polizaInmueble.riesgos_no_cubiertos),
-      },
-    });
-  } catch (error) {
-    if (error.name === 'AbortError') {
-      console.error('Timeout poliza-optima (>115s)');
-      return res.status(504).json({ error: 'La IA tardó demasiado. Inténtalo de nuevo.' });
-    }
-    console.error('Error poliza-optima:', error.message);
-    res.status(500).json({ error: 'Error interno al generar el informe' });
   }
 });
 
