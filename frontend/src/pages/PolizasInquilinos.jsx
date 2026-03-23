@@ -1335,7 +1335,7 @@ export default function PolizasInquilinos() {
         <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.target === e.currentTarget && setModalOptima(false)}>
           <div className="absolute inset-0 bg-[#0D1B2A]/80 backdrop-blur-md" onClick={() => setModalOptima(false)} />
           <div className={`relative z-10 flex flex-col fixed inset-0 sm:static sm:inset-auto ${optimaPaso === 5 ? 'sm:max-w-[640px]' : 'sm:max-w-[520px]'} sm:w-full sm:rounded-2xl sm:max-h-[90vh] overflow-hidden transition-all duration-300`}
-            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); } }}
             style={{ background: 'rgba(15,25,45,0.92)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
 
             {/* Header: título + progreso en la misma línea */}
