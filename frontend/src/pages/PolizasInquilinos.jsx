@@ -84,6 +84,11 @@ const datosInmuebleVacio = {
   necesita_defensa_juridica: false,
   necesita_equipos_electronicos: false,
   valor_equipos_electronicos: '',
+  // Importes adicionales
+  valor_maquinaria: '',
+  capital_rc_explotacion: '',
+  capital_rc_empleados: '',
+  valor_mobiliario: '',
 };
 
 function calcularEstado(fechaVencimiento) {
@@ -426,27 +431,27 @@ export default function PolizasInquilinos() {
     if (inf.tabla_coberturas && inf.tabla_coberturas.length > 0) {
       autoTable(doc, {
         startY: y,
-        head: [['Cobertura / Riesgo', 'Cubierto propietario', 'Contratar inquilino']],
+        head: [['Cobertura / Riesgo', 'Propietario', 'Inquilino']],
         body: inf.tabla_coberturas.map((r) => [
           r.concepto || '',
-          r.propietario ? 'SI' : '—',
-          r.inquilino ? 'SI' : '—',
+          typeof r.propietario === 'string' ? r.propietario : (r.propietario ? 'SI' : '—'),
+          typeof r.inquilino === 'string' ? r.inquilino : (r.inquilino ? 'SI' : '—'),
         ]),
         theme: 'grid',
-        headStyles: { fillColor: [30, 58, 95], fontSize: 9, fontStyle: 'bold' },
-        bodyStyles: { fontSize: 8.5 },
+        headStyles: { fillColor: [30, 58, 95], fontSize: 8, fontStyle: 'bold' },
+        bodyStyles: { fontSize: 7.5 },
         columnStyles: {
-          0: { cellWidth: 100 },
-          1: { cellWidth: 40, halign: 'center' },
-          2: { cellWidth: 40, halign: 'center' },
+          0: { cellWidth: 55 },
+          1: { cellWidth: 62, halign: 'left' },
+          2: { cellWidth: 65, halign: 'left' },
         },
         didParseCell: (data) => {
           if (data.section === 'body') {
-            if (data.column.index === 1 && data.cell.raw === 'SI') {
+            if (data.column.index === 1 && String(data.cell.raw).startsWith('SI')) {
               data.cell.styles.textColor = [22, 101, 52];
               data.cell.styles.fontStyle = 'bold';
             }
-            if (data.column.index === 2 && data.cell.raw === 'SI') {
+            if (data.column.index === 2 && String(data.cell.raw).startsWith('SI')) {
               data.cell.styles.textColor = [29, 78, 216];
               data.cell.styles.fontStyle = 'bold';
             }
@@ -505,14 +510,14 @@ export default function PolizasInquilinos() {
     }
 
     // Precio
-    const precio = inf.precio_orientativo || inf.poliza_optima?.precio_orientativo;
+    const precio = inf.prima_estimada_anual || inf.precio_orientativo || inf.poliza_optima?.precio_orientativo;
     if (precio) {
       if (y > 270) { doc.addPage(); y = 20; }
       doc.setFillColor(240, 253, 244);
       doc.roundedRect(14, y - 4, 180, 12, 2, 2, 'F');
       doc.setFontSize(11);
       doc.setTextColor(22, 101, 52);
-      doc.text(`Precio orientativo: ${precio}`, 18, y + 4);
+      doc.text(`Prima estimada anual: ${precio}`, 18, y + 4);
       y += 16;
     }
 
@@ -555,9 +560,9 @@ export default function PolizasInquilinos() {
   function contratarDesdePropuesta(prop) {
     const inf = prop.informe;
     const tipoRec = inf?.tipo_recomendado || inf?.poliza_optima?.tipo_recomendado || '';
-    const precio = inf?.precio_orientativo || inf?.poliza_optima?.precio_orientativo || '';
+    const precio = inf?.prima_estimada_anual || inf?.precio_orientativo || inf?.poliza_optima?.precio_orientativo || '';
     const coberturas = inf?.tabla_coberturas
-      ? inf.tabla_coberturas.filter((r) => r.inquilino).map((r) => r.concepto).join(', ')
+      ? inf.tabla_coberturas.filter((r) => typeof r.inquilino === 'string' ? r.inquilino.startsWith('SI') : r.inquilino).map((r) => r.concepto).join(', ')
       : inf?.poliza_optima?.coberturas_imprescindibles || '';
     setEditando(null);
     setFormulario({
@@ -567,7 +572,7 @@ export default function PolizasInquilinos() {
            : tipoRec.toLowerCase().includes('vida') ? 'vida'
            : tipoRec.toLowerCase().includes('rc') ? 'responsabilidad_civil'
            : 'hogar',
-      notas: `Propuesta IA: ${tipoRec}\nCoberturas: ${coberturas}\nPrecio orientativo: ${precio}`,
+      notas: `Propuesta IA: ${tipoRec}\nCoberturas: ${coberturas}\nPrima estimada anual: ${precio}`,
       datos_inmueble: prop.datos_inmueble || null,
     });
     setError('');
@@ -762,14 +767,14 @@ export default function PolizasInquilinos() {
                     {prop.informe.tipo_recomendado || prop.informe.poliza_optima.tipo_recomendado}
                   </p>
                 )}
-                {(prop.informe?.precio_orientativo || prop.informe?.poliza_optima?.precio_orientativo) && (
+                {(prop.informe?.prima_estimada_anual || prop.informe?.precio_orientativo || prop.informe?.poliza_optima?.precio_orientativo) && (
                   <div className="flex items-center gap-1 text-xs text-gray-500 mb-2">
-                    <Euro size={12} /> {prop.informe.precio_orientativo || prop.informe.poliza_optima.precio_orientativo}
+                    <Euro size={12} /> Prima: {prop.informe.prima_estimada_anual || prop.informe.precio_orientativo || prop.informe.poliza_optima.precio_orientativo}
                   </div>
                 )}
                 {prop.informe?.tabla_coberturas ? (
                   <p className="text-xs text-gray-500 mb-3 line-clamp-2">
-                    {prop.informe.tabla_coberturas.filter((r) => r.inquilino).map((r) => r.concepto).join(', ')}
+                    {prop.informe.tabla_coberturas.filter((r) => typeof r.inquilino === 'string' ? r.inquilino.startsWith('SI') : r.inquilino).map((r) => r.concepto).join(', ')}
                   </p>
                 ) : prop.informe?.poliza_optima?.coberturas_imprescindibles ? (
                   <p className="text-xs text-gray-500 mb-3 line-clamp-2">{prop.informe.poliza_optima.coberturas_imprescindibles}</p>
@@ -1334,7 +1339,7 @@ export default function PolizasInquilinos() {
       {modalOptima && (
         <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.target === e.currentTarget && setModalOptima(false)}>
           <div className="absolute inset-0 bg-[#0D1B2A]/80 backdrop-blur-md" onClick={() => setModalOptima(false)} />
-          <div className={`relative z-10 flex flex-col fixed inset-0 sm:static sm:inset-auto ${optimaPaso === 5 ? 'sm:max-w-[640px]' : 'sm:max-w-[520px]'} sm:w-full sm:rounded-2xl sm:max-h-[90vh] overflow-hidden transition-all duration-300`}
+          <div className={`relative z-10 flex flex-col fixed inset-0 sm:static sm:inset-auto ${optimaPaso === 5 ? 'sm:max-w-[860px]' : 'sm:max-w-[520px]'} sm:w-full sm:rounded-2xl sm:max-h-[90vh] overflow-hidden transition-all duration-300`}
             onKeyDown={(e) => { if (e.key === 'Enter' && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) { e.preventDefault(); e.stopPropagation(); const els = Array.from(e.currentTarget.querySelectorAll('input, select')); const i = els.indexOf(e.target); if (i >= 0 && els[i + 1]) els[i + 1].focus(); } }}
             style={{ background: 'rgba(15,25,45,0.92)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 25px 50px rgba(0,0,0,0.5)' }}>
 
@@ -1491,6 +1496,13 @@ export default function PolizasInquilinos() {
                         className="w-16 px-2 py-1 rounded-lg text-xs text-center text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
                         style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
                     </div>
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-xs text-white/60">Valor mobiliario/contenido</span>
+                      <input placeholder="Valor (EUR)" inputMode="decimal" value={formatearMiles(optimaDatos.valor_mobiliario || '')}
+                        onChange={(e) => setOptimaDatos((p) => ({ ...p, valor_mobiliario: limpiarMiles(e.target.value) }))}
+                        className="w-28 px-2 py-1 rounded-lg text-xs text-center text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-indigo-500/40"
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
+                    </div>
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button type="button" onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
@@ -1531,9 +1543,9 @@ export default function PolizasInquilinos() {
                       { label: 'Mercancia', key: 'tiene_mercancia', subKey: 'valor_mercancia', subPlaceholder: 'Valor (EUR)' },
                       { label: 'Empleados', key: 'tiene_empleados', subKey: 'num_empleados', subPlaceholder: 'Cuantos', subType: 'number' },
                       { label: 'Atiende publico', key: 'atiende_publico' },
-                      { label: 'Maquinaria', key: 'tiene_maquinaria' },
-                      { label: 'RC empleados', key: 'necesita_rc_empleados' },
-                      { label: 'RC explotacion', key: 'necesita_rc_explotacion' },
+                      { label: 'Maquinaria', key: 'tiene_maquinaria', subKey: 'valor_maquinaria', subPlaceholder: 'Valor (EUR)' },
+                      { label: 'RC empleados', key: 'necesita_rc_empleados', subKey: 'capital_rc_empleados', subPlaceholder: 'Capital (EUR)' },
+                      { label: 'RC explotacion', key: 'necesita_rc_explotacion', subKey: 'capital_rc_explotacion', subPlaceholder: 'Capital (EUR)' },
                       { label: 'Defensa juridica', key: 'necesita_defensa_juridica' },
                       { label: 'Equipos electronicos', key: 'necesita_equipos_electronicos', subKey: 'valor_equipos_electronicos', subPlaceholder: 'Valor (EUR)' },
                     ].map(({ label, key, subKey, subPlaceholder, subType }) => (
@@ -1559,6 +1571,13 @@ export default function PolizasInquilinos() {
                         )}
                       </div>
                     ))}
+                    <div className="flex items-center justify-between py-1">
+                      <span className="text-xs text-white/60">Valor mobiliario/contenido</span>
+                      <input placeholder="Valor (EUR)" inputMode="decimal" value={formatearMiles(optimaDatos.valor_mobiliario || '')}
+                        onChange={(e) => setOptimaDatos((p) => ({ ...p, valor_mobiliario: limpiarMiles(e.target.value) }))}
+                        className="w-28 px-2 py-1 rounded-lg text-xs text-center text-white/90 placeholder-white/20 outline-none focus:ring-1 focus:ring-amber-500/40"
+                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }} />
+                    </div>
                   </div>
                   <div className="flex gap-2 pt-1">
                     <button type="button" onClick={() => { setOptimaPaso(2); setOptimaError(''); }} className="flex-1 px-4 py-2 rounded-full text-xs font-semibold text-white/40 hover:text-white/60 hover:bg-white/5 transition-colors" style={{ border: '1px solid rgba(255,255,255,0.08)' }}>Atras</button>
@@ -1604,21 +1623,29 @@ export default function PolizasInquilinos() {
 
                   {/* Tabla coberturas — new format */}
                   {inf?.tabla_coberturas && (
-                    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <div className="rounded-xl overflow-x-auto" style={{ border: '1px solid rgba(255,255,255,0.06)' }}>
                       <table className="w-full text-xs">
                         <thead>
                           <tr style={{ background: 'rgba(255,255,255,0.04)' }}>
                             <th className="text-left px-3 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-white/40">Cobertura</th>
-                            <th className="text-center px-2 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-400/60 w-24">Propietario</th>
-                            <th className="text-center px-2 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-sky-400/60 w-24">Inquilino</th>
+                            <th className="text-left px-2 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-emerald-400/60">Propietario</th>
+                            <th className="text-left px-2 py-2 text-[10px] font-bold uppercase tracking-[0.1em] text-sky-400/60">Inquilino</th>
                           </tr>
                         </thead>
                         <tbody>
                           {inf.tabla_coberturas.map((row, i) => (
                             <tr key={i} style={{ background: i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.015)', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                              <td className="px-3 py-1.5 text-white/70">{row.concepto}</td>
-                              <td className="text-center px-2 py-1.5">{row.propietario ? <span className="text-emerald-400 font-bold">SI</span> : <span className="text-white/15">—</span>}</td>
-                              <td className="text-center px-2 py-1.5">{row.inquilino ? <span className="text-sky-400 font-bold">SI</span> : <span className="text-white/15">—</span>}</td>
+                              <td className="px-3 py-1.5 text-white/70 whitespace-nowrap">{row.concepto}</td>
+                              <td className="px-2 py-1.5 text-[11px]">
+                                {typeof row.propietario === 'string'
+                                  ? <span className={row.propietario.startsWith('SI') ? 'text-emerald-400 font-semibold' : 'text-white/30'}>{row.propietario}</span>
+                                  : row.propietario ? <span className="text-emerald-400 font-bold">SI</span> : <span className="text-white/15">—</span>}
+                              </td>
+                              <td className="px-2 py-1.5 text-[11px]">
+                                {typeof row.inquilino === 'string'
+                                  ? <span className={row.inquilino.startsWith('SI') ? 'text-sky-400 font-semibold' : 'text-white/30'}>{row.inquilino}</span>
+                                  : row.inquilino ? <span className="text-sky-400 font-bold">SI</span> : <span className="text-white/15">—</span>}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -1664,10 +1691,10 @@ export default function PolizasInquilinos() {
                       <p className="text-xs text-white/55 leading-relaxed whitespace-pre-line">{inf.resumen || inf.consejos_adicionales}</p>
                     </div>
                   )}
-                  {(inf?.precio_orientativo || inf?.poliza_optima?.precio_orientativo) && (
+                  {(inf?.prima_estimada_anual || inf?.precio_orientativo || inf?.poliza_optima?.precio_orientativo) && (
                     <div className="flex items-center gap-2 rounded-xl px-3 py-2" style={{ background: 'rgba(34,197,94,0.08)', border: '1px solid rgba(34,197,94,0.15)' }}>
                       <Euro size={14} className="text-emerald-400" />
-                      <span className="text-xs font-bold text-emerald-300">{inf.precio_orientativo || inf.poliza_optima.precio_orientativo}</span>
+                      <span className="text-xs font-bold text-emerald-300">Prima estimada anual: {inf.prima_estimada_anual || inf.precio_orientativo || inf.poliza_optima.precio_orientativo}</span>
                     </div>
                   )}
                   {(inf?.companias_recomendadas || inf?.poliza_optima?.companias_sugeridas) && (
@@ -1765,16 +1792,24 @@ export default function PolizasInquilinos() {
                   <thead>
                     <tr>
                       <th className="text-left px-3 py-2.5 bg-gray-100 text-gray-600 font-semibold text-xs uppercase tracking-wider">Cobertura / Riesgo</th>
-                      <th className="text-center px-3 py-2.5 bg-green-50 text-green-700 font-semibold text-xs uppercase tracking-wider w-36">Cubierto propietario</th>
-                      <th className="text-center px-3 py-2.5 bg-blue-50 text-blue-700 font-semibold text-xs uppercase tracking-wider w-36">Contratar inquilino</th>
+                      <th className="text-left px-3 py-2.5 bg-green-50 text-green-700 font-semibold text-xs uppercase tracking-wider">Propietario</th>
+                      <th className="text-left px-3 py-2.5 bg-blue-50 text-blue-700 font-semibold text-xs uppercase tracking-wider">Inquilino</th>
                     </tr>
                   </thead>
                   <tbody>
                     {inf.tabla_coberturas.map((row, i) => (
                       <tr key={i} className={i % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'}>
-                        <td className="px-3 py-2 text-gray-700 text-sm">{row.concepto}</td>
-                        <td className="text-center px-3 py-2">{row.propietario ? <span className="text-green-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}</td>
-                        <td className="text-center px-3 py-2">{row.inquilino ? <span className="text-blue-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}</td>
+                        <td className="px-3 py-2 text-gray-700 text-sm whitespace-nowrap">{row.concepto}</td>
+                        <td className="px-3 py-2 text-xs">
+                          {typeof row.propietario === 'string'
+                            ? <span className={row.propietario.startsWith('SI') ? 'text-green-700 font-semibold' : 'text-gray-400'}>{row.propietario}</span>
+                            : row.propietario ? <span className="text-green-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}
+                        </td>
+                        <td className="px-3 py-2 text-xs">
+                          {typeof row.inquilino === 'string'
+                            ? <span className={row.inquilino.startsWith('SI') ? 'text-blue-700 font-semibold' : 'text-gray-400'}>{row.inquilino}</span>
+                            : row.inquilino ? <span className="text-blue-600 font-bold">Si</span> : <span className="text-gray-300">—</span>}
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1833,10 +1868,10 @@ export default function PolizasInquilinos() {
             )}
 
             {/* Price (both formats) */}
-            {(inf.precio_orientativo || inf.poliza_optima?.precio_orientativo) && (
+            {(inf.prima_estimada_anual || inf.precio_orientativo || inf.poliza_optima?.precio_orientativo) && (
               <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-3 py-2">
                 <Euro size={16} className="text-green-600" />
-                <span className="text-sm font-bold text-green-700">{inf.precio_orientativo || inf.poliza_optima.precio_orientativo}</span>
+                <span className="text-sm font-bold text-green-700">Prima estimada anual: {inf.prima_estimada_anual || inf.precio_orientativo || inf.poliza_optima.precio_orientativo}</span>
               </div>
             )}
 

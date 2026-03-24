@@ -89,6 +89,7 @@ router.post('/poliza-optima', async (req, res) => {
       if (datos_inmueble.tiene_objetos_valor) items.push(`Objetos de valor: ${datos_inmueble.valor_objetos_valor || 'Sí'}`);
       if (datos_inmueble.num_personas) items.push(`${datos_inmueble.num_personas} personas vivirán`);
       if (datos_inmueble.tiene_vehiculo_garaje) items.push('Vehículo en garaje');
+      if (datos_inmueble.valor_mobiliario) items.push(`Mobiliario/contenido: ${datos_inmueble.valor_mobiliario} €`);
       datosEspecificos = items.join(', ') || 'Sin datos adicionales';
     } else if (datos_inmueble?.tipo_inmueble === 'local_negocio') {
       const items = [];
@@ -96,11 +97,12 @@ router.post('/poliza-optima', async (req, res) => {
       if (datos_inmueble.tiene_mercancia) items.push(`Mercancía: ${datos_inmueble.valor_mercancia || 'Sí'}`);
       if (datos_inmueble.tiene_empleados) items.push(`Empleados: ${datos_inmueble.num_empleados || 'Sí'}`);
       if (datos_inmueble.atiende_publico) items.push('Atiende al público');
-      if (datos_inmueble.tiene_maquinaria) items.push('Maquinaria/equipos especiales');
-      if (datos_inmueble.necesita_rc_empleados) items.push('Necesita RC empleados');
-      if (datos_inmueble.necesita_rc_explotacion) items.push('Necesita RC explotación');
+      if (datos_inmueble.tiene_maquinaria) items.push(`Maquinaria: ${datos_inmueble.valor_maquinaria ? datos_inmueble.valor_maquinaria + ' €' : 'Sí (sin valor especificado)'}`);
+      if (datos_inmueble.necesita_rc_empleados) items.push(`RC empleados: ${datos_inmueble.capital_rc_empleados ? datos_inmueble.capital_rc_empleados + ' €' : 'Sí'}`);
+      if (datos_inmueble.necesita_rc_explotacion) items.push(`RC explotación: ${datos_inmueble.capital_rc_explotacion ? datos_inmueble.capital_rc_explotacion + ' €' : 'Sí'}`);
       if (datos_inmueble.necesita_defensa_juridica) items.push('Necesita defensa jurídica');
-      if (datos_inmueble.necesita_equipos_electronicos) items.push(`Necesita seguro equipos electrónicos${datos_inmueble.valor_equipos_electronicos ? ': ' + datos_inmueble.valor_equipos_electronicos + ' €' : ''}`);
+      if (datos_inmueble.necesita_equipos_electronicos) items.push(`Equipos electrónicos: ${datos_inmueble.valor_equipos_electronicos ? datos_inmueble.valor_equipos_electronicos + ' €' : 'Sí'}`);
+      if (datos_inmueble.valor_mobiliario) items.push(`Mobiliario/contenido: ${datos_inmueble.valor_mobiliario} €`);
       datosEspecificos = items.join(', ') || 'Sin datos adicionales';
     }
 
@@ -118,6 +120,7 @@ ANÁLISIS PREVIO DE LA PÓLIZA DEL INMUEBLE:
     const prompt = `Eres un experto corredor de seguros en España con más de 20 años de experiencia.
 
 Tu tarea: Recomendar la PÓLIZA ÓPTIMA DE INQUILINO que COMPLEMENTE la póliza del propietario del inmueble.
+IMPORTANTE: Debes LEER EL PDF de la póliza del propietario y EXTRAER los importes contratados de cada cobertura.
 
 === PÓLIZA ACTUAL DEL PROPIETARIO (INMUEBLE) ===
 - Inmueble: ${polizaInmueble.nombre_inmueble || 'No especificado'}${polizaInmueble.direccion_inmueble ? ' (' + polizaInmueble.direccion_inmueble + ')' : ''}
@@ -132,26 +135,36 @@ ${analisisPrevio}
 - Datos específicos: ${datosEspecificos}
 
 === INSTRUCCIONES ===
-1. Genera una TABLA de coberturas/riesgos concretos con DOS columnas:
-   - "propietario" (true/false): ¿Lo cubre la póliza del propietario?
-   - "inquilino" (true/false): ¿Debe contratarlo el inquilino?
-2. Cada concepto debe ser CORTO y CLARO (máximo 6-8 palabras), tipo condicionante de póliza
+1. Genera una TABLA de coberturas/riesgos concretos con DOS columnas de tipo STRING:
+   - "propietario": EXTRAE del PDF el importe contratado por el propietario para cada cobertura.
+     Formatos válidos:
+     · "SI — 500.000 €" (si está cubierto, con el importe que aparece en el PDF)
+     · "SI — sin importe especificado" (si está cubierto pero no encuentras importe en el PDF)
+     · "NO contratado" (si esa cobertura no está en la póliza del propietario)
+   - "inquilino": Recomienda si el inquilino debe contratarlo, con importe y motivo.
+     Formatos válidos:
+     · "SI — 150.000 € — No cubierto por propietario"
+     · "SI — 300.000 € — Complementa cobertura existente"
+     · "NO necesario — Ya cubierto por propietario"
+     Usa los importes que el inquilino indicó en sus datos específicos como referencia para los capitales.
+2. Cada concepto debe ser CORTO y CLARO (máximo 6-8 palabras)
 3. Incluye entre 10 y 20 filas con coberturas/riesgos relevantes
 4. Resume la recomendación en 3-4 líneas máximo
-5. Da un precio orientativo anual estimado del mercado español actual
+5. Da una prima estimada anual total para el inquilino (rango en €/año)
 6. Sugiere MÁXIMO 3 compañías de España con breve justificación (1 línea cada una)
 
 Devuelve ÚNICAMENTE un JSON válido (sin markdown, sin texto extra) con esta estructura:
 {
   "tabla_coberturas": [
-    { "concepto": "Incendio y explosión", "propietario": true, "inquilino": false },
-    { "concepto": "Daños por agua", "propietario": true, "inquilino": false },
-    { "concepto": "RC inquilino a terceros", "propietario": false, "inquilino": true },
-    { "concepto": "Robo de contenido", "propietario": false, "inquilino": true }
+    { "concepto": "Incendio y explosión", "propietario": "SI — 500.000 €", "inquilino": "NO necesario — Ya cubierto por propietario" },
+    { "concepto": "Daños por agua", "propietario": "SI — 300.000 €", "inquilino": "NO necesario — Ya cubierto por propietario" },
+    { "concepto": "RC inquilino a terceros", "propietario": "NO contratado", "inquilino": "SI — 300.000 € — No cubierto por propietario" },
+    { "concepto": "Robo de contenido", "propietario": "NO contratado", "inquilino": "SI — 30.000 € — No cubierto por propietario" },
+    { "concepto": "Responsabilidad civil", "propietario": "SI — 150.000 €", "inquilino": "SI — 300.000 € — Complementa cobertura existente" }
   ],
   "tipo_recomendado": "Tipo de seguro (hogar inquilino, RC, multirriesgo comercial, etc.)",
   "resumen": "Resumen en 3-4 líneas máximo con la recomendación principal para el inquilino",
-  "precio_orientativo": "Rango de precio estimado (ej: 150-250 €/año)",
+  "prima_estimada_anual": "350-500 €/año",
   "companias_recomendadas": [
     "Mapfre — buena relación calidad/precio para inquilinos",
     "Zurich — amplia cobertura de RC",
@@ -185,7 +198,7 @@ Devuelve ÚNICAMENTE un JSON válido (sin markdown, sin texto extra) con esta es
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 3000,
+        max_tokens: 4096,
         messages: [{ role: 'user', content: contenidoMensaje }],
       }),
     });
