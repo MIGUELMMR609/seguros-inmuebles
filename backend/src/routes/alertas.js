@@ -82,8 +82,9 @@ router.get('/', async (req, res) => {
          LEFT JOIN inmuebles i ON p.inmueble_id = i.id
          WHERE p.fecha_vencimiento IS NOT NULL
            AND p.fecha_vencimiento >= CURRENT_DATE
-           AND (p.fecha_vencimiento - CURRENT_DATE) <= 30
-         ORDER BY p.fecha_vencimiento ASC`
+           AND (p.fecha_vencimiento - CURRENT_DATE) <= $1
+         ORDER BY p.fecha_vencimiento ASC`,
+        [diasLimite]
       ),
 
       // Pólizas de inquilinos próximas a vencer

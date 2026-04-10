@@ -2,7 +2,7 @@ const { Pool } = require('pg');
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: true } : false,
 });
 
 async function inicializarBaseDatos() {
@@ -230,7 +230,6 @@ async function inicializarBaseDatos() {
     await cliente.query(`
       CREATE TABLE IF NOT EXISTS backups (
         id SERIAL PRIMARY KEY,
-        fecha TIMESTAMP DEFAULT NOW(),
         nombre_archivo VARCHAR(255) NOT NULL,
         tamanyo INTEGER,
         registros_json TEXT,
@@ -238,6 +237,8 @@ async function inicializarBaseDatos() {
         created_at TIMESTAMP DEFAULT NOW()
       );
     `);
+    // Migración: eliminar columna redundante 'fecha' si existe
+    await cliente.query(`ALTER TABLE backups DROP COLUMN IF EXISTS fecha`);
 
     // Tabla de renovaciones de contrato de inquilino
     await cliente.query(`
@@ -302,12 +303,14 @@ async function inicializarBaseDatos() {
     );
 
     if (usuarioExistente.rows.length === 0) {
-      const passwordHash = await bcrypt.hash('609609MMr', 10);
+      const adminPassword = process.env.ADMIN_DEFAULT_PASSWORD || '609609MMr';
+      const adminEmail = process.env.ADMIN_DEFAULT_EMAIL || 'miguelmmr@me.com';
+      const passwordHash = await bcrypt.hash(adminPassword, 10);
       await cliente.query(
         'INSERT INTO usuarios (nombre, email, password, rol) VALUES ($1, $2, $3, $4)',
-        ['Administrador', 'miguelmmr@me.com', passwordHash, 'admin']
+        ['Administrador', adminEmail, passwordHash, 'admin']
       );
-      console.log('Usuario admin creado: miguelmmr@me.com');
+      console.log('Usuario admin creado:', adminEmail);
     }
   } finally {
     cliente.release();

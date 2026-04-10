@@ -1,66 +1,17 @@
 const express = require('express');
-const { PDFDocument } = require('pdf-lib');
 const { verificarToken } = require('../middleware/auth');
-const multer = require('multer');
-const cloudinary = require('../config/cloudinary');
+const { uploadMemoria } = require('../middleware/upload');
+const { subirACloudinary } = require('./upload');
 const { llamarAnthropicApi } = require('../utils/anthropic');
+const { reducirPdf } = require('../utils/pdf');
 
 const router = express.Router();
 router.use(verificarToken);
 
 const TIMEOUT_MS = 115_000;
-const MAX_BYTES_ANTHROPIC = 5 * 1024 * 1024; // 5 MB
-const MAX_PAGINAS = 10;
-
-// Multer en memoria — límite 50 MB
-const filtroPDF = (req, file, cb) => {
-  if (file.mimetype === 'application/pdf' || file.mimetype === 'application/octet-stream') {
-    cb(null, true);
-  } else {
-    cb(new Error('Solo se permiten archivos PDF'), false);
-  }
-};
-
-const uploadContrato = multer({
-  storage: multer.memoryStorage(),
-  fileFilter: filtroPDF,
-  limits: { fileSize: 50 * 1024 * 1024 },
-});
-
-// Igual que analizar_pdf.js: recorta páginas con pdf-lib para no corromper el PDF
-async function reducirPdf(buffer) {
-  if (buffer.length <= MAX_BYTES_ANTHROPIC) return buffer;
-  try {
-    const pdfOrig = await PDFDocument.load(buffer, { ignoreEncryption: true });
-    const total = pdfOrig.getPageCount();
-    if (total <= MAX_PAGINAS) return buffer;
-    const pdfNuevo = await PDFDocument.create();
-    const indices = Array.from({ length: MAX_PAGINAS }, (_, i) => i);
-    const paginas = await pdfNuevo.copyPages(pdfOrig, indices);
-    paginas.forEach((p) => pdfNuevo.addPage(p));
-    const bytes = await pdfNuevo.save();
-    console.log(`Contrato reducido: ${total} → ${MAX_PAGINAS} páginas (${buffer.length} → ${bytes.length} bytes)`);
-    return Buffer.from(bytes);
-  } catch (err) {
-    console.warn('No se pudo reducir el contrato PDF, se envía completo:', err.message);
-    return buffer;
-  }
-}
-
-function subirPdfACloudinary(buffer) {
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      { folder: 'polizas-seguros', resource_type: 'raw', type: 'upload', access_mode: 'public', format: 'pdf' },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result.secure_url);
-      }
-    ).end(buffer);
-  });
-}
 
 // POST /api/analizar-contrato
-router.post('/', uploadContrato.single('documento'), async (req, res) => {
+router.post('/', uploadMemoria.single('documento'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'No se recibió ningún archivo PDF' });
   }
@@ -78,7 +29,7 @@ router.post('/', uploadContrato.single('documento'), async (req, res) => {
     console.log(`analizar-contrato — buffer original: ${req.file.buffer.length} bytes | para IA: ${bufferParaIA.length} bytes`);
     const base64 = bufferParaIA.toString('base64');
 
-    const promesaUrl = subirPdfACloudinary(bufferParaIA).catch((err) => {
+    const promesaUrl = subirACloudinary(bufferParaIA).catch((err) => {
       console.warn('No se pudo subir contrato a Cloudinary:', err?.message);
       return null;
     });

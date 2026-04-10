@@ -7,13 +7,16 @@ router.use(verificarToken);
 
 // Función reutilizable por el cron y el endpoint
 async function crearBackup() {
-  const [inmuebles, polizas, inquilinos, polizasInquilinos, siniestros, contRenovaciones] = await Promise.all([
+  const [inmuebles, polizas, inquilinos, polizasInquilinos, siniestros, contRenovaciones, historialPolizas, registroEmails, propuestasPolizas] = await Promise.all([
     pool.query('SELECT * FROM inmuebles ORDER BY id'),
     pool.query('SELECT * FROM polizas ORDER BY id'),
     pool.query('SELECT * FROM inquilinos ORDER BY id'),
     pool.query('SELECT * FROM polizas_inquilinos ORDER BY id'),
     pool.query('SELECT * FROM siniestros ORDER BY id'),
     pool.query('SELECT * FROM contrato_renovaciones ORDER BY id'),
+    pool.query('SELECT * FROM historial_polizas ORDER BY id'),
+    pool.query('SELECT * FROM registro_emails ORDER BY id'),
+    pool.query('SELECT * FROM propuestas_polizas ORDER BY id'),
   ]);
 
   const conteo = {
@@ -23,6 +26,9 @@ async function crearBackup() {
     polizas_inquilinos: polizasInquilinos.rows.length,
     siniestros: siniestros.rows.length,
     renovaciones_contrato: contRenovaciones.rows.length,
+    historial_polizas: historialPolizas.rows.length,
+    registro_emails: registroEmails.rows.length,
+    propuestas_polizas: propuestasPolizas.rows.length,
   };
 
   const datos = {
@@ -35,6 +41,9 @@ async function crearBackup() {
     polizas_inquilinos: polizasInquilinos.rows,
     siniestros: siniestros.rows,
     contrato_renovaciones: contRenovaciones.rows,
+    historial_polizas: historialPolizas.rows,
+    registro_emails: registroEmails.rows,
+    propuestas_polizas: propuestasPolizas.rows,
   };
 
   const json = JSON.stringify(datos, null, 2);

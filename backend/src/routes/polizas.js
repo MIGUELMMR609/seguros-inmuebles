@@ -1,29 +1,11 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const { PDFDocument } = require('pdf-lib');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
 const { registrarActividad } = require('../utils/actividad');
 const { llamarAnthropicApi } = require('../utils/anthropic');
-
-const MAX_BYTES_PDF = 5 * 1024 * 1024; // 5 MB límite Anthropic
-const MAX_PAGINAS_PDF = 10;
-
-async function reducirPdf(buffer) {
-  if (buffer.length <= MAX_BYTES_PDF) return buffer;
-  try {
-    const pdfOrig = await PDFDocument.load(buffer, { ignoreEncryption: true });
-    const total = pdfOrig.getPageCount();
-    const paginas = Math.min(total, MAX_PAGINAS_PDF);
-    const pdfNuevo = await PDFDocument.create();
-    const copiadas = await pdfNuevo.copyPages(pdfOrig, Array.from({ length: paginas }, (_, i) => i));
-    copiadas.forEach((p) => pdfNuevo.addPage(p));
-    return Buffer.from(await pdfNuevo.save());
-  } catch {
-    return buffer.slice(0, MAX_BYTES_PDF);
-  }
-}
+const { reducirPdf } = require('../utils/pdf');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -111,12 +93,12 @@ router.post('/', async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING *`,
       [
-        inmueble_id, tipoFinal, compania_aseguradora || null, numero_poliza || null,
-        fecha_inicio || null, fecha_vencimiento || null, importe_anual || null,
-        notas || null, documento_url || null, contacto_nombre || null,
-        contacto_telefono || null, contacto_email || null,
-        periodicidad_pago || 'anual', importe_pago || null, fecha_proximo_pago || null,
-        tomador_poliza || null,
+        inmueble_id, tipoFinal, compania_aseguradora ?? null, numero_poliza ?? null,
+        fecha_inicio ?? null, fecha_vencimiento ?? null, importe_anual ?? null,
+        notas ?? null, documento_url ?? null, contacto_nombre ?? null,
+        contacto_telefono ?? null, contacto_email ?? null,
+        periodicidad_pago || 'anual', importe_pago ?? null, fecha_proximo_pago ?? null,
+        tomador_poliza ?? null,
       ]
     );
 
@@ -131,9 +113,9 @@ router.post('/', async (req, res) => {
           direccion_bien_asegurado=$6
          WHERE id=$7`,
         [
-          riesgos_cubiertos || null, riesgos_no_cubiertos || null,
-          analisis_fortalezas || null, analisis_carencias || null, como_complementar || null,
-          direccion_bien_asegurado || null,
+          riesgos_cubiertos ?? null, riesgos_no_cubiertos ?? null,
+          analisis_fortalezas ?? null, analisis_carencias ?? null, como_complementar ?? null,
+          direccion_bien_asegurado ?? null,
           polizaId,
         ]
       );
@@ -177,12 +159,12 @@ router.put('/:id', async (req, res) => {
        WHERE id=$17
        RETURNING *`,
       [
-        inmueble_id, tipoFinal, compania_aseguradora || null, numero_poliza || null,
-        fecha_inicio || null, fecha_vencimiento || null, importe_anual || null,
-        notas || null, documento_url || null, contacto_nombre || null,
-        contacto_telefono || null, contacto_email || null,
-        periodicidad_pago || 'anual', importe_pago || null, fecha_proximo_pago || null,
-        tomador_poliza || null, req.params.id,
+        inmueble_id, tipoFinal, compania_aseguradora ?? null, numero_poliza ?? null,
+        fecha_inicio ?? null, fecha_vencimiento ?? null, importe_anual ?? null,
+        notas ?? null, documento_url ?? null, contacto_nombre ?? null,
+        contacto_telefono ?? null, contacto_email ?? null,
+        periodicidad_pago || 'anual', importe_pago ?? null, fecha_proximo_pago ?? null,
+        tomador_poliza ?? null, req.params.id,
       ]
     );
 
@@ -199,9 +181,9 @@ router.put('/:id', async (req, res) => {
           direccion_bien_asegurado=$6
          WHERE id=$7`,
         [
-          riesgos_cubiertos || null, riesgos_no_cubiertos || null,
-          analisis_fortalezas || null, analisis_carencias || null, como_complementar || null,
-          direccion_bien_asegurado || null,
+          riesgos_cubiertos ?? null, riesgos_no_cubiertos ?? null,
+          analisis_fortalezas ?? null, analisis_carencias ?? null, como_complementar ?? null,
+          direccion_bien_asegurado ?? null,
           req.params.id,
         ]
       );
@@ -353,7 +335,11 @@ La valoración es un número del 1 al 10 (puede tener un decimal). Todos los cam
     } catch {
       const m = texto.match(/\{[\s\S]*\}/);
       if (!m) return res.status(422).json({ error: 'No se pudo extraer el análisis estructurado' });
-      analisis = JSON.parse(m[0]);
+      try {
+        analisis = JSON.parse(m[0]);
+      } catch {
+        return res.status(422).json({ error: 'La respuesta de la IA no tiene el formato JSON esperado' });
+      }
     }
 
     await pool.query(
@@ -368,12 +354,12 @@ La valoración es un número del 1 al 10 (puede tener un decimal). Todos los cam
         fecha_ultimo_analisis = NOW()
        WHERE id = $8`,
       [
-        analisis.riesgos_cubiertos || null,
-        analisis.riesgos_no_cubiertos || null,
-        analisis.analisis_fortalezas || null,
-        analisis.analisis_carencias || null,
-        analisis.valoracion || null,
-        analisis.como_complementar || null,
+        analisis.riesgos_cubiertos ?? null,
+        analisis.riesgos_no_cubiertos ?? null,
+        analisis.analisis_fortalezas ?? null,
+        analisis.analisis_carencias ?? null,
+        analisis.valoracion ?? null,
+        analisis.como_complementar ?? null,
         analisis.comparador_mercado ? JSON.stringify(analisis.comparador_mercado) : null,
         req.params.id,
       ]
@@ -402,14 +388,27 @@ router.get('/:id/coberturas', async (req, res) => {
       return res.status(503).json({ error: 'API de IA no configurada' });
     }
 
-    const nombreArchivo = path.basename(documento_url);
-    const rutaArchivo = path.join(__dirname, '../../uploads', nombreArchivo);
+    let base64;
+    try {
+      const nombreArchivo = path.basename(documento_url);
+      const rutaArchivo = path.join(__dirname, '../../uploads', nombreArchivo);
 
-    if (!fs.existsSync(rutaArchivo)) {
+      if (fs.existsSync(rutaArchivo)) {
+        const buf = fs.readFileSync(rutaArchivo);
+        base64 = (await reducirPdf(buf)).toString('base64');
+      } else {
+        // Fallback: leer el PDF via HTTP (necesario en Render donde el FS es efímero)
+        const urlPdf = documento_url.startsWith('http')
+          ? documento_url
+          : `${req.protocol}://${req.get('host')}${documento_url}`;
+        const resPdf = await fetch(urlPdf);
+        if (!resPdf.ok) throw new Error('No accesible');
+        const buf = Buffer.from(await resPdf.arrayBuffer());
+        base64 = (await reducirPdf(buf)).toString('base64');
+      }
+    } catch {
       return res.json({ tiene_documento: true, archivo_disponible: false, coberturas: [] });
     }
-
-    const base64 = fs.readFileSync(rutaArchivo).toString('base64');
 
     const respuesta = await llamarAnthropicApi( {
       method: 'POST',

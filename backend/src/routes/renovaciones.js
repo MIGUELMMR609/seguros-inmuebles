@@ -80,17 +80,17 @@ router.post('/:polizaId', async (req, res) => {
       [
         nueva_fecha_inicio || fecha_inicio,
         nueva_fecha_vencimiento,
-        nuevo_importe || null,
-        nuevo_importe_pago || null,
-        nueva_fecha_proximo_pago || null,
+        nuevo_importe ?? null,
+        nuevo_importe_pago ?? null,
+        nueva_fecha_proximo_pago ?? null,
         polizaId,
-        nueva_compania_aseguradora || null,
-        nuevo_numero_poliza || null,
-        nuevo_documento_url || null,
-        nuevo_contacto_nombre || null,
-        nuevo_contacto_telefono || null,
-        nuevo_contacto_email || null,
-        nueva_periodicidad_pago || null,
+        nueva_compania_aseguradora ?? null,
+        nuevo_numero_poliza ?? null,
+        nuevo_documento_url ?? null,
+        nuevo_contacto_nombre ?? null,
+        nuevo_contacto_telefono ?? null,
+        nuevo_contacto_email ?? null,
+        nueva_periodicidad_pago ?? null,
       ]
     );
 

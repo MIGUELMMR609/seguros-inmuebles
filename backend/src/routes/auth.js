@@ -7,8 +7,29 @@ const { registrarActividad } = require('../utils/actividad');
 
 const router = express.Router();
 
+// Rate limiting simple para login (en memoria)
+const intentosLogin = new Map();
+const MAX_INTENTOS = 10;
+const VENTANA_MS = 15 * 60 * 1000; // 15 minutos
+
+function limpiarIntentosExpirados() {
+  const ahora = Date.now();
+  for (const [ip, datos] of intentosLogin) {
+    if (ahora - datos.inicio > VENTANA_MS) intentosLogin.delete(ip);
+  }
+}
+setInterval(limpiarIntentosExpirados, 60_000);
+
 // POST /api/auth/login
-router.post('/login', async (req, res) => {
+router.post('/login', (req, res, next) => {
+  const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+  const ahora = Date.now();
+  const datos = intentosLogin.get(ip);
+  if (datos && ahora - datos.inicio < VENTANA_MS && datos.intentos >= MAX_INTENTOS) {
+    return res.status(429).json({ error: 'Demasiados intentos de login. Espera 15 minutos.' });
+  }
+  next();
+}, async (req, res) => {
   try {
     const { email, password } = req.body;
 
@@ -29,6 +50,11 @@ router.post('/login', async (req, res) => {
     const passwordValida = await bcrypt.compare(password, usuario.password);
 
     if (!passwordValida) {
+      // Registrar intento fallido para rate limiting
+      const ip = req.headers['x-forwarded-for']?.split(',')[0]?.trim() || req.socket?.remoteAddress || 'unknown';
+      const datos = intentosLogin.get(ip) || { intentos: 0, inicio: Date.now() };
+      datos.intentos++;
+      intentosLogin.set(ip, datos);
       return res.status(401).json({ error: 'Credenciales incorrectas' });
     }
 

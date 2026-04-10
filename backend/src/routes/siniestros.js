@@ -82,14 +82,14 @@ router.post('/', async (req, res) => {
       [
         poliza_id,
         fecha_apertura || new Date().toISOString().split('T')[0],
-        motivo || null,
-        numero_siniestro || null,
-        persona_contacto || null,
-        compania_aseguradora || null,
-        contacto_nombre || null,
-        contacto_telefono || null,
-        contacto_email || null,
-        notas || null,
+        motivo ?? null,
+        numero_siniestro ?? null,
+        persona_contacto ?? null,
+        compania_aseguradora ?? null,
+        contacto_nombre ?? null,
+        contacto_telefono ?? null,
+        contacto_email ?? null,
+        notas ?? null,
       ]
     );
 
@@ -114,15 +114,15 @@ router.put('/:id', async (req, res) => {
        WHERE id=$10
        RETURNING *`,
       [
-        fecha_apertura || null,
-        motivo || null,
-        numero_siniestro || null,
-        persona_contacto || null,
-        compania_aseguradora || null,
-        contacto_nombre || null,
-        contacto_telefono || null,
-        contacto_email || null,
-        notas || null,
+        fecha_apertura ?? null,
+        motivo ?? null,
+        numero_siniestro ?? null,
+        persona_contacto ?? null,
+        compania_aseguradora ?? null,
+        contacto_nombre ?? null,
+        contacto_telefono ?? null,
+        contacto_email ?? null,
+        notas ?? null,
         req.params.id,
       ]
     );
@@ -250,7 +250,11 @@ router.delete('/:id/llamadas/:indice', async (req, res) => {
     }
 
     const llamadas = [...(siniestro.rows[0].llamadas || [])];
-    llamadas.splice(parseInt(req.params.indice), 1);
+    const indice = parseInt(req.params.indice);
+    if (isNaN(indice) || indice < 0 || indice >= llamadas.length) {
+      return res.status(400).json({ error: 'Índice de llamada no válido' });
+    }
+    llamadas.splice(indice, 1);
 
     const resultado = await pool.query(
       'UPDATE siniestros SET llamadas=$1, updated_at=NOW() WHERE id=$2 RETURNING *',
@@ -308,7 +312,11 @@ router.delete('/:id/fotos/:indice', async (req, res) => {
     }
 
     const fotos = [...(siniestro.rows[0].fotos || [])];
-    fotos.splice(parseInt(req.params.indice), 1);
+    const indice = parseInt(req.params.indice);
+    if (isNaN(indice) || indice < 0 || indice >= fotos.length) {
+      return res.status(400).json({ error: 'Índice de foto no válido' });
+    }
+    fotos.splice(indice, 1);
 
     const resultado = await pool.query(
       'UPDATE siniestros SET fotos=$1, updated_at=NOW() WHERE id=$2 RETURNING *',

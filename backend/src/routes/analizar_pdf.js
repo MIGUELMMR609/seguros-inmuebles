@@ -1,47 +1,14 @@
 const express = require('express');
-const { PDFDocument } = require('pdf-lib');
 const { uploadMemoria } = require('../middleware/upload');
 const { verificarToken } = require('../middleware/auth');
-const cloudinary = require('../config/cloudinary');
+const { subirACloudinary } = require('./upload');
 const { llamarAnthropicApi } = require('../utils/anthropic');
+const { reducirPdf } = require('../utils/pdf');
 
 const router = express.Router();
 router.use(verificarToken);
 
 const TIMEOUT_MS = 115_000;
-const MAX_BYTES_ANTHROPIC = 5 * 1024 * 1024; // 5 MB
-const MAX_PAGINAS = 10;
-
-async function reducirPdf(buffer) {
-  if (buffer.length <= MAX_BYTES_ANTHROPIC) return buffer;
-  try {
-    const pdfOrig = await PDFDocument.load(buffer, { ignoreEncryption: true });
-    const total = pdfOrig.getPageCount();
-    if (total <= MAX_PAGINAS) return buffer;
-    const pdfNuevo = await PDFDocument.create();
-    const indices = Array.from({ length: MAX_PAGINAS }, (_, i) => i);
-    const paginas = await pdfNuevo.copyPages(pdfOrig, indices);
-    paginas.forEach((p) => pdfNuevo.addPage(p));
-    const bytes = await pdfNuevo.save();
-    console.log(`PDF reducido: ${total} → ${MAX_PAGINAS} páginas (${buffer.length} → ${bytes.length} bytes)`);
-    return Buffer.from(bytes);
-  } catch (err) {
-    console.warn('No se pudo reducir el PDF, se envía completo:', err.message);
-    return buffer;
-  }
-}
-
-function subirPdfACloudinary(buffer) {
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      { folder: 'polizas-seguros', resource_type: 'raw', type: 'upload', access_mode: 'public', format: 'pdf' },
-      (error, result) => {
-        if (error) reject(error);
-        else resolve(result.secure_url);
-      }
-    ).end(buffer);
-  });
-}
 
 // POST /api/analizar-pdf
 router.post('/', uploadMemoria.single('documento'), async (req, res) => {
@@ -62,7 +29,7 @@ router.post('/', uploadMemoria.single('documento'), async (req, res) => {
     const base64 = bufferParaIA.toString('base64');
 
     // Subir el PDF original a Cloudinary en paralelo
-    const promesaUrl = subirPdfACloudinary(req.file.buffer).catch((err) => {
+    const promesaUrl = subirACloudinary(req.file.buffer).catch((err) => {
       console.warn('No se pudo subir PDF a Cloudinary:', err?.message);
       return null;
     });

@@ -80,17 +80,25 @@ async function restore() {
     // Deshabilitar FK temporalmente
     await cliente.query('SET session_replication_role = replica');
 
+    // Validar que los nombres de tabla del backup son conocidos
+    const TABLAS_PERMITIDAS = new Set([...TABLAS_BORRADO, 'propuestas_polizas']);
+
     // Borrar en orden inverso
     for (const tabla of TABLAS_BORRADO) {
       if (datos[tabla] !== undefined) {
-        await cliente.query(`DELETE FROM ${tabla}`);
-        await cliente.query(`ALTER SEQUENCE IF EXISTS ${tabla}_id_seq RESTART WITH 1`);
+        if (!TABLAS_PERMITIDAS.has(tabla)) continue;
+        await cliente.query(`DELETE FROM "${tabla}"`);
+        await cliente.query(`ALTER SEQUENCE IF EXISTS "${tabla}_id_seq" RESTART WITH 1`);
       }
     }
 
     // Restaurar en orden normal
     let totalInsertados = 0;
     for (const tabla of Object.keys(datos)) {
+      if (!TABLAS_PERMITIDAS.has(tabla)) {
+        console.log(`   ⚠ Tabla "${tabla}" no reconocida, se omite`);
+        continue;
+      }
       const filas = datos[tabla];
       if (!filas || filas.length === 0) continue;
 
@@ -99,7 +107,7 @@ async function restore() {
         const valores = columnas.map((c) => fila[c]);
         const placeholders = columnas.map((_, i) => `$${i + 1}`).join(', ');
         await cliente.query(
-          `INSERT INTO ${tabla} (${columnas.join(', ')}) VALUES (${placeholders}) ON CONFLICT (id) DO NOTHING`,
+          `INSERT INTO "${tabla}" (${columnas.map((c) => `"${c}"`).join(', ')}) VALUES (${placeholders}) ON CONFLICT (id) DO NOTHING`,
           valores
         );
         totalInsertados++;
@@ -107,7 +115,7 @@ async function restore() {
 
       // Actualizar secuencia al máximo id
       await cliente.query(`
-        SELECT setval('${tabla}_id_seq', COALESCE((SELECT MAX(id) FROM ${tabla}), 1))
+        SELECT setval('"${tabla}_id_seq"', COALESCE((SELECT MAX(id) FROM "${tabla}"), 1))
       `).catch(() => {}); // Ignorar si no hay secuencia
 
       console.log(`   ✓ ${tabla.padEnd(25)} ${filas.length} registros`);

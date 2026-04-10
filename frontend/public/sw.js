@@ -1,5 +1,6 @@
-const CACHE_NAME = 'seguros-v1';
-const ASSETS_CACHE = 'seguros-assets-v1';
+const CACHE_VERSION = '2';
+const CACHE_NAME = `seguros-v${CACHE_VERSION}`;
+const ASSETS_CACHE = `seguros-assets-v${CACHE_VERSION}`;
 
 // Recursos del shell de la app para cachear
 const APP_SHELL = [

@@ -41,25 +41,15 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // Servir archivos subidos (PDFs, fotos)
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Health check (sin autenticación, para diagnóstico)
+// Health check (sin autenticación, mínima información)
 const { pool } = require('./src/config/database');
 app.get('/api/health', async (req, res) => {
-  const estado = {
-    servidor: 'ok',
-    node_env: process.env.NODE_ENV,
-    jwt_secret: !!process.env.JWT_SECRET,
-    database_url: !!process.env.DATABASE_URL,
-    db: 'pendiente',
-    usuarios: null,
-    error: null,
-  };
+  const estado = { servidor: 'ok', db: 'pendiente' };
   try {
-    const r = await pool.query('SELECT COUNT(*) FROM usuarios');
+    await pool.query('SELECT 1');
     estado.db = 'ok';
-    estado.usuarios = parseInt(r.rows[0].count);
-  } catch (err) {
+  } catch {
     estado.db = 'error';
-    estado.error = err.message;
   }
   res.json(estado);
 });
@@ -83,7 +73,7 @@ app.use('/api/backup', backupRoutes);
 app.use('/api/comparador', comparadorRoutes);
 app.use('/api/actividad', actividadRoutes);
 app.use('/api/propuestas', propuestasRoutes);
-app.use('/api', generarContratoRoutes);
+app.use('/api/inquilinos', generarContratoRoutes);
 
 // Servir frontend en producción (solo si el build existe localmente)
 const frontendDist = path.join(__dirname, '../frontend/dist');

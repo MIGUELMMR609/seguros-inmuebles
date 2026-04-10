@@ -1,9 +1,9 @@
 const express = require('express');
-const { PDFDocument } = require('pdf-lib');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
 const { registrarActividad } = require('../utils/actividad');
 const { llamarAnthropicApi } = require('../utils/anthropic');
+const { reducirPdf } = require('../utils/pdf');
 
 const router = express.Router();
 router.use(verificarToken);
@@ -86,14 +86,14 @@ router.post('/', async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'activo',$11,$12,$13,$14,$15,$16,$17)
        RETURNING *`,
       [
-        inmueble_id || null, nombre.trim(), email || null, telefono || null,
-        fecha_inicio_contrato || null, fecha_fin_contrato || null,
-        importe_renta || null, documento_url || null,
-        observaciones_ia || null, notas || null,
-        tomador_contrato || null, clausulas_principales || null,
-        clausulas_perjudiciales || null, obligaciones_inquilino || null,
-        obligaciones_propietario || null, analisis_juridico || null,
-        recomendaciones_contrato || null,
+        inmueble_id ?? null, nombre.trim(), email ?? null, telefono ?? null,
+        fecha_inicio_contrato ?? null, fecha_fin_contrato ?? null,
+        importe_renta ?? null, documento_url ?? null,
+        observaciones_ia ?? null, notas ?? null,
+        tomador_contrato ?? null, clausulas_principales ?? null,
+        clausulas_perjudiciales ?? null, obligaciones_inquilino ?? null,
+        obligaciones_propietario ?? null, analisis_juridico ?? null,
+        recomendaciones_contrato ?? null,
       ]
     );
 
@@ -132,14 +132,14 @@ router.put('/:id', async (req, res) => {
        WHERE id=$18
        RETURNING *`,
       [
-        inmueble_id || null, nombre.trim(), email || null, telefono || null,
-        fecha_inicio_contrato || null, fecha_fin_contrato || null,
-        importe_renta || null, documento_url || null,
-        observaciones_ia || null, notas || null,
-        tomador_contrato || null, clausulas_principales || null,
-        clausulas_perjudiciales || null, obligaciones_inquilino || null,
-        obligaciones_propietario || null, analisis_juridico || null,
-        recomendaciones_contrato || null,
+        inmueble_id ?? null, nombre.trim(), email ?? null, telefono ?? null,
+        fecha_inicio_contrato ?? null, fecha_fin_contrato ?? null,
+        importe_renta ?? null, documento_url ?? null,
+        observaciones_ia ?? null, notas ?? null,
+        tomador_contrato ?? null, clausulas_principales ?? null,
+        clausulas_perjudiciales ?? null, obligaciones_inquilino ?? null,
+        obligaciones_propietario ?? null, analisis_juridico ?? null,
+        recomendaciones_contrato ?? null,
         req.params.id,
       ]
     );
@@ -266,7 +266,7 @@ router.post('/:id/renovar', async (req, res) => {
              importe_renta         = COALESCE($3, importe_renta),
              documento_url         = COALESCE($4, documento_url)
          WHERE id = $5 RETURNING *`,
-        [fecha_inicio || null, fecha_fin || null, importe || null, nuevo_documento_url || null, inquilinoId]
+        [fecha_inicio ?? null, fecha_fin ?? null, importe ?? null, nuevo_documento_url ?? null, inquilinoId]
       );
     } else {
       // Contrato nuevo: finalizar inquilino antiguo + crear nuevo registro activo
@@ -295,13 +295,13 @@ router.post('/:id/renovar', async (req, res) => {
          ) RETURNING *`,
         [
           inq.inmueble_id, inq.nombre, inq.email, inq.telefono,
-          fecha_inicio || null, fecha_fin || null, importe || null,
-          documento_url || null, notas || null,
-          inq.tomador_contrato || null,
-          clausulas_principales || null, clausulas_perjudiciales || null,
-          obligaciones_inquilino || null, obligaciones_propietario || null,
-          analisis_juridico || null, recomendaciones_contrato || null,
-          valoracion_contrato || null,
+          fecha_inicio ?? null, fecha_fin ?? null, importe ?? null,
+          documento_url ?? null, notas ?? null,
+          inq.tomador_contrato ?? null,
+          clausulas_principales ?? null, clausulas_perjudiciales ?? null,
+          obligaciones_inquilino ?? null, obligaciones_propietario ?? null,
+          analisis_juridico ?? null, recomendaciones_contrato ?? null,
+          valoracion_contrato ?? null,
         ]
       );
     }
@@ -389,22 +389,7 @@ router.post('/:id/analizar-contrato', async (req, res) => {
     }
 
     // Reducir si supera 5 MB
-    const MAX_BYTES = 5 * 1024 * 1024;
-    if (buffer.length > MAX_BYTES) {
-      try {
-        const pdfOrig = await PDFDocument.load(buffer, { ignoreEncryption: true });
-        const total = pdfOrig.getPageCount();
-        if (total > 10) {
-          const pdfNuevo = await PDFDocument.create();
-          const paginas = await pdfNuevo.copyPages(pdfOrig, Array.from({ length: 10 }, (_, i) => i));
-          paginas.forEach((p) => pdfNuevo.addPage(p));
-          buffer = Buffer.from(await pdfNuevo.save());
-          console.log(`Contrato reducido: ${total} → 10 páginas para análisis`);
-        }
-      } catch (e) {
-        console.warn('No se pudo reducir el contrato, se envía completo:', e.message);
-      }
-    }
+    buffer = await reducirPdf(buffer);
 
     const base64 = buffer.toString('base64');
 
@@ -471,7 +456,11 @@ La valoración es un número del 1 al 10 (puede tener un decimal). Todos los cam
     } catch {
       const m = texto.match(/\{[\s\S]*\}/);
       if (!m) return res.status(422).json({ error: 'No se pudo extraer el análisis estructurado' });
-      analisis = JSON.parse(m[0]);
+      try {
+        analisis = JSON.parse(m[0]);
+      } catch {
+        return res.status(422).json({ error: 'La respuesta de la IA no tiene el formato JSON esperado' });
+      }
     }
 
     await pool.query(
@@ -482,13 +471,13 @@ La valoración es un número del 1 al 10 (puede tener un decimal). Todos los cam
         valoracion_contrato=$7, fecha_ultimo_analisis_contrato=NOW()
        WHERE id=$8`,
       [
-        analisis.clausulas_principales || null,
-        analisis.clausulas_perjudiciales || null,
-        analisis.obligaciones_inquilino || null,
-        analisis.obligaciones_propietario || null,
-        analisis.analisis_juridico || null,
-        analisis.recomendaciones_contrato || null,
-        analisis.valoracion_contrato || null,
+        analisis.clausulas_principales ?? null,
+        analisis.clausulas_perjudiciales ?? null,
+        analisis.obligaciones_inquilino ?? null,
+        analisis.obligaciones_propietario ?? null,
+        analisis.analisis_juridico ?? null,
+        analisis.recomendaciones_contrato ?? null,
+        analisis.valoracion_contrato ?? null,
         req.params.id,
       ]
     );

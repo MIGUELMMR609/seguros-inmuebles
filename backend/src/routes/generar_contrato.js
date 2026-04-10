@@ -79,7 +79,7 @@ function espacioVacio() {
 }
 
 // GET /api/inquilinos/:id/contrato-word
-router.get('/inquilinos/:id/contrato-word', async (req, res) => {
+router.get('/:id/contrato-word', async (req, res) => {
   try {
     const resultado = await pool.query(
       `SELECT inq.*, i.nombre AS nombre_inmueble, i.direccion AS direccion_inmueble

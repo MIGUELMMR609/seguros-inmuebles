@@ -49,7 +49,8 @@ async function obtenerInquilinosSinSeguro() {
        inm.nombre AS nombre_inmueble
      FROM inquilinos i
      LEFT JOIN inmuebles inm ON inm.id = i.inmueble_id
-     WHERE NOT EXISTS (
+     WHERE (i.estado = 'activo' OR i.estado IS NULL)
+       AND NOT EXISTS (
        SELECT 1 FROM polizas_inquilinos pi
        WHERE pi.inquilino_id = i.id
          AND (pi.fecha_vencimiento IS NULL OR pi.fecha_vencimiento >= CURRENT_DATE)
