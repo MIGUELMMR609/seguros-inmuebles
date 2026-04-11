@@ -76,6 +76,18 @@ export const analizarExpertoPolizaInquilinoApi = (id) =>
   api.post(`/polizas-inquilinos/${id}/analizar-experto`, {}, { timeout: 120_000 });
 export const generarPolizaOptimaApi = (datos) =>
   api.post('/polizas-inquilinos/poliza-optima', datos, { timeout: 120_000 });
+export const ocrReciboPolizaInquilinoApi = (id, archivo) => {
+  const formData = new FormData();
+  formData.append('recibo', archivo);
+  return api.post(`/polizas-inquilinos/${id}/ocr-recibo`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 120_000,
+  });
+};
+export const renovarPolizaInquilinoApi = (id, datos) =>
+  api.post(`/polizas-inquilinos/${id}/renovar`, datos);
+export const obtenerRecibosPolizaInquilinoApi = (id) =>
+  api.get(`/polizas-inquilinos/${id}/recibos`);
 
 // --- Propuestas de pólizas ---
 export const obtenerPropuestasApi = () => api.get('/propuestas');

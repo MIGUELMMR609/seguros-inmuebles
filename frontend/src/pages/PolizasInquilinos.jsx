@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale, Home, Store, Eye, ClipboardCheck, Euro, Target, Save, CheckCircle, X } from 'lucide-react';
+import { useEffect, useState, useRef } from 'react';
+import { Plus, Pencil, Trash2, Shield, FileText, AlertTriangle, Sparkles, RefreshCw, Download, Scale, Home, Store, Eye, ClipboardCheck, Euro, Target, Save, CheckCircle, X, Upload, Calendar } from 'lucide-react';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
@@ -23,6 +23,9 @@ import {
   crearPropuestaApi,
   obtenerPolizasApi,
   generarPolizaOptimaApi,
+  ocrReciboPolizaInquilinoApi,
+  renovarPolizaInquilinoApi,
+  obtenerRecibosPolizaInquilinoApi,
 } from '../api/index.js';
 
 const TIPOS_POLIZA = [
@@ -136,6 +139,20 @@ export default function PolizasInquilinos() {
   const [propuestaVer, setPropuestaVer] = useState(null);
   const [confirmandoEliminarPropuesta, setConfirmandoEliminarPropuesta] = useState(null);
 
+  // Modal Renovar póliza
+  const [modalRenovar, setModalRenovar] = useState(false);
+  const [polizaRenovando, setPolizaRenovando] = useState(null);
+  const [pasoRenovar, setPasoRenovar] = useState(1); // 1=subir, 2=ocr, 3=verificación, 4=confirmar
+  const [reciboFile, setReciboFile] = useState(null);
+  const [reciboError, setReciboError] = useState('');
+  const [ocrCargando, setOcrCargando] = useState(false);
+  const [ocrResultado, setOcrResultado] = useState(null); // { datos, recibo_url, verificacion }
+  const [renovando, setRenovando] = useState(false);
+  const reciboInputRef = useRef(null);
+
+  // Histórico recibos en modal de edición
+  const [recibosHistorico, setRecibosHistorico] = useState([]);
+
   // Modal Póliza Óptima
   const [modalOptima, setModalOptima] = useState(false);
   const [optimaPaso, setOptimaPaso] = useState(1);
@@ -216,8 +233,12 @@ export default function PolizasInquilinos() {
     setModalAbierto(true);
   }
 
-  function abrirEditar(poliza) {
+  async function abrirEditar(poliza) {
     setEditando(poliza);
+    setRecibosHistorico([]);
+    obtenerRecibosPolizaInquilinoApi(poliza.id)
+      .then((res) => setRecibosHistorico(res.data || []))
+      .catch(() => setRecibosHistorico([]));
     setFormulario({
       inquilino_id: poliza.inquilino_id || '',
       tipo: poliza.tipo || 'hogar',
@@ -317,6 +338,83 @@ export default function PolizasInquilinos() {
       window.dispatchEvent(new CustomEvent('refreshBadges'));
     } catch (err) {
       setToast({ mensaje: err.response?.data?.error || 'Error al eliminar la póliza', tipo: 'error' });
+    }
+  }
+
+  // --- Renovación con OCR de recibo bancario ---
+  function abrirRenovar(poliza) {
+    setPolizaRenovando(poliza);
+    setPasoRenovar(1);
+    setReciboFile(null);
+    setReciboError('');
+    setOcrCargando(false);
+    setOcrResultado(null);
+    setRenovando(false);
+    setModalRenovar(true);
+  }
+
+  function cerrarRenovar() {
+    setModalRenovar(false);
+    setPolizaRenovando(null);
+    setReciboFile(null);
+    setOcrResultado(null);
+    setReciboError('');
+  }
+
+  async function handleSubirRecibo(archivo) {
+    if (!archivo) return;
+    const tipoOk = archivo.type === 'application/pdf' || archivo.type.startsWith('image/');
+    if (!tipoOk) {
+      setReciboError('Solo se permiten PDF o imágenes (JPG, PNG)');
+      return;
+    }
+    if (archivo.size > 15 * 1024 * 1024) {
+      setReciboError('El archivo no puede superar los 15 MB');
+      return;
+    }
+    setReciboError('');
+    setReciboFile(archivo);
+    setPasoRenovar(2);
+    setOcrCargando(true);
+    try {
+      const res = await ocrReciboPolizaInquilinoApi(polizaRenovando.id, archivo);
+      setOcrResultado(res.data);
+      setPasoRenovar(3);
+    } catch (err) {
+      setReciboError(err.response?.data?.error || 'Error al analizar el recibo');
+      setPasoRenovar(1);
+    } finally {
+      setOcrCargando(false);
+    }
+  }
+
+  async function handleConfirmarRenovacion() {
+    if (!ocrResultado?.datos) return;
+    const d = ocrResultado.datos;
+    if (!d.fecha_vencimiento) {
+      setToast({ mensaje: 'El recibo no tiene fecha de vencimiento detectada', tipo: 'error' });
+      return;
+    }
+    setRenovando(true);
+    try {
+      await renovarPolizaInquilinoApi(polizaRenovando.id, {
+        nueva_fecha_inicio: d.fecha_inicio || null,
+        nueva_fecha_vencimiento: d.fecha_vencimiento,
+        nuevo_importe: d.importe_pagado != null ? d.importe_pagado : null,
+        nueva_compania_aseguradora: d.compania_aseguradora || null,
+        nuevo_numero_poliza: d.numero_poliza || null,
+        fecha_pago: d.fecha_pago || null,
+        recibo_url: ocrResultado.recibo_url || null,
+        notas: d.periodo_cobertura ? `Periodo: ${d.periodo_cobertura}` : null,
+      });
+      setToast({ mensaje: 'Póliza renovada correctamente', tipo: 'success' });
+      cerrarRenovar();
+      await cargar();
+      window.dispatchEvent(new CustomEvent('refreshBadges'));
+    } catch (err) {
+      setToast({ mensaje: err.response?.data?.error || 'Error al renovar la póliza', tipo: 'error' });
+    } finally {
+      setRenovando(false);
     }
   }
 
@@ -626,11 +724,14 @@ export default function PolizasInquilinos() {
     {
       clave: 'acciones',
       titulo: 'Acciones',
-      ancho: '140px',
+      ancho: '170px',
       render: (f) => (
         <div className="flex items-center gap-1">
           <button onClick={() => abrirEditar(f)} title="Editar" className="p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
             <Pencil size={20} />
+          </button>
+          <button onClick={() => abrirRenovar(f)} title="Renovar póliza" className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+            <RefreshCw size={20} />
           </button>
           <button onClick={() => abrirAnalisis(f)} title="Análisis experto IA" className="p-1.5 text-gray-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
             <Sparkles size={20} />
@@ -1181,6 +1282,47 @@ export default function PolizasInquilinos() {
                 <textarea name="notas" value={formulario.notas} onChange={handleCambio} rows={2} className="campo-formulario resize-none" placeholder="Observaciones..." />
               </div>
             </div>
+
+            {/* Recibos pagados (histórico) */}
+            {editando && (
+              <div>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <Calendar size={14} /> Recibos pagados
+                  {recibosHistorico.length > 0 && <span className="text-gray-400 normal-case font-normal">({recibosHistorico.length})</span>}
+                </h3>
+                {recibosHistorico.length === 0 ? (
+                  <p className="text-sm text-gray-400 italic">Esta póliza aún no tiene recibos registrados. Usa el botón Renovar para añadir uno.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {recibosHistorico.map((r) => (
+                      <div key={r.id} className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm">
+                        <div className="flex-1">
+                          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                            <span className="font-semibold text-gray-700">
+                              {r.fecha_pago ? new Date(r.fecha_pago).toLocaleDateString('es-ES') : (r.fecha_renovacion ? new Date(r.fecha_renovacion).toLocaleDateString('es-ES') : '—')}
+                            </span>
+                            {r.importe && (
+                              <span className="text-green-700 font-medium">{formatearMiles(parseFloat(r.importe).toFixed(2))} €</span>
+                            )}
+                            {(r.fecha_inicio || r.fecha_vencimiento) && (
+                              <span className="text-gray-500 text-xs">
+                                {r.fecha_inicio ? new Date(r.fecha_inicio).toLocaleDateString('es-ES') : '?'} → {r.fecha_vencimiento ? new Date(r.fecha_vencimiento).toLocaleDateString('es-ES') : '?'}
+                              </span>
+                            )}
+                          </div>
+                          {r.notas && <p className="text-xs text-gray-400 mt-0.5">{r.notas}</p>}
+                        </div>
+                        {r.recibo_url && (
+                          <a href={urlDoc(r.recibo_url)} target="_blank" rel="noopener noreferrer" title="Ver recibo" className="ml-2 p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-white rounded-lg transition-colors">
+                            <FileText size={18} />
+                          </a>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {error && <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2 rounded-lg">{error}</div>}
 
@@ -1902,6 +2044,191 @@ export default function PolizasInquilinos() {
           </div>
           );
         })()}
+      </Modal>
+
+      {/* Modal Renovar póliza con OCR de recibo bancario */}
+      <Modal
+        abierto={modalRenovar}
+        onCerrar={cerrarRenovar}
+        titulo={`Renovar póliza — ${polizaRenovando?.numero_poliza || polizaRenovando?.compania_aseguradora || ''}`}
+        ancho="max-w-2xl"
+      >
+        {polizaRenovando && (
+          <div className="space-y-4">
+            {/* Resumen de la póliza actual */}
+            <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 text-sm space-y-1">
+              <p><span className="text-gray-400">Inquilino:</span> <span className="font-medium text-gray-700">{polizaRenovando.nombre_inquilino || '—'}</span></p>
+              <p><span className="text-gray-400">Compañía:</span> {polizaRenovando.compania_aseguradora || '—'}</p>
+              <p><span className="text-gray-400">Vencimiento actual:</span> {polizaRenovando.fecha_vencimiento ? new Date(polizaRenovando.fecha_vencimiento).toLocaleDateString('es-ES') : '—'}</p>
+              <p><span className="text-gray-400">Importe actual:</span> {polizaRenovando.importe_anual ? `${formatearMiles(parseFloat(polizaRenovando.importe_anual).toFixed(2))} €` : '—'}</p>
+            </div>
+
+            {/* Indicador de pasos */}
+            <div className="flex items-center justify-between text-xs">
+              {[
+                { n: 1, t: 'Subir recibo' },
+                { n: 2, t: 'Analizar' },
+                { n: 3, t: 'Verificar' },
+                { n: 4, t: 'Confirmar' },
+              ].map((p, i) => (
+                <div key={p.n} className="flex items-center flex-1">
+                  <div className={`flex flex-col items-center flex-1`}>
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-bold border-2 transition-colors ${
+                      pasoRenovar >= p.n ? 'bg-green-600 border-green-600 text-white' : 'bg-white border-gray-200 text-gray-300'
+                    }`}>
+                      {pasoRenovar > p.n ? '✓' : p.n}
+                    </div>
+                    <span className={`mt-1 text-[10px] font-medium ${pasoRenovar >= p.n ? 'text-gray-700' : 'text-gray-300'}`}>{p.t}</span>
+                  </div>
+                  {i < 3 && <div className={`h-0.5 flex-1 mb-4 ${pasoRenovar > p.n ? 'bg-green-600' : 'bg-gray-200'}`} />}
+                </div>
+              ))}
+            </div>
+
+            {/* PASO 1: Subir recibo */}
+            {pasoRenovar === 1 && (
+              <div className="space-y-3">
+                <p className="text-sm text-gray-600">Sube el <strong>recibo bancario</strong> del nuevo periodo (PDF o imagen). La IA extraerá automáticamente los datos.</p>
+                <input
+                  ref={reciboInputRef}
+                  type="file"
+                  accept="application/pdf,image/*"
+                  className="hidden"
+                  onChange={(e) => { if (e.target.files[0]) handleSubirRecibo(e.target.files[0]); }}
+                />
+                <button
+                  type="button"
+                  onClick={() => reciboInputRef.current?.click()}
+                  className="w-full flex flex-col items-center justify-center gap-2 px-6 py-10 rounded-xl border-2 border-dashed border-gray-300 hover:border-green-500 hover:bg-green-50/30 text-gray-500 hover:text-green-700 transition-colors"
+                >
+                  <Upload size={28} />
+                  <span className="text-sm font-medium">Pulsa para seleccionar el recibo</span>
+                  <span className="text-xs text-gray-400">PDF o imagen (máx. 15 MB)</span>
+                </button>
+                {reciboError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm px-4 py-2 rounded-lg">{reciboError}</div>
+                )}
+                <div className="flex justify-end pt-2">
+                  <button type="button" onClick={cerrarRenovar} className="btn-secundario">Cancelar</button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 2: Analizando OCR */}
+            {pasoRenovar === 2 && (
+              <div className="flex flex-col items-center justify-center py-14 text-center">
+                <div className="w-16 h-16 bg-green-50 rounded-2xl flex items-center justify-center mb-4">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">Analizando recibo con IA...</p>
+                <p className="text-xs text-gray-400 mt-1">Extrayendo número de póliza, importe y fechas</p>
+                {reciboFile && <p className="text-xs text-gray-300 mt-2">{reciboFile.name}</p>}
+              </div>
+            )}
+
+            {/* PASO 3: Verificación automática */}
+            {pasoRenovar === 3 && ocrResultado && (
+              <div className="space-y-4">
+                {/* Banner verificación */}
+                {ocrResultado.verificacion?.coincide ? (
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-4">
+                    <p className="text-sm text-green-800 font-semibold flex items-center gap-2">
+                      <CheckCircle size={18} className="text-green-600" />
+                      Póliza verificada — corresponde a {ocrResultado.verificacion.nombre_inquilino || 'este inquilino'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                    <p className="text-sm text-amber-800 font-semibold flex items-center gap-2">
+                      <AlertTriangle size={18} className="text-amber-600" />
+                      El recibo no corresponde a esta póliza — verifica antes de continuar
+                    </p>
+                    <div className="text-xs text-amber-700 mt-2 space-y-0.5">
+                      <p>· Nº póliza registrado: <span className="font-mono">{ocrResultado.verificacion?.numero_poliza_actual || '—'}</span></p>
+                      <p>· Nº póliza del recibo: <span className="font-mono">{ocrResultado.verificacion?.numero_poliza_recibo || '—'}</span></p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Datos extraídos */}
+                <div className="bg-white border border-gray-200 rounded-xl p-4">
+                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Datos extraídos del recibo</h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div><span className="text-gray-400">Compañía:</span><br /><span className="text-gray-700 font-medium">{ocrResultado.datos.compania_aseguradora || '—'}</span></div>
+                    <div><span className="text-gray-400">Nº póliza:</span><br /><span className="text-gray-700 font-mono">{ocrResultado.datos.numero_poliza || '—'}</span></div>
+                    <div><span className="text-gray-400">Importe pagado:</span><br /><span className="text-green-700 font-semibold">{ocrResultado.datos.importe_pagado != null ? `${formatearMiles(parseFloat(ocrResultado.datos.importe_pagado).toFixed(2))} €` : '—'}</span></div>
+                    <div><span className="text-gray-400">Fecha de pago:</span><br /><span className="text-gray-700">{ocrResultado.datos.fecha_pago ? new Date(ocrResultado.datos.fecha_pago + 'T00:00:00').toLocaleDateString('es-ES') : '—'}</span></div>
+                    <div><span className="text-gray-400">Inicio cobertura:</span><br /><span className="text-gray-700">{ocrResultado.datos.fecha_inicio ? new Date(ocrResultado.datos.fecha_inicio + 'T00:00:00').toLocaleDateString('es-ES') : '—'}</span></div>
+                    <div><span className="text-gray-400">Fin cobertura:</span><br /><span className="text-gray-700">{ocrResultado.datos.fecha_vencimiento ? new Date(ocrResultado.datos.fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-ES') : '—'}</span></div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => { setPasoRenovar(1); setOcrResultado(null); setReciboFile(null); }} className="btn-secundario">Subir otro</button>
+                  <button type="button" onClick={cerrarRenovar} className="btn-secundario flex-1">Cancelar</button>
+                  <button type="button" onClick={() => setPasoRenovar(4)} disabled={!ocrResultado.datos.fecha_vencimiento} className="btn-primario flex-1 justify-center disabled:opacity-50">Continuar</button>
+                </div>
+              </div>
+            )}
+
+            {/* PASO 4: Confirmar renovación — comparativa */}
+            {pasoRenovar === 4 && ocrResultado && (
+              <div className="space-y-4">
+                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Resumen de la renovación</h4>
+                <div className="overflow-hidden rounded-xl border border-gray-200">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-gray-50">
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500"></th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-gray-500">Actual</th>
+                        <th className="text-left px-3 py-2 text-xs font-semibold text-green-700">Tras renovación</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-gray-100">
+                        <td className="px-3 py-2 text-gray-500">Compañía</td>
+                        <td className="px-3 py-2 text-gray-700">{polizaRenovando.compania_aseguradora || '—'}</td>
+                        <td className="px-3 py-2 text-gray-700 font-medium">{ocrResultado.datos.compania_aseguradora || polizaRenovando.compania_aseguradora || '—'}</td>
+                      </tr>
+                      <tr className="border-t border-gray-100">
+                        <td className="px-3 py-2 text-gray-500">Nº póliza</td>
+                        <td className="px-3 py-2 text-gray-700 font-mono">{polizaRenovando.numero_poliza || '—'}</td>
+                        <td className="px-3 py-2 text-gray-700 font-mono font-medium">{ocrResultado.datos.numero_poliza || polizaRenovando.numero_poliza || '—'}</td>
+                      </tr>
+                      <tr className="border-t border-gray-100">
+                        <td className="px-3 py-2 text-gray-500">Inicio</td>
+                        <td className="px-3 py-2 text-gray-700">{polizaRenovando.fecha_inicio ? new Date(polizaRenovando.fecha_inicio).toLocaleDateString('es-ES') : '—'}</td>
+                        <td className="px-3 py-2 text-gray-700 font-medium">{ocrResultado.datos.fecha_inicio ? new Date(ocrResultado.datos.fecha_inicio + 'T00:00:00').toLocaleDateString('es-ES') : '—'}</td>
+                      </tr>
+                      <tr className="border-t border-gray-100">
+                        <td className="px-3 py-2 text-gray-500">Vencimiento</td>
+                        <td className="px-3 py-2 text-gray-700">{polizaRenovando.fecha_vencimiento ? new Date(polizaRenovando.fecha_vencimiento).toLocaleDateString('es-ES') : '—'}</td>
+                        <td className="px-3 py-2 text-green-700 font-semibold">{ocrResultado.datos.fecha_vencimiento ? new Date(ocrResultado.datos.fecha_vencimiento + 'T00:00:00').toLocaleDateString('es-ES') : '—'}</td>
+                      </tr>
+                      <tr className="border-t border-gray-100">
+                        <td className="px-3 py-2 text-gray-500">Importe</td>
+                        <td className="px-3 py-2 text-gray-700">{polizaRenovando.importe_anual ? `${formatearMiles(parseFloat(polizaRenovando.importe_anual).toFixed(2))} €` : '—'}</td>
+                        <td className="px-3 py-2 text-green-700 font-semibold">{ocrResultado.datos.importe_pagado != null ? `${formatearMiles(parseFloat(ocrResultado.datos.importe_pagado).toFixed(2))} €` : (polizaRenovando.importe_anual ? `${formatearMiles(parseFloat(polizaRenovando.importe_anual).toFixed(2))} €` : '—')}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-xs text-blue-700">
+                  Al confirmar se actualizará la póliza, se guardará el recibo en el histórico y el estado pasará a <strong>VIGENTE</strong>.
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <button type="button" onClick={() => setPasoRenovar(3)} className="btn-secundario">Atrás</button>
+                  <button type="button" onClick={cerrarRenovar} className="btn-secundario flex-1">Cancelar</button>
+                  <button type="button" onClick={handleConfirmarRenovacion} disabled={renovando} className="btn-primario flex-1 justify-center">
+                    {renovando ? <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" /> : 'Confirmar renovación'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </Modal>
 
       {/* Modal confirmar eliminación propuesta */}

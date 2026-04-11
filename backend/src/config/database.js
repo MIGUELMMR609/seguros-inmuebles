@@ -125,6 +125,24 @@ async function inicializarBaseDatos() {
       ALTER TABLE historial_polizas ADD COLUMN IF NOT EXISTS documento_url VARCHAR(500);
     `);
 
+    // Tabla histórico de recibos/renovaciones de pólizas de inquilinos
+    await cliente.query(`
+      CREATE TABLE IF NOT EXISTS historial_polizas_inquilinos (
+        id SERIAL PRIMARY KEY,
+        poliza_inquilino_id INTEGER REFERENCES polizas_inquilinos(id) ON DELETE CASCADE,
+        compania_aseguradora VARCHAR(255),
+        numero_poliza VARCHAR(255),
+        fecha_inicio DATE,
+        fecha_vencimiento DATE,
+        importe DECIMAL(10,2),
+        fecha_pago DATE,
+        recibo_url VARCHAR(500),
+        notas TEXT,
+        fecha_renovacion TIMESTAMP DEFAULT NOW()
+      );
+    `);
+    await cliente.query(`CREATE INDEX IF NOT EXISTS idx_historial_polinq_poliza ON historial_polizas_inquilinos(poliza_inquilino_id)`);
+
     // Tabla siniestros
     await cliente.query(`
       CREATE TABLE IF NOT EXISTS siniestros (

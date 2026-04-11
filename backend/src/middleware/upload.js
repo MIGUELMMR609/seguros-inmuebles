@@ -47,4 +47,23 @@ const uploadMemoria = multer({
   limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
 });
 
-module.exports = { upload, uploadFotos, uploadMemoria };
+// --- Almacenamiento en memoria para recibos bancarios (PDF o imagen) ---
+const filtroReciboPDFoImagen = (req, file, cb) => {
+  const esPDF = file.mimetype === 'application/pdf'
+    || file.mimetype === 'application/octet-stream'
+    || file.originalname?.toLowerCase().endsWith('.pdf');
+  const esImagen = file.mimetype.startsWith('image/');
+  if (esPDF || esImagen) {
+    cb(null, true);
+  } else {
+    cb(new Error('Solo se permiten PDF o imágenes'), false);
+  }
+};
+
+const uploadRecibo = multer({
+  storage: multer.memoryStorage(),
+  fileFilter: filtroReciboPDFoImagen,
+  limits: { fileSize: 15 * 1024 * 1024 }, // 15 MB
+});
+
+module.exports = { upload, uploadFotos, uploadMemoria, uploadRecibo };

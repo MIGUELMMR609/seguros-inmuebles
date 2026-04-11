@@ -3,8 +3,10 @@ const fs = require('fs');
 const path = require('path');
 const { pool } = require('../config/database');
 const { verificarToken } = require('../middleware/auth');
+const { uploadRecibo } = require('../middleware/upload');
 const { registrarActividad } = require('../utils/actividad');
 const { llamarAnthropicApi } = require('../utils/anthropic');
+const cloudinary = require('../config/cloudinary');
 
 const MAX_BYTES_PDF = 5 * 1024 * 1024; // 5 MB límite Anthropic
 
@@ -695,6 +697,273 @@ Devuelve ÚNICAMENTE un objeto JSON válido con esta estructura exacta:
     }
     console.error('Error analizar-experto-inquilino:', error.message);
     res.status(500).json({ error: 'Error interno al analizar la póliza' });
+  }
+});
+
+// --- RENOVACIÓN DE PÓLIZA DE INQUILINO CON OCR DE RECIBO BANCARIO ---
+
+// Sube un buffer a Cloudinary, detectando automáticamente el tipo (PDF o imagen)
+function subirReciboCloudinary(buffer, esImagen) {
+  return new Promise((resolve, reject) => {
+    const opciones = esImagen
+      ? { folder: 'recibos-polizas', resource_type: 'image', type: 'upload', access_mode: 'public' }
+      : { folder: 'recibos-polizas', resource_type: 'raw', type: 'upload', access_mode: 'public', format: 'pdf' };
+    cloudinary.uploader.upload_stream(opciones, (error, result) => {
+      if (error) reject(error);
+      else resolve(result.secure_url);
+    }).end(buffer);
+  });
+}
+
+// Normaliza número de póliza para comparar (quita espacios, guiones, puntos)
+function normalizarNumeroPoliza(num) {
+  if (!num) return '';
+  return String(num).toLowerCase().replace(/[\s\-_\.\/]/g, '');
+}
+
+// POST /api/polizas-inquilinos/:id/ocr-recibo — sube recibo y extrae datos con IA
+router.post('/:id/ocr-recibo', uploadRecibo.single('recibo'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No se recibió ningún archivo' });
+  }
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return res.status(503).json({ error: 'La clave de API de IA no está configurada (ANTHROPIC_API_KEY)' });
+  }
+
+  try {
+    // 1. Cargar póliza actual para comparar luego
+    const resPol = await pool.query(
+      `SELECT pi.*, inq.nombre AS nombre_inquilino
+       FROM polizas_inquilinos pi
+       LEFT JOIN inquilinos inq ON pi.inquilino_id = inq.id
+       WHERE pi.id = $1`,
+      [req.params.id]
+    );
+    if (resPol.rows.length === 0) {
+      return res.status(404).json({ error: 'Póliza de inquilino no encontrada' });
+    }
+    const poliza = resPol.rows[0];
+
+    // 2. Detectar tipo (PDF / imagen)
+    const mimetype = req.file.mimetype || '';
+    const nombre = (req.file.originalname || '').toLowerCase();
+    const esPDF = mimetype === 'application/pdf' || mimetype === 'application/octet-stream' || nombre.endsWith('.pdf');
+    const esImagen = !esPDF && mimetype.startsWith('image/');
+    const mediaTypeImagen = esImagen
+      ? (mimetype === 'image/jpg' ? 'image/jpeg' : mimetype)
+      : null;
+
+    const base64 = req.file.buffer.toString('base64');
+
+    // 3. Subir recibo a Cloudinary en paralelo
+    const promesaUrl = subirReciboCloudinary(req.file.buffer, esImagen).catch((err) => {
+      console.warn('No se pudo subir recibo a Cloudinary:', err?.message);
+      return null;
+    });
+
+    // 4. Llamar a la IA para OCR
+    const prompt = `Analiza este recibo bancario de un seguro y extrae la información del pago.
+Devuelve ÚNICAMENTE un objeto JSON válido (sin markdown, sin texto extra) con esta estructura exacta:
+{
+  "numero_poliza": "número de póliza tal como aparece en el recibo, o null",
+  "compania_aseguradora": "nombre de la compañía aseguradora o null",
+  "importe_pagado": número decimal sin símbolo de moneda o null,
+  "fecha_pago": "YYYY-MM-DD (fecha en que se efectuó el cargo/pago) o null",
+  "fecha_inicio": "YYYY-MM-DD (inicio del nuevo periodo de cobertura que cubre el recibo) o null",
+  "fecha_vencimiento": "YYYY-MM-DD (fin del nuevo periodo de cobertura que cubre el recibo) o null",
+  "periodo_cobertura": "texto descriptivo del periodo (ej: 01/01/2026 al 31/12/2026) o null"
+}
+Las fechas SIEMPRE en formato YYYY-MM-DD. Los importes como números decimales sin € ni comas de miles (usa punto como separador decimal).
+Si algún dato no aparece en el recibo, usa null.`;
+
+    const contenido = esPDF
+      ? [
+          { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: base64 } },
+          { type: 'text', text: prompt },
+        ]
+      : [
+          { type: 'image', source: { type: 'base64', media_type: mediaTypeImagen, data: base64 } },
+          { type: 'text', text: prompt },
+        ];
+
+    const controlador = new AbortController();
+    const temporizador = setTimeout(() => controlador.abort(), 115_000);
+
+    const respuesta = await llamarAnthropicApi({
+      method: 'POST',
+      signal: controlador.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        ...(esPDF ? { 'anthropic-beta': 'pdfs-2024-09-25' } : {}),
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        messages: [{ role: 'user', content: contenido }],
+      }),
+    });
+
+    clearTimeout(temporizador);
+
+    if (!respuesta.ok) {
+      const cuerpo = await respuesta.text();
+      console.error(`Error Anthropic ocr-recibo [${respuesta.status}]:`, cuerpo.slice(0, 300));
+      let detalle = '';
+      try { detalle = JSON.parse(cuerpo)?.error?.message || cuerpo.slice(0, 200); } catch { detalle = cuerpo.slice(0, 200); }
+      return res.status(502).json({ error: `IA [${respuesta.status}]: ${detalle}` });
+    }
+
+    const resultadoIA = await respuesta.json();
+    const texto = resultadoIA.content?.filter((b) => b.type === 'text').map((b) => b.text).join('') || '';
+    let datos;
+    try {
+      datos = JSON.parse(texto);
+    } catch {
+      const m = texto.match(/\{[\s\S]*\}/);
+      if (!m) return res.status(422).json({ error: 'La IA no devolvió un JSON válido' });
+      datos = JSON.parse(m[0]);
+    }
+
+    // 5. Verificación automática: comparar número de póliza del recibo con la registrada
+    const numRec = normalizarNumeroPoliza(datos.numero_poliza);
+    const numPol = normalizarNumeroPoliza(poliza.numero_poliza);
+    const coincide = !!numRec && !!numPol && (numRec === numPol || numRec.includes(numPol) || numPol.includes(numRec));
+
+    const recibo_url = await promesaUrl;
+
+    res.json({
+      datos,
+      recibo_url,
+      verificacion: {
+        coincide,
+        numero_poliza_actual: poliza.numero_poliza || null,
+        numero_poliza_recibo: datos.numero_poliza || null,
+        nombre_inquilino: poliza.nombre_inquilino || null,
+      },
+    });
+  } catch (error) {
+    if (error.name === 'AbortError') {
+      console.error('Timeout ocr-recibo (>115s)');
+      return res.status(504).json({ error: 'La IA tardó demasiado. Inténtalo de nuevo.' });
+    }
+    console.error('Error ocr-recibo:', error.message);
+    res.status(500).json({ error: 'Error interno al analizar el recibo' });
+  }
+});
+
+// POST /api/polizas-inquilinos/:id/renovar — aplica renovación y guarda histórico
+router.post('/:id/renovar', async (req, res) => {
+  const cliente = await pool.connect();
+  try {
+    await cliente.query('BEGIN');
+
+    const { id } = req.params;
+    const {
+      nueva_fecha_inicio,
+      nueva_fecha_vencimiento,
+      nuevo_importe,
+      nueva_compania_aseguradora,
+      nuevo_numero_poliza,
+      fecha_pago,
+      recibo_url,
+      notas,
+    } = req.body;
+
+    if (!nueva_fecha_vencimiento) {
+      await cliente.query('ROLLBACK');
+      return res.status(400).json({ error: 'La nueva fecha de vencimiento es requerida' });
+    }
+
+    // Cargar póliza actual
+    const actual = await cliente.query(
+      `SELECT fecha_inicio, fecha_vencimiento, importe_anual, compania_aseguradora, numero_poliza
+       FROM polizas_inquilinos WHERE id = $1`,
+      [id]
+    );
+    if (actual.rows.length === 0) {
+      await cliente.query('ROLLBACK');
+      return res.status(404).json({ error: 'Póliza de inquilino no encontrada' });
+    }
+    const pa = actual.rows[0];
+
+    // Guardar histórico (snapshot del estado previo + recibo del nuevo periodo)
+    await cliente.query(
+      `INSERT INTO historial_polizas_inquilinos
+         (poliza_inquilino_id, compania_aseguradora, numero_poliza,
+          fecha_inicio, fecha_vencimiento, importe, fecha_pago, recibo_url, notas)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        id,
+        nueva_compania_aseguradora || pa.compania_aseguradora || null,
+        nuevo_numero_poliza || pa.numero_poliza || null,
+        nueva_fecha_inicio || pa.fecha_inicio || null,
+        nueva_fecha_vencimiento,
+        nuevo_importe != null && nuevo_importe !== '' ? parseFloat(nuevo_importe) : pa.importe_anual,
+        fecha_pago || null,
+        recibo_url || null,
+        notas || null,
+      ]
+    );
+
+    // Actualizar póliza con los nuevos datos
+    const actualizada = await cliente.query(
+      `UPDATE polizas_inquilinos SET
+         fecha_inicio = COALESCE($1, fecha_inicio),
+         fecha_vencimiento = $2,
+         importe_anual = COALESCE($3, importe_anual),
+         compania_aseguradora = COALESCE($4, compania_aseguradora),
+         numero_poliza = COALESCE($5, numero_poliza),
+         updated_at = NOW()
+       WHERE id = $6
+       RETURNING *`,
+      [
+        nueva_fecha_inicio || null,
+        nueva_fecha_vencimiento,
+        nuevo_importe != null && nuevo_importe !== '' ? parseFloat(nuevo_importe) : null,
+        nueva_compania_aseguradora || null,
+        nuevo_numero_poliza || null,
+        id,
+      ]
+    );
+
+    await cliente.query('COMMIT');
+
+    const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
+    registrarActividad(
+      req.usuario.id,
+      req.usuario.email,
+      'renovar',
+      'poliza_inquilino',
+      parseInt(id),
+      `Renovada hasta ${nueva_fecha_vencimiento}`,
+      ip
+    );
+
+    res.json({ mensaje: 'Póliza renovada correctamente', poliza: actualizada.rows[0] });
+  } catch (error) {
+    await cliente.query('ROLLBACK');
+    console.error('Error al renovar póliza de inquilino:', error);
+    res.status(500).json({ error: 'Error al renovar la póliza de inquilino' });
+  } finally {
+    cliente.release();
+  }
+});
+
+// GET /api/polizas-inquilinos/:id/recibos — lista histórico de recibos pagados
+router.get('/:id/recibos', async (req, res) => {
+  try {
+    const resultado = await pool.query(
+      `SELECT * FROM historial_polizas_inquilinos
+       WHERE poliza_inquilino_id = $1
+       ORDER BY fecha_renovacion DESC`,
+      [req.params.id]
+    );
+    res.json(resultado.rows);
+  } catch (error) {
+    console.error('Error al obtener recibos:', error);
+    res.status(500).json({ error: 'Error al obtener el histórico de recibos' });
   }
 });
 
