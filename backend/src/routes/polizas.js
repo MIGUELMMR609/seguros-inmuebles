@@ -12,6 +12,10 @@ router.use(verificarToken);
 
 const TIPOS_VALIDOS = ['vivienda', 'nave', 'local', 'inquilino_resp_civil', 'activ_economica', 'comunidad', 'otros'];
 
+// Convierte strings vacíos a null para columnas DATE/NUMERIC (postgres no acepta "")
+const toDate = (val) => (val && val !== '') ? val : null;
+const toNum = (val) => (val !== undefined && val !== null && val !== '') ? val : null;
+
 // GET /api/polizas
 router.get('/', async (req, res) => {
   try {
@@ -94,10 +98,10 @@ router.post('/', async (req, res) => {
        RETURNING *`,
       [
         inmueble_id, tipoFinal, compania_aseguradora ?? null, numero_poliza ?? null,
-        fecha_inicio ?? null, fecha_vencimiento ?? null, importe_anual ?? null,
+        toDate(fecha_inicio), toDate(fecha_vencimiento), toNum(importe_anual),
         notas ?? null, documento_url ?? null, contacto_nombre ?? null,
         contacto_telefono ?? null, contacto_email ?? null,
-        periodicidad_pago || 'anual', importe_pago ?? null, fecha_proximo_pago ?? null,
+        periodicidad_pago || 'anual', toNum(importe_pago), toDate(fecha_proximo_pago),
         tomador_poliza ?? null,
       ]
     );
@@ -160,10 +164,10 @@ router.put('/:id', async (req, res) => {
        RETURNING *`,
       [
         inmueble_id, tipoFinal, compania_aseguradora ?? null, numero_poliza ?? null,
-        fecha_inicio ?? null, fecha_vencimiento ?? null, importe_anual ?? null,
+        toDate(fecha_inicio), toDate(fecha_vencimiento), toNum(importe_anual),
         notas ?? null, documento_url ?? null, contacto_nombre ?? null,
         contacto_telefono ?? null, contacto_email ?? null,
-        periodicidad_pago || 'anual', importe_pago ?? null, fecha_proximo_pago ?? null,
+        periodicidad_pago || 'anual', toNum(importe_pago), toDate(fecha_proximo_pago),
         tomador_poliza ?? null, req.params.id,
       ]
     );
