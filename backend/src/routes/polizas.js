@@ -15,6 +15,7 @@ const TIPOS_VALIDOS = ['vivienda', 'nave', 'local', 'inquilino_resp_civil', 'act
 // Convierte strings vacíos a null para columnas DATE/NUMERIC (postgres no acepta "")
 const toDate = (val) => (val && val !== '') ? val : null;
 const toNum = (val) => (val !== undefined && val !== null && val !== '') ? val : null;
+const toBool = (val) => val === true || val === 'true';
 
 // GET /api/polizas
 router.get('/', async (req, res) => {
@@ -80,6 +81,15 @@ router.post('/', async (req, res) => {
       periodicidad_pago, importe_pago, fecha_proximo_pago, tomador_poliza,
       riesgos_cubiertos, riesgos_no_cubiertos, analisis_fortalezas, analisis_carencias, como_complementar,
       direccion_bien_asegurado,
+      // Capitales asegurados (inmueble)
+      capital_continente, capital_contenido, capital_rc_general, capital_defensa_juridica,
+      capital_danos_agua, capital_robo, capital_danos_electricos, capital_fenomenos_atmosfericos,
+      capital_perdida_alquileres, capital_rc_propietario,
+      // Coberturas NO contratadas
+      cob_no_perdida_explotacion, cob_no_averia_maquinaria, cob_no_rc_productos,
+      cob_no_todo_riesgo, cob_no_danos_esteticos, cob_no_rotura_cristales, cob_no_transporte,
+      // Franquicias y tomador
+      franquicias, tomador_cif_nif, tomador_telefono, tomador_email, tomador_banco_domiciliacion,
     } = req.body;
 
     if (!inmueble_id) {
@@ -127,6 +137,31 @@ router.post('/', async (req, res) => {
       console.warn('No se pudieron guardar campos IA (migración pendiente):', errIA.message);
     }
 
+    // UPDATE con coberturas, capitales, franquicias y tomador
+    try {
+      await pool.query(
+        `UPDATE polizas SET
+          capital_continente=$1, capital_contenido=$2, capital_rc_general=$3, capital_defensa_juridica=$4,
+          capital_danos_agua=$5, capital_robo=$6, capital_danos_electricos=$7, capital_fenomenos_atmosfericos=$8,
+          capital_perdida_alquileres=$9, capital_rc_propietario=$10,
+          cob_no_perdida_explotacion=$11, cob_no_averia_maquinaria=$12, cob_no_rc_productos=$13,
+          cob_no_todo_riesgo=$14, cob_no_danos_esteticos=$15, cob_no_rotura_cristales=$16, cob_no_transporte=$17,
+          franquicias=$18, tomador_cif_nif=$19, tomador_telefono=$20, tomador_email=$21, tomador_banco_domiciliacion=$22
+         WHERE id=$23`,
+        [
+          toNum(capital_continente), toNum(capital_contenido), toNum(capital_rc_general), toNum(capital_defensa_juridica),
+          toNum(capital_danos_agua), toNum(capital_robo), toNum(capital_danos_electricos), toNum(capital_fenomenos_atmosfericos),
+          toNum(capital_perdida_alquileres), toNum(capital_rc_propietario),
+          toBool(cob_no_perdida_explotacion), toBool(cob_no_averia_maquinaria), toBool(cob_no_rc_productos),
+          toBool(cob_no_todo_riesgo), toBool(cob_no_danos_esteticos), toBool(cob_no_rotura_cristales), toBool(cob_no_transporte),
+          franquicias ?? null, tomador_cif_nif ?? null, tomador_telefono ?? null, tomador_email ?? null, tomador_banco_domiciliacion ?? null,
+          polizaId,
+        ]
+      );
+    } catch (errCob) {
+      console.warn('No se pudieron guardar coberturas/tomador (migración pendiente):', errCob.message);
+    }
+
     // Devolver la poliza con todos los campos
     const final = await pool.query('SELECT * FROM polizas WHERE id=$1', [polizaId]);
     const ip = req.headers['x-forwarded-for']?.split(',')[0] || req.socket?.remoteAddress || null;
@@ -148,6 +183,15 @@ router.put('/:id', async (req, res) => {
       periodicidad_pago, importe_pago, fecha_proximo_pago, tomador_poliza,
       riesgos_cubiertos, riesgos_no_cubiertos, analisis_fortalezas, analisis_carencias, como_complementar,
       direccion_bien_asegurado,
+      // Capitales asegurados
+      capital_continente, capital_contenido, capital_rc_general, capital_defensa_juridica,
+      capital_danos_agua, capital_robo, capital_danos_electricos, capital_fenomenos_atmosfericos,
+      capital_perdida_alquileres, capital_rc_propietario,
+      // Coberturas NO contratadas
+      cob_no_perdida_explotacion, cob_no_averia_maquinaria, cob_no_rc_productos,
+      cob_no_todo_riesgo, cob_no_danos_esteticos, cob_no_rotura_cristales, cob_no_transporte,
+      // Franquicias y tomador
+      franquicias, tomador_cif_nif, tomador_telefono, tomador_email, tomador_banco_domiciliacion,
     } = req.body;
 
     const tipoFinal = TIPOS_VALIDOS.includes(tipo) ? tipo : 'vivienda';
@@ -193,6 +237,31 @@ router.put('/:id', async (req, res) => {
       );
     } catch (errIA) {
       console.warn('No se pudieron actualizar campos IA (migración pendiente):', errIA.message);
+    }
+
+    // UPDATE coberturas, capitales, franquicias y tomador
+    try {
+      await pool.query(
+        `UPDATE polizas SET
+          capital_continente=$1, capital_contenido=$2, capital_rc_general=$3, capital_defensa_juridica=$4,
+          capital_danos_agua=$5, capital_robo=$6, capital_danos_electricos=$7, capital_fenomenos_atmosfericos=$8,
+          capital_perdida_alquileres=$9, capital_rc_propietario=$10,
+          cob_no_perdida_explotacion=$11, cob_no_averia_maquinaria=$12, cob_no_rc_productos=$13,
+          cob_no_todo_riesgo=$14, cob_no_danos_esteticos=$15, cob_no_rotura_cristales=$16, cob_no_transporte=$17,
+          franquicias=$18, tomador_cif_nif=$19, tomador_telefono=$20, tomador_email=$21, tomador_banco_domiciliacion=$22
+         WHERE id=$23`,
+        [
+          toNum(capital_continente), toNum(capital_contenido), toNum(capital_rc_general), toNum(capital_defensa_juridica),
+          toNum(capital_danos_agua), toNum(capital_robo), toNum(capital_danos_electricos), toNum(capital_fenomenos_atmosfericos),
+          toNum(capital_perdida_alquileres), toNum(capital_rc_propietario),
+          toBool(cob_no_perdida_explotacion), toBool(cob_no_averia_maquinaria), toBool(cob_no_rc_productos),
+          toBool(cob_no_todo_riesgo), toBool(cob_no_danos_esteticos), toBool(cob_no_rotura_cristales), toBool(cob_no_transporte),
+          franquicias ?? null, tomador_cif_nif ?? null, tomador_telefono ?? null, tomador_email ?? null, tomador_banco_domiciliacion ?? null,
+          req.params.id,
+        ]
+      );
+    } catch (errCob) {
+      console.warn('No se pudieron actualizar coberturas/tomador (migración pendiente):', errCob.message);
     }
 
     const final = await pool.query('SELECT * FROM polizas WHERE id=$1', [req.params.id]);

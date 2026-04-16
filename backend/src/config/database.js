@@ -92,6 +92,32 @@ async function inicializarBaseDatos() {
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS tomador_poliza VARCHAR(255);
     `);
 
+    // Coberturas y capitales asegurados, franquicias y datos del tomador en polizas (inmueble)
+    await cliente.query(`
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_continente DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_contenido DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_rc_general DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_defensa_juridica DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_danos_agua DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_robo DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_danos_electricos DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_fenomenos_atmosfericos DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_perdida_alquileres DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS capital_rc_propietario DECIMAL(12,2);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cob_no_perdida_explotacion BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cob_no_averia_maquinaria BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cob_no_rc_productos BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cob_no_todo_riesgo BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cob_no_danos_esteticos BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cob_no_rotura_cristales BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS cob_no_transporte BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS franquicias TEXT;
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS tomador_cif_nif VARCHAR(50);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS tomador_telefono VARCHAR(50);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS tomador_email VARCHAR(255);
+      ALTER TABLE polizas ADD COLUMN IF NOT EXISTS tomador_banco_domiciliacion VARCHAR(255);
+    `);
+
     // Columnas de análisis IA experto en pólizas
     await cliente.query(`
       ALTER TABLE polizas ADD COLUMN IF NOT EXISTS riesgos_cubiertos TEXT;

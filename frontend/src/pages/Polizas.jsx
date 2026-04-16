@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Download, Scale, ArrowLeftRight } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, RefreshCw, ClipboardList, ShieldAlert, Sparkles, Download, Scale, ArrowLeftRight, Shield, AlertTriangle, Eye, Home, Calendar, Euro, X, CheckCircle } from 'lucide-react';
 import { imprimirInformePoliza } from '../utils/imprimirInforme.js';
 import { formatearMiles, limpiarMiles } from '../utils/moneda.js';
 import Tabla from '../components/Tabla.jsx';
@@ -49,7 +49,41 @@ const formularioVacio = {
   analisis_fortalezas: '', analisis_carencias: '',
   como_complementar: '',
   direccion_bien_asegurado: '',
+  // Capitales asegurados (€)
+  capital_continente: '', capital_contenido: '', capital_rc_general: '', capital_defensa_juridica: '',
+  capital_danos_agua: '', capital_robo: '', capital_danos_electricos: '',
+  capital_fenomenos_atmosfericos: '', capital_perdida_alquileres: '', capital_rc_propietario: '',
+  // Coberturas NO contratadas
+  cob_no_perdida_explotacion: false, cob_no_averia_maquinaria: false, cob_no_rc_productos: false,
+  cob_no_todo_riesgo: false, cob_no_danos_esteticos: false, cob_no_rotura_cristales: false, cob_no_transporte: false,
+  // Franquicias
+  franquicias: '',
+  // Datos del tomador
+  tomador_cif_nif: '', tomador_telefono: '', tomador_email: '', tomador_banco_domiciliacion: '',
 };
+
+const CAPITALES_ASEGURADOS_INMUEBLE = [
+  { key: 'capital_continente', label: 'Continente asegurado' },
+  { key: 'capital_contenido', label: 'Contenido asegurado' },
+  { key: 'capital_rc_general', label: 'RC General / Explotación' },
+  { key: 'capital_defensa_juridica', label: 'Defensa jurídica' },
+  { key: 'capital_danos_agua', label: 'Daños por agua' },
+  { key: 'capital_robo', label: 'Robo' },
+  { key: 'capital_danos_electricos', label: 'Daños eléctricos' },
+  { key: 'capital_fenomenos_atmosfericos', label: 'Fenómenos atmosféricos' },
+  { key: 'capital_perdida_alquileres', label: 'Pérdida de alquileres' },
+  { key: 'capital_rc_propietario', label: 'RC propietario' },
+];
+
+const COBERTURAS_NO_CONTRATADAS_INMUEBLE = [
+  { key: 'cob_no_perdida_explotacion', label: 'Pérdida de explotación' },
+  { key: 'cob_no_averia_maquinaria', label: 'Avería de maquinaria' },
+  { key: 'cob_no_rc_productos', label: 'RC de productos' },
+  { key: 'cob_no_todo_riesgo', label: 'Todo riesgo accidental' },
+  { key: 'cob_no_danos_esteticos', label: 'Daños estéticos' },
+  { key: 'cob_no_rotura_cristales', label: 'Rotura de cristales' },
+  { key: 'cob_no_transporte', label: 'Transporte' },
+];
 
 const renovarVacio = {
   nueva_fecha_inicio: '', nueva_fecha_vencimiento: '', nuevo_importe: '',
@@ -128,6 +162,10 @@ export default function Polizas() {
   const [comparandoRenovacion, setComparandoRenovacion] = useState(false);
   const [resultadoRenovacion, setResultadoRenovacion] = useState(null);
 
+  // Modal Ficha (visualización)
+  const [modalFicha, setModalFicha] = useState(false);
+  const [polizaFicha, setPolizaFicha] = useState(null);
+
   // Historial
   const [modalHistorial, setModalHistorial] = useState(false);
   const [historial, setHistorial] = useState([]);
@@ -185,6 +223,28 @@ export default function Polizas() {
       analisis_carencias: poliza.analisis_carencias || '',
       como_complementar: poliza.como_complementar || '',
       direccion_bien_asegurado: poliza.direccion_bien_asegurado || '',
+      capital_continente: poliza.capital_continente != null ? String(poliza.capital_continente) : '',
+      capital_contenido: poliza.capital_contenido != null ? String(poliza.capital_contenido) : '',
+      capital_rc_general: poliza.capital_rc_general != null ? String(poliza.capital_rc_general) : '',
+      capital_defensa_juridica: poliza.capital_defensa_juridica != null ? String(poliza.capital_defensa_juridica) : '',
+      capital_danos_agua: poliza.capital_danos_agua != null ? String(poliza.capital_danos_agua) : '',
+      capital_robo: poliza.capital_robo != null ? String(poliza.capital_robo) : '',
+      capital_danos_electricos: poliza.capital_danos_electricos != null ? String(poliza.capital_danos_electricos) : '',
+      capital_fenomenos_atmosfericos: poliza.capital_fenomenos_atmosfericos != null ? String(poliza.capital_fenomenos_atmosfericos) : '',
+      capital_perdida_alquileres: poliza.capital_perdida_alquileres != null ? String(poliza.capital_perdida_alquileres) : '',
+      capital_rc_propietario: poliza.capital_rc_propietario != null ? String(poliza.capital_rc_propietario) : '',
+      cob_no_perdida_explotacion: !!poliza.cob_no_perdida_explotacion,
+      cob_no_averia_maquinaria: !!poliza.cob_no_averia_maquinaria,
+      cob_no_rc_productos: !!poliza.cob_no_rc_productos,
+      cob_no_todo_riesgo: !!poliza.cob_no_todo_riesgo,
+      cob_no_danos_esteticos: !!poliza.cob_no_danos_esteticos,
+      cob_no_rotura_cristales: !!poliza.cob_no_rotura_cristales,
+      cob_no_transporte: !!poliza.cob_no_transporte,
+      franquicias: poliza.franquicias || '',
+      tomador_cif_nif: poliza.tomador_cif_nif || '',
+      tomador_telefono: poliza.tomador_telefono || '',
+      tomador_email: poliza.tomador_email || '',
+      tomador_banco_domiciliacion: poliza.tomador_banco_domiciliacion || '',
     });
     setError('');
     setPasoModal('form');
@@ -218,6 +278,30 @@ export default function Polizas() {
       como_complementar: datos.como_complementar || prev.como_complementar,
       direccion_bien_asegurado: datos.direccion_bien_asegurado || prev.direccion_bien_asegurado,
       documento_url: documentoUrl || prev.documento_url,
+      // Capitales asegurados
+      capital_continente: datos.capital_continente != null ? String(datos.capital_continente) : prev.capital_continente,
+      capital_contenido: datos.capital_contenido != null ? String(datos.capital_contenido) : prev.capital_contenido,
+      capital_rc_general: datos.capital_rc_general != null ? String(datos.capital_rc_general) : prev.capital_rc_general,
+      capital_defensa_juridica: datos.capital_defensa_juridica != null ? String(datos.capital_defensa_juridica) : prev.capital_defensa_juridica,
+      capital_danos_agua: datos.capital_danos_agua != null ? String(datos.capital_danos_agua) : prev.capital_danos_agua,
+      capital_robo: datos.capital_robo != null ? String(datos.capital_robo) : prev.capital_robo,
+      capital_danos_electricos: datos.capital_danos_electricos != null ? String(datos.capital_danos_electricos) : prev.capital_danos_electricos,
+      capital_fenomenos_atmosfericos: datos.capital_fenomenos_atmosfericos != null ? String(datos.capital_fenomenos_atmosfericos) : prev.capital_fenomenos_atmosfericos,
+      capital_perdida_alquileres: datos.capital_perdida_alquileres != null ? String(datos.capital_perdida_alquileres) : prev.capital_perdida_alquileres,
+      capital_rc_propietario: datos.capital_rc_propietario != null ? String(datos.capital_rc_propietario) : prev.capital_rc_propietario,
+      // Coberturas NO contratadas
+      cob_no_perdida_explotacion: datos.cob_no_perdida_explotacion === true ? true : prev.cob_no_perdida_explotacion,
+      cob_no_averia_maquinaria: datos.cob_no_averia_maquinaria === true ? true : prev.cob_no_averia_maquinaria,
+      cob_no_rc_productos: datos.cob_no_rc_productos === true ? true : prev.cob_no_rc_productos,
+      cob_no_todo_riesgo: datos.cob_no_todo_riesgo === true ? true : prev.cob_no_todo_riesgo,
+      cob_no_danos_esteticos: datos.cob_no_danos_esteticos === true ? true : prev.cob_no_danos_esteticos,
+      cob_no_rotura_cristales: datos.cob_no_rotura_cristales === true ? true : prev.cob_no_rotura_cristales,
+      cob_no_transporte: datos.cob_no_transporte === true ? true : prev.cob_no_transporte,
+      franquicias: datos.franquicias || prev.franquicias,
+      tomador_cif_nif: datos.tomador_cif_nif || prev.tomador_cif_nif,
+      tomador_telefono: datos.tomador_telefono || prev.tomador_telefono,
+      tomador_email: datos.tomador_email || prev.tomador_email,
+      tomador_banco_domiciliacion: datos.tomador_banco_domiciliacion || prev.tomador_banco_domiciliacion,
     }));
     setPasoModal('form');
   }
@@ -232,10 +316,21 @@ export default function Polizas() {
     setGuardando(true);
     setError('');
     try {
+      const toFloat = (v) => (v !== '' && v != null ? parseFloat(v) : null);
       const datos = {
         ...formulario,
-        importe_anual: formulario.importe_anual ? parseFloat(formulario.importe_anual) : null,
-        importe_pago: formulario.importe_pago ? parseFloat(formulario.importe_pago) : null,
+        importe_anual: toFloat(formulario.importe_anual),
+        importe_pago: toFloat(formulario.importe_pago),
+        capital_continente: toFloat(formulario.capital_continente),
+        capital_contenido: toFloat(formulario.capital_contenido),
+        capital_rc_general: toFloat(formulario.capital_rc_general),
+        capital_defensa_juridica: toFloat(formulario.capital_defensa_juridica),
+        capital_danos_agua: toFloat(formulario.capital_danos_agua),
+        capital_robo: toFloat(formulario.capital_robo),
+        capital_danos_electricos: toFloat(formulario.capital_danos_electricos),
+        capital_fenomenos_atmosfericos: toFloat(formulario.capital_fenomenos_atmosfericos),
+        capital_perdida_alquileres: toFloat(formulario.capital_perdida_alquileres),
+        capital_rc_propietario: toFloat(formulario.capital_rc_propietario),
       };
       if (editando) {
         await actualizarPolizaApi(editando.id, datos);
@@ -529,9 +624,12 @@ export default function Polizas() {
       ) : '—',
     },
     {
-      clave: 'acciones', titulo: 'Acciones', ancho: '180px',
+      clave: 'acciones', titulo: 'Acciones', ancho: '210px',
       render: (f) => (
         <div className="flex items-center gap-1">
+          <button onClick={() => { setPolizaFicha(f); setModalFicha(true); }} title="Ver ficha" className="p-1.5 text-gray-400 hover:text-sky-600 hover:bg-sky-50 rounded-lg transition-colors">
+            <Eye size={20} />
+          </button>
           <button onClick={() => abrirEditar(f)} title="Editar" className="p-1.5 text-gray-400 hover:text-[#1e3a5f] hover:bg-gray-100 rounded-lg transition-colors">
             <Pencil size={20} />
           </button>
@@ -883,6 +981,98 @@ export default function Polizas() {
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Coberturas y capitales asegurados */}
+            <div>
+              <h3 className="text-xs font-semibold text-emerald-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Shield size={14} /> Coberturas y capitales asegurados
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-emerald-50/40 border border-emerald-100 rounded-xl p-4">
+                {CAPITALES_ASEGURADOS_INMUEBLE.map(({ key, label }) => (
+                  <div key={key}>
+                    <label className="block text-xs text-gray-500 mb-1">{label}</label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        name={key}
+                        value={formatearMiles(formulario[key])}
+                        onChange={(e) => setFormulario((p) => ({ ...p, [key]: limpiarMiles(e.target.value) }))}
+                        className="campo-formulario pr-8 text-sm"
+                        placeholder="0"
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">€</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Coberturas NO contratadas */}
+            <div>
+              <h3 className="text-xs font-semibold text-red-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <AlertTriangle size={14} /> Coberturas NO contratadas
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-red-50/40 border border-red-100 rounded-xl p-4">
+                {COBERTURAS_NO_CONTRATADAS_INMUEBLE.map(({ key, label }) => (
+                  <label key={key} className="flex items-center gap-2 cursor-pointer p-2 rounded-lg hover:bg-red-100/40 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={!!formulario[key]}
+                      onChange={(e) => setFormulario((p) => ({ ...p, [key]: e.target.checked }))}
+                      className="w-4 h-4 rounded border-red-300 text-red-600 focus:ring-red-500"
+                    />
+                    <span className="text-sm text-gray-700">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Franquicias */}
+            <div>
+              <h3 className="text-xs font-semibold text-amber-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <AlertTriangle size={14} /> Franquicias aplicables
+              </h3>
+              <div className="bg-amber-50/50 border border-amber-200 rounded-xl p-4">
+                <textarea
+                  name="franquicias"
+                  value={formulario.franquicias}
+                  onChange={handleCambio}
+                  rows={3}
+                  className="w-full bg-white/70 border border-amber-200 rounded-lg px-3 py-2 text-sm text-gray-700 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none"
+                  placeholder="Ej: Robo 150 €, Daños por agua 90 €, Rotura de cristales sin franquicia..."
+                />
+              </div>
+            </div>
+
+            {/* Datos del tomador */}
+            <div>
+              <h3 className="text-xs font-semibold text-indigo-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                <Shield size={14} /> Datos del tomador
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-indigo-50/40 border border-indigo-100 rounded-xl p-4">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs text-gray-500 mb-1">Nombre del tomador</label>
+                  <input name="tomador_poliza" value={formulario.tomador_poliza} onChange={handleCambio} className="campo-formulario text-sm" placeholder="Nombre completo o razón social" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">CIF / NIF</label>
+                  <input name="tomador_cif_nif" value={formulario.tomador_cif_nif} onChange={handleCambio} className="campo-formulario font-mono text-sm" placeholder="B12345678 / 12345678A" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Teléfono</label>
+                  <input name="tomador_telefono" value={formulario.tomador_telefono} onChange={handleCambio} className="campo-formulario text-sm" placeholder="600 000 000" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Email</label>
+                  <input type="email" name="tomador_email" value={formulario.tomador_email} onChange={handleCambio} className="campo-formulario text-sm" placeholder="tomador@email.com" />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-500 mb-1">Banco domiciliación</label>
+                  <input name="tomador_banco_domiciliacion" value={formulario.tomador_banco_domiciliacion} onChange={handleCambio} className="campo-formulario text-sm" placeholder="BBVA / ES00 0000 0000 ..." />
+                </div>
               </div>
             </div>
 
@@ -1505,6 +1695,232 @@ export default function Polizas() {
         tituloOverride="Comparador de renovación"
       />
 
+
+      {/* Modal Ficha de Póliza Inmueble — diseño oscuro profesional */}
+      {modalFicha && polizaFicha && (() => {
+        const p = polizaFicha;
+        const estado = calcularEstado(p.fecha_vencimiento, p.tipo_inmueble);
+        const estadoDark = estado.etiqueta.startsWith('Vig')
+          ? { bg: 'rgba(34,197,94,0.15)', border: 'rgba(34,197,94,0.35)', text: '#4ade80', label: 'VIGENTE' }
+          : estado.etiqueta === 'Vencida'
+          ? { bg: 'rgba(239,68,68,0.15)', border: 'rgba(239,68,68,0.35)', text: '#f87171', label: 'VENCIDA' }
+          : { bg: 'rgba(251,191,36,0.15)', border: 'rgba(251,191,36,0.35)', text: '#fbbf24', label: estado.etiqueta.toUpperCase() };
+        const capitales = CAPITALES_ASEGURADOS_INMUEBLE.map(({ key, label }) => ({ key, label, valor: p[key] }));
+        const noContratadas = COBERTURAS_NO_CONTRATADAS_INMUEBLE.map(({ key, label }) => ({ key, label, activo: !!p[key] }));
+        return (
+          <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={(e) => e.target === e.currentTarget && setModalFicha(false)}>
+            <div className="absolute inset-0 bg-[#0D1B2A]/80 backdrop-blur-md" onClick={() => setModalFicha(false)} />
+            <div className="relative z-10 flex flex-col fixed inset-0 sm:static sm:inset-auto sm:max-w-[760px] sm:w-full sm:rounded-2xl sm:max-h-[92vh] overflow-hidden"
+              style={{ background: 'rgba(15,25,45,0.94)', backdropFilter: 'blur(24px)', border: '1px solid rgba(255,255,255,0.08)', boxShadow: '0 25px 60px rgba(0,0,0,0.55)' }}>
+
+              {/* HEADER: compañía + nº póliza + badge estado */}
+              <div className="flex items-center justify-between px-6 py-4 flex-shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'linear-gradient(180deg, rgba(99,102,241,0.08), transparent)' }}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+                    <Shield size={18} className="text-white" />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-base font-bold text-white truncate">{p.compania_aseguradora || 'Sin compañía'}</h2>
+                    <p className="text-[11px] font-mono text-white/40 truncate">{p.numero_poliza || '—'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                  <span className="px-3 py-1 rounded-full text-[10px] font-bold tracking-wider"
+                    style={{ background: estadoDark.bg, color: estadoDark.text, border: `1px solid ${estadoDark.border}` }}>
+                    {estadoDark.label}
+                  </span>
+                  <button type="button" onClick={() => setModalFicha(false)} className="p-1.5 rounded-lg transition-colors hover:bg-white/10 text-white/40 hover:text-white/80">
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* BODY */}
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                {/* Datos generales */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  {[
+                    { icon: Home, label: 'Inmueble', valor: p.nombre_inmueble || '—' },
+                    { icon: Shield, label: 'Tipo', valor: etiquetaTipo(p.tipo) || '—' },
+                    { icon: Calendar, label: 'Inicio', valor: p.fecha_inicio ? new Date(p.fecha_inicio).toLocaleDateString('es-ES') : '—' },
+                    { icon: Calendar, label: 'Vencimiento', valor: p.fecha_vencimiento ? new Date(p.fecha_vencimiento).toLocaleDateString('es-ES') : '—' },
+                  ].map((t, i) => (
+                    <div key={i} className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                      <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wider text-white/40 mb-1">
+                        <t.icon size={11} /> {t.label}
+                      </div>
+                      <p className="text-sm font-semibold text-white/90 truncate">{t.valor}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Importe anual destacado */}
+                {p.importe_anual && (
+                  <div className="flex items-center justify-between px-5 py-3 rounded-xl"
+                    style={{ background: 'linear-gradient(90deg, rgba(16,185,129,0.12), rgba(16,185,129,0.04))', border: '1px solid rgba(16,185,129,0.25)' }}>
+                    <div className="flex items-center gap-2">
+                      <Euro size={16} className="text-emerald-400" />
+                      <span className="text-xs uppercase tracking-wider text-emerald-300/80">Prima anual</span>
+                    </div>
+                    <span className="text-xl font-bold text-emerald-400">{formatearMiles(parseFloat(p.importe_anual).toFixed(2))} €</span>
+                  </div>
+                )}
+
+                {/* Dirección bien asegurado */}
+                {p.direccion_bien_asegurado && (
+                  <div className="rounded-xl p-3" style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                    <p className="text-[10px] uppercase tracking-wider text-white/40 mb-1">Bien asegurado</p>
+                    <p className="text-sm text-white/80">{p.direccion_bien_asegurado}</p>
+                  </div>
+                )}
+
+                {/* Coberturas y capitales asegurados */}
+                {capitales.some((c) => c.valor != null) && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1 h-4 rounded-full" style={{ background: 'linear-gradient(180deg, #10b981, #059669)' }} />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-400/90">Coberturas y capitales asegurados</h3>
+                    </div>
+                    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid rgba(16,185,129,0.15)' }}>
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr style={{ background: 'rgba(16,185,129,0.08)' }}>
+                            <th className="text-left px-4 py-2 text-[10px] uppercase tracking-wider text-emerald-300/70 font-semibold">Cobertura</th>
+                            <th className="text-right px-4 py-2 text-[10px] uppercase tracking-wider text-emerald-300/70 font-semibold">Capital</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {capitales.map((c, i) => (
+                            <tr key={c.key} style={{ background: i % 2 ? 'rgba(255,255,255,0.015)' : 'transparent', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                              <td className="px-4 py-2 text-white/70">
+                                {c.valor != null ? <CheckCircle size={14} className="inline text-emerald-400 mr-1.5" /> : <X size={14} className="inline text-white/20 mr-1.5" />}
+                                {c.label}
+                              </td>
+                              <td className="px-4 py-2 text-right">
+                                {c.valor != null ? (
+                                  <span className="font-bold text-emerald-300">{formatearMiles(parseFloat(c.valor).toFixed(2))} €</span>
+                                ) : (
+                                  <span className="text-white/25 text-xs">No contratado</span>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Coberturas NO contratadas */}
+                {noContratadas.some((c) => c.activo) && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1 h-4 rounded-full" style={{ background: 'linear-gradient(180deg, #ef4444, #b91c1c)' }} />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-red-400/90">Coberturas NO contratadas</h3>
+                    </div>
+                    <div className="rounded-xl p-4 grid grid-cols-1 md:grid-cols-2 gap-2" style={{ background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                      {noContratadas.filter((c) => c.activo).map((c) => (
+                        <div key={c.key} className="flex items-center gap-2 text-sm text-red-300/90">
+                          <X size={14} className="text-red-400 flex-shrink-0" />
+                          <span>{c.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Franquicias destacadas */}
+                {p.franquicias && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1 h-4 rounded-full" style={{ background: 'linear-gradient(180deg, #f59e0b, #d97706)' }} />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-amber-400/90">Franquicias aplicables</h3>
+                    </div>
+                    <div className="rounded-xl p-4 text-sm text-amber-100/90 leading-relaxed whitespace-pre-line"
+                      style={{ background: 'linear-gradient(90deg, rgba(251,191,36,0.1), rgba(251,191,36,0.04))', border: '1px solid rgba(251,191,36,0.3)' }}>
+                      <AlertTriangle size={14} className="inline text-amber-400 mr-1.5 -mt-0.5" />
+                      {p.franquicias}
+                    </div>
+                  </div>
+                )}
+
+                {/* Datos del tomador */}
+                {(p.tomador_poliza || p.tomador_cif_nif || p.tomador_telefono || p.tomador_email || p.tomador_banco_domiciliacion) && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1 h-4 rounded-full" style={{ background: 'linear-gradient(180deg, #6366f1, #4f46e5)' }} />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-indigo-400/90">Datos del tomador</h3>
+                    </div>
+                    <div className="rounded-xl p-4 grid grid-cols-1 sm:grid-cols-2 gap-3" style={{ background: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.15)' }}>
+                      {[
+                        { label: 'Nombre', valor: p.tomador_poliza },
+                        { label: 'CIF/NIF', valor: p.tomador_cif_nif, mono: true },
+                        { label: 'Teléfono', valor: p.tomador_telefono },
+                        { label: 'Email', valor: p.tomador_email },
+                        { label: 'Banco domiciliación', valor: p.tomador_banco_domiciliacion },
+                      ].filter((d) => d.valor).map((d, i) => (
+                        <div key={i}>
+                          <p className="text-[10px] uppercase tracking-wider text-white/40 mb-0.5">{d.label}</p>
+                          <p className={`text-sm text-white/90 ${d.mono ? 'font-mono' : ''}`}>{d.valor}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Agente / contacto compañía */}
+                {(p.contacto_nombre || p.contacto_telefono || p.contacto_email) && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1 h-4 rounded-full" style={{ background: 'linear-gradient(180deg, #06b6d4, #0891b2)' }} />
+                      <h3 className="text-xs font-bold uppercase tracking-[0.12em] text-cyan-400/90">Contacto compañía / agente</h3>
+                    </div>
+                    <div className="rounded-xl p-4 grid grid-cols-1 sm:grid-cols-3 gap-3" style={{ background: 'rgba(6,182,212,0.05)', border: '1px solid rgba(6,182,212,0.15)' }}>
+                      {[
+                        { label: 'Nombre', valor: p.contacto_nombre },
+                        { label: 'Teléfono', valor: p.contacto_telefono },
+                        { label: 'Email', valor: p.contacto_email },
+                      ].filter((d) => d.valor).map((d, i) => (
+                        <div key={i}>
+                          <p className="text-[10px] uppercase tracking-wider text-white/40 mb-0.5">{d.label}</p>
+                          <p className="text-sm text-white/90 truncate">{d.valor}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* FOOTER */}
+              <div className="flex items-center gap-2 px-6 py-3 flex-shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.06)', background: 'rgba(0,0,0,0.2)' }}>
+                {p.documento_url && (
+                  <a href={urlDoc(p.documento_url)} target="_blank" rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white/70 hover:text-white transition-colors"
+                    style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                    <FileText size={14} /> Ver PDF
+                  </a>
+                )}
+                <button type="button" onClick={() => { setModalFicha(false); abrirEditar(p); }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white/70 hover:text-white transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                  <Pencil size={14} /> Editar
+                </button>
+                <button type="button" onClick={() => { setModalFicha(false); abrirRenovar(p); }}
+                  className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold text-white transition-all hover:shadow-lg hover:shadow-green-500/20"
+                  style={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>
+                  <RefreshCw size={14} /> Renovar
+                </button>
+                <div className="flex-1" />
+                <button type="button" onClick={() => setModalFicha(false)}
+                  className="px-4 py-2 rounded-lg text-xs font-semibold text-white/50 hover:text-white/80 hover:bg-white/5 transition-colors"
+                  style={{ border: '1px solid rgba(255,255,255,0.08)' }}>
+                  Cerrar
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {toast && <Toast mensaje={toast.mensaje} tipo={toast.tipo} onCerrar={() => setToast(null)} />}
     </div>
