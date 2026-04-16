@@ -54,10 +54,33 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin texto adicional, sin markdown, 
   "analisis_fortalezas": "puntos fuertes y aspectos destacables de esta póliza o null",
   "analisis_carencias": "carencias, limitaciones o aspectos a mejorar detectados o null",
   "como_complementar": "recomendaciones para completar o mejorar la cobertura actual o null",
-  "direccion_bien_asegurado": "dirección completa del bien asegurado: búscala en campos como SITUACIÓN DEL RIESGO, UBICACIÓN DEL RIESGO, DESCRIPCIÓN DEL RIESGO, SITUADA EN, DOMICILIO DEL RIESGO. Extrae la dirección completa con calle, número, piso/local, código postal y ciudad. Ejemplo: CL SANTA ENGRACIA 136 LOCAL 1 28003 MADRID. Si no aparece, null"
+  "direccion_bien_asegurado": "dirección completa del bien asegurado: búscala en campos como SITUACIÓN DEL RIESGO, UBICACIÓN DEL RIESGO, DESCRIPCIÓN DEL RIESGO, SITUADA EN, DOMICILIO DEL RIESGO. Extrae la dirección completa con calle, número, piso/local, código postal y ciudad. Ejemplo: CL SANTA ENGRACIA 136 LOCAL 1 28003 MADRID. Si no aparece, null",
+
+  "capital_continente": número decimal (capital asegurado continente/edificio) o null,
+  "capital_mercancias_max": número decimal (mercancías/existencias capital máximo) o null,
+  "capital_mercancias_promedio": número decimal (mercancías/existencias capital promedio) o null,
+  "capital_maquinaria_mobiliario": número decimal (maquinaria y mobiliario) o null,
+  "capital_rc_general": número decimal (RC general / explotación) o null,
+  "capital_defensa_juridica": número decimal (defensa jurídica) o null,
+  "capital_robo_caja_fuerte": número decimal (robo de dinero en caja fuerte) o null,
+  "capital_perdida_alquileres": número decimal (pérdida de alquileres o traslado de contenido) o null,
+
+  "cob_no_perdida_explotacion": true si la pérdida de explotación aparece como NO contratada o excluida, false en caso contrario,
+  "cob_no_averia_maquinaria": true si la avería de maquinaria NO está contratada, false en caso contrario,
+  "cob_no_rc_productos": true si la RC de productos NO está contratada, false en caso contrario,
+  "cob_no_todo_riesgo": true si "todo riesgo accidental" NO está contratado, false en caso contrario,
+  "cob_no_danos_inmueble": true si "daños al inmueble alquilado" NO está contratado, false en caso contrario,
+  "cob_no_transporte": true si la cobertura de transporte NO está contratada, false en caso contrario,
+
+  "franquicias": "texto libre con todas las franquicias aplicables (ej. 'Robo 150 €, Daños por agua 90 €, Rotura de cristales sin franquicia'). Si no aparecen, null",
+
+  "tomador_cif_nif": "CIF o NIF del tomador de la póliza o null",
+  "tomador_telefono": "teléfono del tomador o null",
+  "tomador_email": "email del tomador o null",
+  "tomador_banco_domiciliacion": "entidad bancaria o IBAN donde se domicilia el recibo o null"
 }
 
-Si no encuentras algún dato, usa null. Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda. Los campos de análisis deben ser texto descriptivo en español.`;
+Si no encuentras algún dato, usa null (o false para los booleanos de coberturas NO contratadas si no hay mención explícita). Las fechas en formato YYYY-MM-DD. Los importes como números sin símbolo de moneda ni separadores de miles (usa punto como separador decimal). Los campos de análisis deben ser texto descriptivo en español.`;
 
     const respuesta = await llamarAnthropicApi( {
       method: 'POST',

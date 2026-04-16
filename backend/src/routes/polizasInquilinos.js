@@ -10,6 +10,11 @@ const cloudinary = require('../config/cloudinary');
 
 const MAX_BYTES_PDF = 5 * 1024 * 1024; // 5 MB límite Anthropic
 
+// Helpers: convierten strings vacíos a null (postgres no acepta "" en DATE/NUMERIC)
+const toDate = (val) => (val && val !== '') ? val : null;
+const toNum = (val) => (val !== undefined && val !== null && val !== '') ? val : null;
+const toBool = (val) => val === true || val === 'true';
+
 const router = express.Router();
 router.use(verificarToken);
 
@@ -339,6 +344,28 @@ router.post('/', async (req, res) => {
       como_complementar,
       direccion_bien_asegurado,
       datos_inmueble,
+      // Capitales asegurados
+      capital_continente,
+      capital_mercancias_max,
+      capital_mercancias_promedio,
+      capital_maquinaria_mobiliario,
+      capital_rc_general,
+      capital_defensa_juridica,
+      capital_robo_caja_fuerte,
+      capital_perdida_alquileres,
+      // Coberturas NO contratadas
+      cob_no_perdida_explotacion,
+      cob_no_averia_maquinaria,
+      cob_no_rc_productos,
+      cob_no_todo_riesgo,
+      cob_no_danos_inmueble,
+      cob_no_transporte,
+      // Franquicias y tomador
+      franquicias,
+      tomador_cif_nif,
+      tomador_telefono,
+      tomador_email,
+      tomador_banco_domiciliacion,
     } = req.body;
 
     if (!inquilino_id) {
@@ -355,9 +382,9 @@ router.post('/', async (req, res) => {
         inquilino_id,
         compania_aseguradora ?? null,
         numero_poliza ?? null,
-        fecha_inicio ?? null,
-        fecha_vencimiento ?? null,
-        importe_anual ?? null,
+        toDate(fecha_inicio),
+        toDate(fecha_vencimiento),
+        toNum(importe_anual),
         notas ?? null,
         documento_url ?? null,
         tomador_poliza ?? null,
@@ -380,8 +407,27 @@ router.post('/', async (req, res) => {
           analisis_carencias = $8,
           como_complementar = $9,
           direccion_bien_asegurado = $10,
-          datos_inmueble = $11
-         WHERE id = $12`,
+          datos_inmueble = $11,
+          capital_continente = $12,
+          capital_mercancias_max = $13,
+          capital_mercancias_promedio = $14,
+          capital_maquinaria_mobiliario = $15,
+          capital_rc_general = $16,
+          capital_defensa_juridica = $17,
+          capital_robo_caja_fuerte = $18,
+          capital_perdida_alquileres = $19,
+          cob_no_perdida_explotacion = $20,
+          cob_no_averia_maquinaria = $21,
+          cob_no_rc_productos = $22,
+          cob_no_todo_riesgo = $23,
+          cob_no_danos_inmueble = $24,
+          cob_no_transporte = $25,
+          franquicias = $26,
+          tomador_cif_nif = $27,
+          tomador_telefono = $28,
+          tomador_email = $29,
+          tomador_banco_domiciliacion = $30
+         WHERE id = $31`,
         [
           tipo || 'hogar',
           contacto_nombre ?? null,
@@ -394,6 +440,25 @@ router.post('/', async (req, res) => {
           como_complementar ?? null,
           direccion_bien_asegurado ?? null,
           datos_inmueble ? JSON.stringify(datos_inmueble) : null,
+          toNum(capital_continente),
+          toNum(capital_mercancias_max),
+          toNum(capital_mercancias_promedio),
+          toNum(capital_maquinaria_mobiliario),
+          toNum(capital_rc_general),
+          toNum(capital_defensa_juridica),
+          toNum(capital_robo_caja_fuerte),
+          toNum(capital_perdida_alquileres),
+          toBool(cob_no_perdida_explotacion),
+          toBool(cob_no_averia_maquinaria),
+          toBool(cob_no_rc_productos),
+          toBool(cob_no_todo_riesgo),
+          toBool(cob_no_danos_inmueble),
+          toBool(cob_no_transporte),
+          franquicias ?? null,
+          tomador_cif_nif ?? null,
+          tomador_telefono ?? null,
+          tomador_email ?? null,
+          tomador_banco_domiciliacion ?? null,
           polizaId,
         ]
       );
@@ -435,6 +500,28 @@ router.put('/:id', async (req, res) => {
       como_complementar,
       direccion_bien_asegurado,
       datos_inmueble,
+      // Capitales asegurados
+      capital_continente,
+      capital_mercancias_max,
+      capital_mercancias_promedio,
+      capital_maquinaria_mobiliario,
+      capital_rc_general,
+      capital_defensa_juridica,
+      capital_robo_caja_fuerte,
+      capital_perdida_alquileres,
+      // Coberturas NO contratadas
+      cob_no_perdida_explotacion,
+      cob_no_averia_maquinaria,
+      cob_no_rc_productos,
+      cob_no_todo_riesgo,
+      cob_no_danos_inmueble,
+      cob_no_transporte,
+      // Franquicias y tomador
+      franquicias,
+      tomador_cif_nif,
+      tomador_telefono,
+      tomador_email,
+      tomador_banco_domiciliacion,
     } = req.body;
 
     // UPDATE base
@@ -449,9 +536,9 @@ router.put('/:id', async (req, res) => {
         inquilino_id,
         compania_aseguradora ?? null,
         numero_poliza ?? null,
-        fecha_inicio ?? null,
-        fecha_vencimiento ?? null,
-        importe_anual ?? null,
+        toDate(fecha_inicio),
+        toDate(fecha_vencimiento),
+        toNum(importe_anual),
         notas ?? null,
         documento_url ?? null,
         tomador_poliza ?? null,
@@ -477,8 +564,27 @@ router.put('/:id', async (req, res) => {
           analisis_carencias = $8,
           como_complementar = $9,
           direccion_bien_asegurado = $10,
-          datos_inmueble = $11
-         WHERE id = $12`,
+          datos_inmueble = $11,
+          capital_continente = $12,
+          capital_mercancias_max = $13,
+          capital_mercancias_promedio = $14,
+          capital_maquinaria_mobiliario = $15,
+          capital_rc_general = $16,
+          capital_defensa_juridica = $17,
+          capital_robo_caja_fuerte = $18,
+          capital_perdida_alquileres = $19,
+          cob_no_perdida_explotacion = $20,
+          cob_no_averia_maquinaria = $21,
+          cob_no_rc_productos = $22,
+          cob_no_todo_riesgo = $23,
+          cob_no_danos_inmueble = $24,
+          cob_no_transporte = $25,
+          franquicias = $26,
+          tomador_cif_nif = $27,
+          tomador_telefono = $28,
+          tomador_email = $29,
+          tomador_banco_domiciliacion = $30
+         WHERE id = $31`,
         [
           tipo || 'hogar',
           contacto_nombre ?? null,
@@ -491,6 +597,25 @@ router.put('/:id', async (req, res) => {
           como_complementar ?? null,
           direccion_bien_asegurado ?? null,
           datos_inmueble ? JSON.stringify(datos_inmueble) : null,
+          toNum(capital_continente),
+          toNum(capital_mercancias_max),
+          toNum(capital_mercancias_promedio),
+          toNum(capital_maquinaria_mobiliario),
+          toNum(capital_rc_general),
+          toNum(capital_defensa_juridica),
+          toNum(capital_robo_caja_fuerte),
+          toNum(capital_perdida_alquileres),
+          toBool(cob_no_perdida_explotacion),
+          toBool(cob_no_averia_maquinaria),
+          toBool(cob_no_rc_productos),
+          toBool(cob_no_todo_riesgo),
+          toBool(cob_no_danos_inmueble),
+          toBool(cob_no_transporte),
+          franquicias ?? null,
+          tomador_cif_nif ?? null,
+          tomador_telefono ?? null,
+          tomador_email ?? null,
+          tomador_banco_domiciliacion ?? null,
           req.params.id,
         ]
       );

@@ -218,6 +218,29 @@ async function inicializarBaseDatos() {
       ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS datos_inmueble JSONB;
     `);
 
+    // Coberturas y capitales asegurados, franquicias y datos del tomador (migración)
+    await cliente.query(`
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS capital_continente DECIMAL(12,2);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS capital_mercancias_max DECIMAL(12,2);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS capital_mercancias_promedio DECIMAL(12,2);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS capital_maquinaria_mobiliario DECIMAL(12,2);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS capital_rc_general DECIMAL(12,2);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS capital_defensa_juridica DECIMAL(12,2);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS capital_robo_caja_fuerte DECIMAL(12,2);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS capital_perdida_alquileres DECIMAL(12,2);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS cob_no_perdida_explotacion BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS cob_no_averia_maquinaria BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS cob_no_rc_productos BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS cob_no_todo_riesgo BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS cob_no_danos_inmueble BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS cob_no_transporte BOOLEAN DEFAULT FALSE;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS franquicias TEXT;
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS tomador_cif_nif VARCHAR(50);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS tomador_telefono VARCHAR(50);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS tomador_email VARCHAR(255);
+      ALTER TABLE polizas_inquilinos ADD COLUMN IF NOT EXISTS tomador_banco_domiciliacion VARCHAR(255);
+    `);
+
     // Nuevas columnas en inquilinos (migración)
     await cliente.query(`
       ALTER TABLE inquilinos ADD COLUMN IF NOT EXISTS importe_renta NUMERIC(10,2);
